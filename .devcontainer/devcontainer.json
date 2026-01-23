@@ -1,0 +1,79 @@
+{
+	"name": "PHP Database Development (with Docker Compose)",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/var/www/html",
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"bmewburn.vscode-intelephense-client",
+				"xdebug.php-debug",
+				"devsense.phptools-vscode",
+				"zobo.php-intellisense",
+				"mtxr.sqltools",
+				"mtxr.sqltools-driver-mysql",
+				"mtxr.sqltools-driver-pg",
+				"mtxr.sqltools-driver-sqlite",
+				"ms-azuretools.vscode-docker",
+				"editorconfig.editorconfig"
+			],
+			"settings": {
+				"php.validate.executablePath": "/usr/local/bin/php",
+				"php.suggest.basic": true,
+				"editor.formatOnSave": true,
+				"files.associations": {
+					"*.php": "php"
+				},
+				"sqltools.connections": [
+					{
+						"name": "MySQL Dev",
+						"driver": "MySQL",
+						"server": "mysql",
+						"port": 3306,
+						"database": "devdb",
+						"username": "devuser",
+						"password": "devpassword"
+					},
+					{
+						"name": "PostgreSQL Dev",
+						"driver": "PostgreSQL",
+						"server": "postgres",
+						"port": 5432,
+						"database": "devdb",
+						"username": "postgres",
+						"password": "postgres"
+					}
+				]
+			}
+		}
+	},
+
+	"forwardPorts": [80, 3306, 5432, 8081, 9003],
+	"portsAttributes": {
+		"80": {
+			"label": "Apache Web Server",
+			"onAutoForward": "notify"
+		},
+		"3306": {
+			"label": "MySQL",
+			"onAutoForward": "silent"
+		},
+		"5432": {
+			"label": "PostgreSQL",
+			"onAutoForward": "silent"
+		},
+		"8081": {
+			"label": "Adminer (Database GUI)",
+			"onAutoForward": "notify"
+		},
+		"9003": {
+			"label": "XDebug",
+			"onAutoForward": "silent"
+		}
+	},
+
+	"postCreateCommand": "composer --version && php -v && echo 'Development environment ready!'",
+
+	"remoteUser": "www-data"
+}
