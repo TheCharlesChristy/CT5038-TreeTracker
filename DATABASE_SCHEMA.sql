@@ -33,6 +33,8 @@ create table trees (
     id bigint unsigned auto_increment primary key,
     latitude decimal(9,6) not null,
     longitude decimal(9,6) not null,
+    constraint chk_trees_latitude check (latitude between -90 and 90),
+    constraint chk_trees_longitude check (longitude between -180 and 180),
     index idx_location (latitude, longitude)
 ) engine=InnoDB;
 
