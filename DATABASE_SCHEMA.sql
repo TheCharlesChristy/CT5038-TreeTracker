@@ -55,7 +55,7 @@ create table photos (
     byte_size int unsigned,
     sha256 char(64),
     created_at datetime default current_timestamp,
-    index idx_photo_hash (sha256)
+    unique index uq_photo_sha256 (sha256)
 ) engine=InnoDB;
 
 create table tree_photos (
