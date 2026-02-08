@@ -1,6 +1,14 @@
 /*
- * Tree Tracking System Schema
+ * Tree Tracking System Schema (MySQL / MariaDB)
  * --------------------------
+ * NOTE: This schema targets MySQL-compatible databases only and uses
+ *       MySQL-specific features (e.g., UNSIGNED, AUTO_INCREMENT, ENGINE).
+ *       It will not run as-is on PostgreSQL or SQLite.
+ *
+ *       To apply this schema on MySQL, for example:
+ *           mysql -u <user> -p<password> <database> < DATABASE_SCHEMA.sql
+ *
+ *       For other databases, use an engine-specific schema or migrations.
  * Note: Images are stored as URLs/Paths to keep the DB lightweight.
  * Lat/Lon uses DECIMAL(9,6) for ~10cm precision.
  */
