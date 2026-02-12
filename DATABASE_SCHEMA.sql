@@ -28,6 +28,19 @@ create table user_passwords (
         references users(id) on delete cascade
 ) engine=InnoDB;
 
+create table admins (
+    user_id bigint unsigned primary key,
+    constraint fk_admins_user foreign key (user_id) references users(id) on delete cascade
+) engine=InnoDB;
+
+create table user_sessions (
+    id bigint unsigned auto_increment primary key,
+    user_id bigint unsigned not null, 
+    session_token char(64) not null unique, 
+    expires_at datetime not null, 
+    constraint fk_sessions_user foreign key (user_id) references users(id) on delete cascade 
+) engine=InnoDB;
+
 -- Core Tree Data
 create table trees (
     id bigint unsigned auto_increment primary key,
