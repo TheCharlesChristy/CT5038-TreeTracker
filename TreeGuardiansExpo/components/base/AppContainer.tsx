@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaViewBase, StyleSheet, ViewStyle } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '../../styles/theme';
 
 interface AppContainerProps {
@@ -9,9 +10,9 @@ interface AppContainerProps {
 
 export const AppContainer = ({ children, style }: AppContainerProps) => {
   return (
-    <SafeAreaViewBase style={[styles.container, style]}>
+    <SafeAreaView style={[styles.container, style]}>
       {children}
-    </SafeAreaViewBase>
+    </SafeAreaView>
   );
 };
 

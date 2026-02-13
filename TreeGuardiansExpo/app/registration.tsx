@@ -6,9 +6,13 @@ import { BackButton } from '../components/base/BackButton';
 import { Theme } from '../styles/theme';
 import { router } from 'expo-router';
 
-export default function HomeScreen() {
+export default function CreateAccount() {
   return (
     <AppContainer>
+      
+      {/* Top Left Back */}
+      <BackButton onPress={() => router.back()} />
+
       {/* Center Content */}
       <View
         style={{
@@ -27,7 +31,6 @@ export default function HomeScreen() {
         </AppText>
 
         <AppButton title="Login" onPress={() => router.push('/login')} />
-        <AppButton title="Create Account" onPress={() => router.push('/registration')} />
         <AppButton
           title="Continue as Guest"
           variant="secondary"

@@ -4,18 +4,14 @@ import { AppText } from '../components/base/AppText';
 import { AppButton } from '../components/base/AppButton';
 import { BackButton } from '../components/base/BackButton';
 import { Theme } from '../styles/theme';
+import { router } from 'expo-router';
 
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
-
-export const HomeScreen = ({ navigation }: Props) => {
+export default function LoginScreen() {
   return (
     <AppContainer>
       
       {/* Top Left Back */}
-      <BackButton onPress={() => navigation.goBack()} />
+      <BackButton onPress={() => router.back()} />
 
       {/* Center Content */}
       <View
@@ -34,8 +30,7 @@ export const HomeScreen = ({ navigation }: Props) => {
           TreeGuardians
         </AppText>
 
-        <AppButton title="Login" onPress={() => {}} />
-        <AppButton title="Create Account" onPress={() => {}} />
+        <AppButton title="Registration" onPress={() => router.push('/registration')} />
         <AppButton
           title="Continue as Guest"
           variant="secondary"
