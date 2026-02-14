@@ -1,17 +1,17 @@
-import { Colours } from './colours';
-import { Spacing } from './spacing';
-import { Typography } from './typography';
+import { Colours } from './tokens/colours';
+import { Spacing } from './tokens/spacing';
+import { Typography } from './tokens/typography';
+import { BorderRadius } from './tokens/radius';
 
 export const Theme = {
   Colours,
   Spacing,
   Typography,
+  BorderRadius,
 
-  borderRadius: {
-    small: 6,
-    medium: 10,
-    large: 16,
-    },
+  background: {
+    flex: 1,
+  },
 
   container: {
     flex: 1,
@@ -23,12 +23,12 @@ export const Theme = {
     primary: {
       backgroundColor: Colours.primary,
       padding: Spacing.medium,
-      borderRadius: 8,
+      borderRadius: BorderRadius.small,
     },
     secondary: {
       backgroundColor: Colours.secondary,
       padding: Spacing.medium,
-      borderRadius: 8,
+      borderRadius: BorderRadius.small,
     },
     text: {
         color: Colours.white,
@@ -36,19 +36,4 @@ export const Theme = {
     },
   },
 
-  textVariants: {
-    title: {
-      fontSize: Typography.title,
-      fontWeight: 'bold',
-      color: Colours.black,
-    },
-    body: {
-      fontSize: Typography.body,
-      color: Colours.black,
-    },
-    small: {
-      fontSize: Typography.small,
-      color: Colours.black,
-    },
-  },
 } as const;

@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, StyleSheet, TextStyle, StyleProp } from 'react-native';
 import { Theme } from '../../styles/theme';
 
-type Variant = 'title' | 'body' | 'small';
+type Variant = keyof typeof Theme.Typography;
 
 interface AppTextProps {
   children: React.ReactNode;
@@ -23,13 +23,25 @@ export const AppText = ({
 };
 
 const styles = StyleSheet.create({
+  baseColor: {
+    color: Theme.Colours.primary,
+  },
+
+  secondaryColor: {
+    color: Theme.Colours.secondary,
+  },
+
+
   title: {
-    ...Theme.textVariants.title,
+    ...Theme.Typography.title,
   },
   body: {
-    ...Theme.textVariants.body,
+    ...Theme.Typography.body,
   },
-  small: {
-    ...Theme.textVariants.small,
+  subtitle: {
+    ...Theme.Typography.subtitle,
+  },
+  caption: {
+    ...Theme.Typography.caption,
   },
 });

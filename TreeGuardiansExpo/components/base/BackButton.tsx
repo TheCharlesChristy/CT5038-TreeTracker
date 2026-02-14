@@ -13,7 +13,7 @@ export const BackButton = ({ onPress }: AppButtonProps) => {
       <AppText
         style={{
           color: Theme.Colours.primary,
-          fontSize: Theme.Typography.body,
+          ...Theme.Typography.body,
         }}
       >
         ← Back

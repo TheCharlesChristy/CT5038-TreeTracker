@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { View, ImageBackground, StyleSheet } from 'react-native';
 import { AppContainer } from '../components/base/AppContainer';
 import { AppText } from '../components/base/AppText';
 import { AppButton } from '../components/base/AppButton';
@@ -8,7 +8,8 @@ import { router } from 'expo-router';
 
 export default function HomeScreen() {
   return (
-    <AppContainer>
+    <AppContainer backgroundImage={require('../assets/CharltonKings.webp')}>
+      <BackButton onPress={() => router.push('/themePreview')}/>
       {/* Center Content */}
       <View
         style={{
@@ -19,22 +20,20 @@ export default function HomeScreen() {
       >
         <AppText
           style={{
-            fontSize: Theme.Typography.title,
+            ...Theme.Typography.title,
             marginBottom: Theme.Spacing.extraLarge,
           }}
         >
-          TreeGuardians
+          🌲 TreeGuardians 🌲
         </AppText>
-
-        <AppButton title="Login" onPress={() => router.push('/login')} />
-        <AppButton title="Create Account" onPress={() => router.push('/registration')} />
+        <AppButton title="Login" variant="accent" onPress={() => router.push('/login')} />
+        <AppButton title="Create Account" variant="primary" onPress={() => router.push('/registration')} />
         <AppButton
           title="Continue as Guest"
           variant="secondary"
           onPress={() => {}}
         />
       </View>
-
     </AppContainer>
   );
 };

@@ -27,10 +27,10 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.Colours.white,
     paddingVertical: Theme.Spacing.medium,
     paddingHorizontal: Theme.Spacing.medium,
-    borderRadius: Theme.borderRadius.medium,
+    borderRadius: Theme.BorderRadius.medium,
     borderWidth: 1,
     borderColor: Theme.Colours.gray,
-    fontSize: Theme.Typography.body,
+    ...Theme.Typography.body,
     color: Theme.Colours.black,
   },
 });

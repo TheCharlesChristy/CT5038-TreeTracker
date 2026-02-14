@@ -1,9 +1,9 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { AppText } from './AppText';
 import { Theme } from '../../styles/theme';
 
-type Variant = 'primary' | 'secondary' | 'outline';
+type Variant = 'primary' | 'secondary' | 'accent' | 'outline';
 
 interface AppButtonProps {
   title: string;
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   base: {
     paddingVertical: Theme.Spacing.medium,
     paddingHorizontal: Theme.Spacing.large,
-    borderRadius: Theme.borderRadius.medium,
+    borderRadius: Theme.BorderRadius.medium,
     alignItems: 'center',
     marginBottom: Theme.Spacing.medium,
   },
@@ -46,8 +46,12 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.Colours.secondary,
   },
 
+  accent: {
+    backgroundColor: Theme.Colours.accent,
+  },
+
   outline: {
-    borderWidth: 2,
+    borderWidth: Theme.BorderRadius.extraSmall,
     borderColor: Theme.Colours.primary,
     backgroundColor: 'transparent',
   },

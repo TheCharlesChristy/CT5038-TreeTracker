@@ -23,14 +23,14 @@ export default function LoginScreen() {
       >
         <AppText
           style={{
-            fontSize: Theme.Typography.title,
+            ...Theme.Typography.title,
             marginBottom: Theme.Spacing.extraLarge,
           }}
         >
           TreeGuardians
         </AppText>
 
-        <AppButton title="Registration" onPress={() => router.push('/registration')} />
+        <AppButton title="Main Page" onPress={() => router.push('/')} />
         <AppButton
           title="Continue as Guest"
           variant="secondary"

@@ -23,14 +23,14 @@ export default function CreateAccount() {
       >
         <AppText
           style={{
-            fontSize: Theme.Typography.title,
+            ...Theme.Typography.title,
             marginBottom: Theme.Spacing.extraLarge,
           }}
         >
           TreeGuardians
         </AppText>
 
-        <AppButton title="Login" onPress={() => router.push('/login')} />
+        <AppButton title="Main Page" onPress={() => router.push('/')} />
         <AppButton
           title="Continue as Guest"
           variant="secondary"
