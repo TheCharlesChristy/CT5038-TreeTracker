@@ -1,4 +1,4 @@
-import { View, ImageBackground, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { AppContainer } from '../components/base/AppContainer';
 import { AppText } from '../components/base/AppText';
 import { AppButton } from '../components/base/AppButton';
@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 
 export default function HomeScreen() {
   return (
-    <AppContainer backgroundImage={require('../assets/CharltonKings.webp')}>
+    <AppContainer backgroundImage={require('../assets/images/CharltonKings.webp')}>
       <BackButton onPress={() => router.push('/themePreview')}/>
       {/* Center Content */}
       <View

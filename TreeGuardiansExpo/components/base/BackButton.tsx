@@ -3,11 +3,11 @@ import { AppText } from './AppText';
 import { Theme } from '../../styles/theme';
 import { GestureResponderEvent } from 'react-native';
 
-interface AppButtonProps {
+interface BackButtonProps {
   onPress: (event: GestureResponderEvent) => void;
 }
 
-export const BackButton = ({ onPress }: AppButtonProps) => {
+export const BackButton = ({ onPress }: BackButtonProps) => {
   return (
     <TouchableOpacity onPress={onPress}>
       <AppText
