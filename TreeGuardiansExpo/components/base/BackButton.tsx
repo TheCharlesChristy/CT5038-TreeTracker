@@ -1,11 +1,11 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AppText } from './AppText';
 import { Theme } from '../../styles/theme';
 
 interface BackButtonProps {
   onPress: () => void;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const BackButton = ({ onPress, style }: BackButtonProps) => {
