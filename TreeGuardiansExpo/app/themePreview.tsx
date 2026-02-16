@@ -1,6 +1,6 @@
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { BackButton } from '../components/base/BackButton';
+import { NavigationButton } from '../components/base/NavigationButton';
 import { AppContainer } from '../components/base/AppContainer';
 import { AppText } from '../components/base/AppText';
 import { AppButton } from '../components/base/AppButton';
@@ -11,7 +11,7 @@ export default function ThemePreview() {
   return (
     <AppContainer style={styles.container} scrollable>
       {/* Top Left Back */}
-      <BackButton onPress={() => router.back()} />
+      <NavigationButton onPress={() => router.back()} />
       
       {/* TITLE */}
       <AppText variant="title">TreeGuardians Design System</AppText>
@@ -120,6 +120,6 @@ const styles = StyleSheet.create({
   colorBox: {
     width: 40,
     height: 40,
-    borderRadius: Theme.BorderRadius.small,
+    borderRadius: Theme.Border.small,
   },
 });

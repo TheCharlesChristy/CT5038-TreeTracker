@@ -2,14 +2,19 @@ import { View } from 'react-native';
 import { AppContainer } from '../components/base/AppContainer';
 import { AppText } from '../components/base/AppText';
 import { AppButton } from '../components/base/AppButton';
-import { BackButton } from '../components/base/BackButton';
+import { NavigationButton } from '../components/base/NavigationButton';
 import { Theme } from '../styles/theme';
 import { router } from 'expo-router';
 
 export default function HomeScreen() {
   return (
     <AppContainer backgroundImage={require('../assets/images/CharltonKings.webp')}>
-      <BackButton onPress={() => router.push('/themePreview')}/>
+
+      {/* Top Left Back */}
+      <NavigationButton onPress={() => router.push('/themePreview')}>
+        ← Theme Preview
+      </NavigationButton>
+
       {/* Center Content */}
       <View
         style={{

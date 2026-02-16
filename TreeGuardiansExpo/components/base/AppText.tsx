@@ -23,7 +23,7 @@ export const AppText = ({
 };
 
 const styles = StyleSheet.create({
-  baseColor: {
+  primaryColor: {
     color: Theme.Colours.primary,
   },
 
@@ -31,6 +31,9 @@ const styles = StyleSheet.create({
     color: Theme.Colours.secondary,
   },
 
+  accentColor: {
+    color: Theme.Colours.accent,
+  },
 
   title: {
     ...Theme.Typography.title,

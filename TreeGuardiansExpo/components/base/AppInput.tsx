@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.Colours.white,
     paddingVertical: Theme.Spacing.medium,
     paddingHorizontal: Theme.Spacing.medium,
-    borderRadius: Theme.BorderRadius.medium,
+    borderRadius: Theme.Border.medium,
     borderWidth: 1,
     borderColor: Theme.Colours.gray,
     ...Theme.Typography.body,

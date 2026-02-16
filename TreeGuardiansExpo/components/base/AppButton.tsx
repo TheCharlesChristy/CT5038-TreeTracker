@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   base: {
     paddingVertical: Theme.Spacing.medium,
     paddingHorizontal: Theme.Spacing.large,
-    borderRadius: Theme.BorderRadius.medium,
+    borderRadius: Theme.Radius.medium,
     alignItems: 'center',
     marginBottom: Theme.Spacing.medium,
   },
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   },
 
   outline: {
-    borderWidth: Theme.BorderRadius.extraSmall,
+    borderWidth: Theme.Border.extraSmall,
     borderColor: Theme.Colours.primary,
     backgroundColor: 'transparent',
   },

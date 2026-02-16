@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import { AppContainer } from '../components/base/AppContainer';
 import { AppText } from '../components/base/AppText';
 import { AppButton } from '../components/base/AppButton';
-import { BackButton } from '../components/base/BackButton';
+import { NavigationButton } from '../components/base/NavigationButton';
 import { Theme } from '../styles/theme';
 import { router } from 'expo-router';
 
@@ -11,7 +11,7 @@ export default function LoginScreen() {
     <AppContainer>
       
       {/* Top Left Back */}
-      <BackButton onPress={() => router.back()} />
+      <NavigationButton onPress={() => router.back()} />
 
       {/* Center Content */}
       <View
