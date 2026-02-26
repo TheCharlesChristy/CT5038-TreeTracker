@@ -8,6 +8,7 @@ interface AppContainerProps {
   scrollable?: boolean;
   backgroundImage?: any;
   style?: ViewStyle;
+  noPadding?: boolean;
 }
 
 export const AppContainer = ({
@@ -15,6 +16,8 @@ export const AppContainer = ({
   scrollable = false,
   backgroundImage,
   style,
+  noPadding,
+
 }: AppContainerProps) => {
   const content = scrollable ? (
     <ScrollView
@@ -48,7 +51,7 @@ export const AppContainer = ({
 
   // Default container (no background image)
   return (
-    <SafeAreaView style={[styles.container, style]}>
+    <SafeAreaView style={[styles.container, !noPadding && { padding: Theme.Spacing.medium }, style]}>
       {content}
     </SafeAreaView>
   );
@@ -68,6 +71,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Theme.Colours.white,
+  },
+
+  padding: {
     padding: Theme.Spacing.medium,
   },
 

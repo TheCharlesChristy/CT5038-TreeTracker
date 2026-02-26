@@ -6,7 +6,7 @@ import { NavigationButton } from '../components/base/NavigationButton';
 import { Theme } from '../styles/theme';
 import { router } from 'expo-router';
 
-export default function HomeScreen() {
+export default function Index() {
   return (
     <AppContainer backgroundImage={require('../assets/images/CharltonKings.webp')}>
 
@@ -36,7 +36,7 @@ export default function HomeScreen() {
         <AppButton
           title="Continue as Guest"
           variant="secondary"
-          onPress={() => {}}
+          onPress={() => router.push('/mainPage')}
         />
       </View>
     </AppContainer>

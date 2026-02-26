@@ -6,7 +6,7 @@ import { NavigationButton } from '../components/base/NavigationButton';
 import { Theme } from '../styles/theme';
 import { router } from 'expo-router';
 
-export default function LoginScreen() {
+export default function Login() {
   return (
     <AppContainer>
       
