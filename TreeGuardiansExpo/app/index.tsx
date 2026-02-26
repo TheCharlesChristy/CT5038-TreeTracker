@@ -6,13 +6,13 @@ import { NavigationButton } from '../components/base/NavigationButton';
 import { Theme } from '../styles/theme';
 import { router } from 'expo-router';
 
-export default function HomeScreen() {
+export default function Index() {
   return (
     <AppContainer backgroundImage={require('../assets/images/CharltonKings.webp')}>
 
       {/* Top Left Back */}
       <NavigationButton onPress={() => router.push('/themePreview')}>
-        ← Theme Preview
+        Theme Preview
       </NavigationButton>
 
       {/* Center Content */}
@@ -29,14 +29,14 @@ export default function HomeScreen() {
             marginBottom: Theme.Spacing.extraLarge,
           }}
         >
-          🌲 TreeGuardians 🌲
+          TreeGuardians
         </AppText>
         <AppButton title="Login" variant="accent" onPress={() => router.push('/login')} />
         <AppButton title="Create Account" variant="primary" onPress={() => router.push('/registration')} />
         <AppButton
           title="Continue as Guest"
           variant="secondary"
-          onPress={() => {}}
+          onPress={() => router.push('/mainPage')}
         />
       </View>
     </AppContainer>

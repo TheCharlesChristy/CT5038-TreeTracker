@@ -13,7 +13,7 @@ export const NavigationButton = ({ onPress, children, color }: NavigationButtonP
   return (
     <TouchableOpacity onPress={onPress}>
       <AppText style={[ { color: Theme.Colours.primary }, color && { color }]}> 
-        {children ?? '← Back'}
+        {children ?? 'Back'}
       </AppText>
     </TouchableOpacity>
   );
