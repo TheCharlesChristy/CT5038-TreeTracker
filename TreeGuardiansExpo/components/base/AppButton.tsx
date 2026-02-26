@@ -3,17 +3,18 @@ import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { AppText } from './AppText';
 import { Theme } from '../../styles/theme';
 
-type Variant = 'primary' | 'secondary' | 'accent' | 'outline';
+type Variant = 'primary' | 'secondary' | 'accent' | 'outline' | 'invisible';
 
 interface AppButtonProps {
   title: string;
   onPress: () => void;
   variant?: Variant;
   style?: ViewStyle;
+  textStyle?: any;
 }
 
 export const AppButton = ({
-  title, onPress, variant = 'primary', style,
+  title, onPress, variant = 'primary', style, textStyle
 }: AppButtonProps) => {
   return (
     <TouchableOpacity
@@ -22,7 +23,7 @@ export const AppButton = ({
       activeOpacity={0.8}
     >
       <AppText
-        style={[styles.text, variant === 'outline' ? styles.outlineText : undefined]}>
+        style={[styles.text, textStyle, variant === 'outline' ? styles.outlineText : undefined]}>
         {title}
       </AppText>
     </TouchableOpacity>
@@ -48,6 +49,10 @@ const styles = StyleSheet.create({
 
   accent: {
     backgroundColor: Theme.Colours.accent,
+  },
+
+  invisible: {
+    
   },
 
   outline: {
