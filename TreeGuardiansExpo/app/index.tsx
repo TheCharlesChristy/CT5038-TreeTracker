@@ -12,7 +12,7 @@ export default function Index() {
 
       {/* Top Left Back */}
       <NavigationButton onPress={() => router.push('/themePreview')}>
-        ← Theme Preview
+        Theme Preview
       </NavigationButton>
 
       {/* Center Content */}
@@ -29,7 +29,7 @@ export default function Index() {
             marginBottom: Theme.Spacing.extraLarge,
           }}
         >
-          🌲 TreeGuardians 🌲
+          TreeGuardians
         </AppText>
         <AppButton title="Login" variant="accent" onPress={() => router.push('/login')} />
         <AppButton title="Create Account" variant="primary" onPress={() => router.push('/registration')} />

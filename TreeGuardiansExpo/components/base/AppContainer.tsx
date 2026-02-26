@@ -51,6 +51,7 @@ export const AppContainer = ({
 
   // Default container (no background image)
   return (
+    // Setting background image overrides no padding setting it true (effectively)
     <SafeAreaView style={[styles.container, !noPadding && { padding: Theme.Spacing.medium }, style]}>
       {content}
     </SafeAreaView>

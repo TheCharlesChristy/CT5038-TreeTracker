@@ -2,6 +2,6 @@
 
 <NavigationButton onPress={() => navigation.navigate('/theme')}>
   <AppText style={{ fontWeight: 'bold' }}>
-    Go To Theme 🎨
+    Go To Theme
   </AppText>
 </NavigationButton>

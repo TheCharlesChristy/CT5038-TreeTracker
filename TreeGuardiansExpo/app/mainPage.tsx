@@ -13,7 +13,7 @@ export default function MainPage() {
       {/* Top Left Back */}
       <View style={ styles.topLeft }>
       <NavigationButton onPress={() => router.push('/')}>
-        ← Home
+        Home
       </NavigationButton>
       </View>
 

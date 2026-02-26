@@ -20,7 +20,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.TreeGuardiansExpo"
+      "package": "com.anonymous.tree_guardians_expo"
     },
     "web": {
       "output": "static",
