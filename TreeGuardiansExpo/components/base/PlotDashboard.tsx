@@ -78,7 +78,13 @@ export default function PlotDashboard({
                 style={styles.deleteButton}
                 onPress={() => removePhoto(index)}
                 >
-                  <AppText>❌</AppText>
+                  <AppText
+                  style={{
+                    color: Theme.Colours.error,
+                    fontSize: 60,
+                    fontWeight: 'bold',
+                  }}> X </AppText>
+
                 </TouchableOpacity>
               )}
             </View>
