@@ -1,29 +1,17 @@
 import { Platform, View, StyleProp, ViewStyle } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { WebViewMessageEvent } from 'react-native-webview';
+import { Tree } from '../../objects/TreeDetails';
 
 interface MapComponentProps {
   style?: StyleProp<ViewStyle>;
 
-  onPress?: (coordinate: {
-    latitude: number;
-    longitude: number;
-  }) => void;
+  onPress?: (coordinate: {latitude: number; longitude: number; }) => void;
+  onTreeClick?: (tree: Tree) => void;
 
   isPlotting?: boolean;
-  plottedTrees?: {
-    id: string;
-    latitude: number;
-    longitude: number;
-  }[];
-
-  clearTreesSignal?: number;
-
-  renderTreeIcon?: (tree: {
-    id: string;
-    latitude: number;
-    longitude: number;
-  }) => string;
+  plottedTrees?: Tree[];
+  renderTreeIcon?: (tree: Tree) => string;
 }
 
 // Bounding box for Charlton Kings in Cheltenham
@@ -43,6 +31,7 @@ const MAX_ZOOM = 18;
 
 function MapWeb({
   onPress,
+  onTreeClick,
   isPlotting = false,
   plottedTrees = [],
   renderTreeIcon,
@@ -119,9 +108,7 @@ function MapWeb({
     treeLayer.current.clearLayers();
 
     plottedTrees.forEach((tree) => {
-      const html = renderTreeIcon
-        ? renderTreeIcon(tree)
-        : '🌳';
+      const html = renderTreeIcon ? renderTreeIcon(tree) : '🌳';
 
       const icon = L.divIcon({
         html,
@@ -130,10 +117,14 @@ function MapWeb({
         iconAnchor: [25, 25],
       });
 
-      L.marker(
-        [tree.latitude, tree.longitude],
-        { icon }
-      ).addTo(treeLayer.current);
+      const marker = L.marker([tree.latitude, tree.longitude], { icon }).addTo(treeLayer.current);
+
+      // adding a click listener
+      marker.on('click', () => {
+        if (onTreeClick) {
+          onTreeClick(tree)
+        }
+      })
     });
   }, [plottedTrees, renderTreeIcon]);
 
@@ -150,40 +141,17 @@ function MapWeb({
 // ===============================
 
 function MapMobile({
-  onPress,
-  plottedTrees = [],
-  renderTreeIcon,
-}: {
-  onPress?: (coordinate: {
-    latitude: number;
-    longitude: number;
-  }) => void;
-
-  plottedTrees?: {
-    id: string;
-    latitude: number;
-    longitude: number;
-  }[];
-
-  isPlotting?: boolean;
-
-  renderTreeIcon?: (tree: {
-    id: string;
-    latitude: number;
-    longitude: number;
-  }) => string;
-}) {
+ onPress, onTreeClick, isPlotting = false, plottedTrees = [], renderTreeIcon} : MapComponentProps) {
   const WebView = require('react-native-webview').default;
   const webViewRef = useRef<any>(null);
 
+  // send tree updates to WebView
   useEffect(() => {
     if (!webViewRef.current) return;
 
     const treesToSend = plottedTrees.map((tree) => ({
-      ...tree,
-      iconHtml: renderTreeIcon
-        ? renderTreeIcon(tree)
-        : '🌳',
+      ...tree, // spreads treeType, wildlife, disease
+      iconHtml: renderTreeIcon ? renderTreeIcon(tree) : '🌳',
     }));
 
     webViewRef.current.postMessage(
@@ -256,17 +224,16 @@ function initMap() {
       data.plottedTrees.forEach(function(tree) {
         const html = tree.iconHtml || '🌳';
 
-        const icon = L.divIcon({
-          html,
-          className: '',
-          iconSize: [50,50],
-          iconAnchor: [25,25]
-        });
+        const icon = L.divIcon({html, className: '', iconSize: [50,50], iconAnchor: [25,25] });
+        const marker = L.marker([tree.latitude, tree.longitude], { icon }).addTo(treeLayer);
 
-        L.marker(
-          [tree.latitude, tree.longitude],
-          { icon }
-        ).addTo(treeLayer);
+        // adding click event
+        marker.on('click', function() {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'treeClick',
+          tree: tree
+          }));
+        });
       });
     }
   }
@@ -295,14 +262,15 @@ onload="initMap()">
       javaScriptEnabled={true}
       domStorageEnabled={true}
       ref={webViewRef}
+
       onMessage={(event: WebViewMessageEvent) => {
         const data = JSON.parse(event.nativeEvent.data);
 
-        if (onPress) {
-          onPress({
-            latitude: data.latitude,
-            longitude: data.longitude,
-          });
+        if (data.type === 'mapPress' && onPress) {
+          onPress?.({latitude: data.latitude, longitude: data.longitude});
+
+        } else if (data.type === 'treeClick' && onTreeClick) {
+          onTreeClick(data.tree);
         }
       }}
     />
@@ -316,6 +284,7 @@ onload="initMap()">
 export default function MapComponent({
   style,
   onPress,
+  onTreeClick,
   isPlotting,
   plottedTrees,
   renderTreeIcon,
@@ -325,6 +294,7 @@ export default function MapComponent({
       {Platform.OS === 'web' ? (
         <MapWeb
           onPress={onPress}
+          onTreeClick={onTreeClick}
           isPlotting={isPlotting}
           plottedTrees={plottedTrees}
           renderTreeIcon={renderTreeIcon}
@@ -332,6 +302,7 @@ export default function MapComponent({
       ) : (
         <MapMobile
           onPress={onPress}
+          onTreeClick={onTreeClick}
           isPlotting={isPlotting}
           plottedTrees={plottedTrees}
           renderTreeIcon={renderTreeIcon}

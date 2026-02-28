@@ -5,11 +5,12 @@ import { Theme } from '@/styles';
 import { AppButton } from './AppButton'
 import { AppInput } from './AppInput'
 import { AppText } from './AppText'
+import { TreeDetails } from '../../objects/TreeDetails';
 
 const { height } = Dimensions.get('window')
 
 interface PlotDashBoardProps {
-    onConfirm: () => void;
+    onConfirm: (details: TreeDetails) => void;
     onCancel: () => void;
 }
 
@@ -17,14 +18,54 @@ export default function PlotDashboard({
     onConfirm,
     onCancel,
 }: PlotDashBoardProps) {
-
+  // tree Details
+  const [treeType, setTreeType] = useState('');
+  const [wildlife, setWildlife] = useState('');
+  const [disease, setDisease] = useState('');
   const [addDisease, setAddDisease] = useState(false);
+
+  // photo placeholders and removal
   const [photos, setPhotos] = useState<(string | null)[]>([ null, null, null, null ])
 
   const removePhoto = (index: number) => {
     const updated = [...photos];
     updated[index] = null;
     setPhotos(updated);
+  }
+
+    // if the user does not input anything into plot dashboard
+  const [errors, setErrors] = useState({
+    treeType: '',
+    wildlife: '',
+    disease: '',
+  });
+
+  const validate = () => {
+    const newErrors = {
+      treeType: '',
+      wildlife: '',
+      disease: '',
+    };
+
+    let isValid = true;
+
+    if (!treeType.trim()) {
+      newErrors.treeType = 'Tree type field is required...'
+      isValid = false;
+    }
+
+    if (!wildlife.trim()) {
+      newErrors.wildlife = 'wildlife field is required...'
+      isValid = false;
+    }
+
+    if (addDisease && !disease.trim()) {
+      newErrors.disease = 'Disease information is required...'
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   }
 
   return (
@@ -37,17 +78,35 @@ export default function PlotDashboard({
       <View style={styles.card}>
         <AppText style={Theme.Typography.title}>Plot Tree</AppText>
 
+        {/* Tree type and if needed: error message */}
         <AppInput
           placeholder="Tree Type"
+          value={treeType}
+          onChangeText={setTreeType}
           style={styles.input}
         />
 
+        {errors.treeType ? (
+          <AppText style={{ color: 'red'}}>
+            {errors.treeType}
+          </AppText>
+        ) : null}
+
+        {/* Wildlife and if needed: error message */}
         <AppInput
           placeholder="Wildlife"
+          value={wildlife}
+          onChangeText={setWildlife}
           style={styles.input}
         />
 
-        {/* Checkbox */}
+        {errors.wildlife ? (
+          <AppText style={{ color: 'red'}}>
+            {errors.wildlife}
+          </AppText>
+        ) : null}
+
+        {/* Checkbox for Disease and if needed: error message*/}
         <TouchableOpacity
           onPress={() => setAddDisease(!addDisease)}
           style={styles.checkboxRow}
@@ -62,10 +121,19 @@ export default function PlotDashboard({
         {addDisease && (
           <AppInput
           placeholder="Disease"
+          value={disease}
+          onChangeText={setDisease}
           style={styles.input}
           />
         )}
+        
+        {errors.wildlife ? (
+          <AppText style={{ color: 'red'}}>
+            {errors.wildlife}
+          </AppText>
+        ) : null}
 
+        {/* Uploading photos */}
         <AppText style={Theme.Typography.title}>
           Upload Photos
         </AppText>
@@ -91,11 +159,18 @@ export default function PlotDashboard({
           ))}
         </View>
 
+        {/* Submitting treeDraft */}
         <View style={styles.footer}>
           <AppButton
           title="Submit" 
           variant="primary"
-          onPress={onConfirm}
+          onPress={() => 
+            onConfirm({
+            treeType: treeType.trim(),
+            wildlife: wildlife.trim(),
+            disease: addDisease ? disease.trim() : undefined,
+          })
+        }
           style={styles.button} />
 
           <AppButton 
@@ -139,7 +214,6 @@ const styles = StyleSheet.create({
     card: {
         width: '90%',
         height: height * 0.90, // covering the screen
-        // backgroundColor: Theme.Colours.accent,
         padding: 20,
         borderRadius: Theme.Radius.medium,
     },

@@ -7,22 +7,24 @@ import { AppContainer } from '../components/base/AppContainer';
 import { AppButton } from '@/components/base/AppButton';
 import PlotDashboard from '../components/base/PlotDashboard';
 import { Theme } from '@/styles';
+import { Tree, TreeDetails } from '../objects/TreeDetails';
+import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 
 export default function MainPage() {
   // Plot mode toggle
   const [isPlotting, setIsPlotting] = useState(false);
 
-  // Storing the temporary positions of the tree icons
-  const [plottedTrees, setPlottedTrees] = useState<
-    { id: string; latitude: number; longitude: number }[]
-  >([]);
+  // Dashboard Tree State (Before map Placement)
+  const [currentTree, setCurrentTree] = useState<TreeDetails | null>(null);
+
+  // Map Tree State (after sucessful tree placement)
+  const [plottedTrees, setPlottedTrees] = useState<Tree[]>([]);
 
   // Dashboard and insertion of plotted trees
   const [showDashboard, setShowDashboard] = useState(false);
-  const [pendingCoordinate, setPendingCoordinate] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+
+  // Selected tree
+  const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
 
   return (
     <AppContainer noPadding>
@@ -30,11 +32,24 @@ export default function MainPage() {
         style={StyleSheet.absoluteFillObject}
         isPlotting={isPlotting}
         plottedTrees={plottedTrees}
+        onTreeClick={(tree) => setSelectedTree(tree)}
+
         onPress={(coordinate) => {
-          if (!isPlotting) return;
-          setPendingCoordinate(coordinate);
-          setShowDashboard(true);
+          if (!isPlotting || !currentTree) return;
+          
+          const completeTree: Tree = {
+            ...currentTree,
+            id: Date.now().toString(),
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            } as Tree;
+
+          setPlottedTrees((prev) => [...prev, completeTree])
+
+          setCurrentTree(null);
+          setIsPlotting(false);
         }}
+
         renderTreeIcon={(tree) => `
           <div style="
             width:30px;
@@ -51,27 +66,21 @@ export default function MainPage() {
         `}
       />
 
+      {selectedTree && (
+        <TreeDetailsDashboard
+        tree={selectedTree}
+        onClose={() => setSelectedTree(null)}
+        />
+      )}
+
       {showDashboard && (
       <PlotDashboard
-        //visible={showDashboard}
-        onConfirm={() => {
-          if (!pendingCoordinate) return;
-
-          setPlottedTrees((prev) => [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              latitude: pendingCoordinate.latitude,
-              longitude: pendingCoordinate.longitude,
-            },
-          ]);
-
-          setPendingCoordinate(null);
+        onConfirm={(details) => {
+          setCurrentTree(details);
           setShowDashboard(false);
-          setIsPlotting(false);
         }}
+        
         onCancel={() => {
-          setPendingCoordinate(null);
           setShowDashboard(false);
           setIsPlotting(false);
         }}
@@ -129,7 +138,10 @@ export default function MainPage() {
           <AppButton
             title="Plot"
             variant="accent"
-            onPress={() => setIsPlotting(true)}
+            onPress={() => {
+              setIsPlotting(true);
+              setShowDashboard(true);
+            }}
             style={styles.sideButton}
           />
         </View>

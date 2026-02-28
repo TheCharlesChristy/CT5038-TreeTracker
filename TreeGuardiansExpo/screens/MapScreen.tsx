@@ -2,20 +2,19 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import MapComponent from '../components/base/MapComponent';
 import PlotDashboard from '../components/base/PlotDashboard';
+import { Tree, TreeDetails } from '../objects/TreeDetails';
+import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 
 export default function MapScreen() {
+    const [trees, setTrees] = useState<Tree[]>([]);
     const [isPlotting, setIsPlotting] = useState(false);
     const [showDashboard, setShowDashboard] = useState(false);
+    const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
+
     const [pendingCoordinate, setPendingCoordinate] = useState<{
         latitude: number,
         longitude: number,
     } | null>(null);
-
-    const [trees, setTrees] = useState<
-    {   id: string; 
-        latitude: number; 
-        longitude: number }[]
-    >([]);
 
     const handleMapPress = (coordinate: {latitude: number; longitude: number }) => {
         if (!isPlotting) return;
@@ -25,19 +24,20 @@ export default function MapScreen() {
     };
 
     // confirming dashboard
-    const handleConfirm = () => {
+    const handleConfirm = (details: TreeDetails) => {
         if (!pendingCoordinate) return;
 
         const newTree = {
             id: Date.now().toString(),
             latitude: pendingCoordinate.latitude,
             longitude: pendingCoordinate.longitude,
+            ...details, // Spreads treeType, wildlife, disease
         };
 
         setTrees(prev => [...prev, newTree]);
-
         setShowDashboard(false);
         setPendingCoordinate(null);
+        setIsPlotting(false)
     };
 
     const handleCancel = () => {
@@ -46,13 +46,21 @@ export default function MapScreen() {
     };
 
     return (
-        <View style={{ flex: 1, position: 'relative' }}>
+        <View style={{ flex: 1 }}>
             <MapComponent
             style={{ flex: 1 }}
             isPlotting={isPlotting}
             plottedTrees={trees}
             onPress={handleMapPress}
+            onTreeClick={(tree) => setSelectedTree(tree)}
             />
+
+            {selectedTree && (
+                <TreeDetailsDashboard
+                tree={selectedTree}
+                onClose={() => setSelectedTree(null)}
+                />
+            )}
 
             {showDashboard && (
                 <PlotDashboard 

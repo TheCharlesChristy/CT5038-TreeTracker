@@ -48,6 +48,13 @@
       fontWeight: 400
       lineHeight: 18
 
+5. Value
+    - value:
+      fontSize: 17
+      fontWeight: 400
+      lineHeight: 18
+      marginBottom: 5
+
 ## These are the themes that you can use: (TO BE UPDATED)
 
 1. Button
