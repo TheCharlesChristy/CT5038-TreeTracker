@@ -6,8 +6,22 @@ import { Tree, TreeDetails } from '../objects/TreeDetails';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 
 export default function MapScreen() {
+    // determining how the user will plot the tree, either by map location or physically
+    type PlotMode = 'device' | 'manual' | null;
+
+    const [plotMode, setPlotMode] = useState<PlotMode>(null);
+    const [selectedCoordinate, setSelectedCoordinate] = useState<{
+        latitude: number;
+        longitude: number;
+    } | null>(null);
+
+    // additional states for tree plotting
     const [trees, setTrees] = useState<Tree[]>([]);
+
+    // Will we need this in the future? <<-------------------------------------
     const [isPlotting, setIsPlotting] = useState(false);
+
+    // additional states for tree selection
     const [showDashboard, setShowDashboard] = useState(false);
     const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
 
@@ -17,7 +31,7 @@ export default function MapScreen() {
     } | null>(null);
 
     const handleMapPress = (coordinate: {latitude: number; longitude: number }) => {
-        if (!isPlotting) return;
+        if (plotMode !== 'manual') return;
 
         setPendingCoordinate(coordinate);
         setShowDashboard(true);
@@ -37,7 +51,8 @@ export default function MapScreen() {
         setTrees(prev => [...prev, newTree]);
         setShowDashboard(false);
         setPendingCoordinate(null);
-        setIsPlotting(false)
+        setIsPlotting(false);
+        setPlotMode(null);
     };
 
     const handleCancel = () => {
@@ -49,7 +64,7 @@ export default function MapScreen() {
         <View style={{ flex: 1 }}>
             <MapComponent
             style={{ flex: 1 }}
-            isPlotting={isPlotting}
+            isPlotting={plotMode === 'manual'}
             plottedTrees={trees}
             onPress={handleMapPress}
             onTreeClick={(tree) => setSelectedTree(tree)}
@@ -66,6 +81,14 @@ export default function MapScreen() {
                 <PlotDashboard 
                 onConfirm={handleConfirm}
                 onCancel={handleCancel}
+                onSelectManual={() => {
+                    setPlotMode('manual');
+                    setShowDashboard(false);
+                }}
+                onSelectDevice={() => {
+                    setPlotMode('device')
+                    setShowDashboard(false);
+                }}
                 />
             )}
         </View>

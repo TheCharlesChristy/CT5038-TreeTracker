@@ -12,6 +12,10 @@ import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 
 export default function MainPage() {
   // Plot mode toggle
+  type PlotMode = 'manual' | 'device' | null;
+  const [plotMode, setPlotMode] = useState<PlotMode>(null);
+
+  // For manual plotting
   const [isPlotting, setIsPlotting] = useState(false);
 
   // Dashboard Tree State (Before map Placement)
@@ -35,7 +39,7 @@ export default function MainPage() {
         onTreeClick={(tree) => setSelectedTree(tree)}
 
         onPress={(coordinate) => {
-          if (!isPlotting || !currentTree) return;
+          if (!isPlotting || plotMode !== 'manual' || !currentTree) return;
           
           const completeTree: Tree = {
             ...currentTree,
@@ -48,6 +52,7 @@ export default function MainPage() {
 
           setCurrentTree(null);
           setIsPlotting(false);
+          setPlotMode(null);
         }}
 
         renderTreeIcon={(tree) => `
@@ -65,8 +70,9 @@ export default function MainPage() {
           </div>
         `}
       />
-
-      {selectedTree && (
+      
+      {/* Ensure the tree has values before opening, otherwise do not allow */}
+      {selectedTree !== null && (
         <TreeDetailsDashboard
         tree={selectedTree}
         onClose={() => setSelectedTree(null)}
@@ -83,6 +89,18 @@ export default function MainPage() {
         onCancel={() => {
           setShowDashboard(false);
           setIsPlotting(false);
+        }}
+
+        onSelectManual={() => {
+          setPlotMode('manual');
+          setIsPlotting(true);
+          setShowDashboard(false);
+        }}
+
+        onSelectDevice={() => {
+          setPlotMode('device');
+          // setIsPlotting(true);
+          setShowDashboard(false);
         }}
       />
       )}
@@ -108,7 +126,12 @@ export default function MainPage() {
           <AppButton
             title="X"
             variant="invisible"
-            onPress={() => setIsPlotting(false)}
+
+            onPress={() => {
+              setIsPlotting(false);
+              setPlotMode(null);
+            }}
+
             style={styles.closeButton}
             textStyle={{ color: Theme.Colours.error,
               fontSize: 60,
@@ -138,10 +161,7 @@ export default function MainPage() {
           <AppButton
             title="Plot"
             variant="accent"
-            onPress={() => {
-              setIsPlotting(true);
-              setShowDashboard(true);
-            }}
+            onPress={() => setShowDashboard(true)}
             style={styles.sideButton}
           />
         </View>

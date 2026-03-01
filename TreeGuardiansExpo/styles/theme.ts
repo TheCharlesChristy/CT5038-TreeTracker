@@ -3,7 +3,6 @@ import { Spacing } from './tokens/spacing';
 import { Typography } from './tokens/typography';
 import { Radius } from './tokens/radius';
 import { Border } from './tokens/border';
-import { Value } from './tokens/value';
 
 export const Theme = {
   Colours,
@@ -11,7 +10,6 @@ export const Theme = {
   Typography,
   Radius,
   Border,
-  Value,
 
   background: {
     flex: 1,

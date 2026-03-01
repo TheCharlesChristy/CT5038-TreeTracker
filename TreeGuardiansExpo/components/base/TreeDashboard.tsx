@@ -34,15 +34,15 @@ const removePhoto = (index: number) => {
         <AppText style={Theme.Typography.title}>Tree Details</AppText>
 
         <AppText style={Theme.Typography.subtitle}>Tree Type:</AppText>
-        <AppText style={Theme.Value.value}>{tree.treeType}</AppText>
+        <AppText style={Theme.Typography.body}>{tree.treeType}</AppText>
 
         <AppText style={Theme.Typography.subtitle}>Wildlife:</AppText>
-        <AppText style={Theme.Value.value}>{tree.wildlife}</AppText>
+        <AppText style={Theme.Typography.body}>{tree.wildlife}</AppText>
 
         {tree.disease && (
           <>
             <AppText style={Theme.Typography.subtitle}>Disease:</AppText>
-            <AppText style={Theme.Value.value}>{tree.disease}</AppText>
+            <AppText style={Theme.Typography.body}>{tree.disease}</AppText>
           </>
         )}
 

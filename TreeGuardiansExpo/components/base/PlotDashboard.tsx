@@ -12,11 +12,15 @@ const { height } = Dimensions.get('window')
 interface PlotDashBoardProps {
     onConfirm: (details: TreeDetails) => void;
     onCancel: () => void;
+    onSelectManual: () => void;
+    onSelectDevice: () => void;
 }
 
 export default function PlotDashboard({
     onConfirm,
     onCancel,
+    onSelectManual,
+    onSelectDevice,
 }: PlotDashBoardProps) {
   // tree Details
   const [treeType, setTreeType] = useState('');
@@ -68,6 +72,16 @@ export default function PlotDashboard({
     return isValid;
   }
 
+  const handleSubmit = () => {
+    if (!validate()) return;
+
+    onConfirm({
+      treeType: treeType.trim(),
+      wildlife: wildlife.trim(),
+      disease: addDisease ? disease.trim() : undefined,
+    });
+  }
+
   return (
     <View style={styles.overlay}>
       {/* Blur Background */}
@@ -80,31 +94,45 @@ export default function PlotDashboard({
 
         {/* Tree type and if needed: error message */}
         <AppInput
-          placeholder="Tree Type"
-          value={treeType}
-          onChangeText={setTreeType}
-          style={styles.input}
-        />
+        // if there is no input then show error message in input
+        placeholder={ 
+          errors.treeType ? errors.treeType : "Tree Type"
+        }
+        value={treeType}
+        onChangeText={(text) => {
+          setTreeType(text);
 
-        {errors.treeType ? (
-          <AppText style={{ color: 'red'}}>
-            {errors.treeType}
-          </AppText>
-        ) : null}
+          // clear error while typing
+          if (errors.treeType) {
+            setErrors(prev => ({ ...prev, treeType: '' }));
+          }
+        }}
+        style={[
+          styles.input,
+          errors.treeType && styles.errorText
+        ]}
+        />
 
         {/* Wildlife and if needed: error message */}
         <AppInput
-          placeholder="Wildlife"
-          value={wildlife}
-          onChangeText={setWildlife}
-          style={styles.input}
-        />
+        // if there is no input then show error message in input
+        placeholder={ 
+          errors.wildlife ? errors.wildlife : "wildlife"
+        }
+        value={wildlife}
+        onChangeText={(text) => {
+          setWildlife(text);
 
-        {errors.wildlife ? (
-          <AppText style={{ color: 'red'}}>
-            {errors.wildlife}
-          </AppText>
-        ) : null}
+          // clear error while typing
+          if (errors.wildlife) {
+            setErrors(prev => ({ ...prev, wildlife: '' }));
+          }
+        }}
+        style={[
+          styles.input,
+          errors.wildlife && styles.errorText
+        ]}
+        />
 
         {/* Checkbox for Disease and if needed: error message*/}
         <TouchableOpacity
@@ -117,21 +145,28 @@ export default function PlotDashboard({
           ]}/>
           <AppText>Add Disease?</AppText>
         </TouchableOpacity>
-          
+
         {addDisease && (
           <AppInput
-          placeholder="Disease"
+          // if there is no input then show error message in input
+          placeholder={ 
+            errors.disease ? errors.disease : "Disease"
+          }
           value={disease}
-          onChangeText={setDisease}
-          style={styles.input}
+          onChangeText={(text) => {
+            setDisease(text);
+
+            // clear error while typing
+            if (errors.disease) {
+              setErrors(prev => ({ ...prev, disease: '' }));
+            }
+          }}
+          style={[
+            styles.input,
+            errors.disease && styles.errorText
+          ]}
           />
         )}
-        
-        {errors.wildlife ? (
-          <AppText style={{ color: 'red'}}>
-            {errors.wildlife}
-          </AppText>
-        ) : null}
 
         {/* Uploading photos */}
         <AppText style={Theme.Typography.title}>
@@ -159,18 +194,29 @@ export default function PlotDashboard({
           ))}
         </View>
 
+
         {/* Submitting treeDraft */}
         <View style={styles.footer}>
           <AppButton
-          title="Submit" 
+          title="Select on Map" 
           variant="primary"
-          onPress={() => 
-            onConfirm({
-            treeType: treeType.trim(),
-            wildlife: wildlife.trim(),
-            disease: addDisease ? disease.trim() : undefined,
-          })
-        }
+          onPress={() => {
+            if (!validate()) return; // stop if there are invalid fields
+
+            handleSubmit();
+            onSelectManual();
+          }}
+          style={styles.button} />
+
+          <AppButton
+          title="Use my Location" 
+          variant="accent"
+          onPress={() => {
+            if (!validate()) return; // stop if there are invalid fields
+
+            handleSubmit();
+            onSelectDevice();
+          }}
           style={styles.button} />
 
           <AppButton 
@@ -200,6 +246,10 @@ const styles = StyleSheet.create({
       ...StyleSheet.absoluteFillObject,
     },
 
+    errorText: {
+      borderColor: Theme.Colours.error,
+    },
+
     content: {
       flex: 1,
       marginTop: 15,
@@ -222,8 +272,7 @@ const styles = StyleSheet.create({
         borderWidth: Theme.Border.extraSmall,
         borderColor: Theme.Colours.gray,
         borderRadius: Theme.Radius.small,
-        padding: 12,
-        marginBottom: 10,
+        padding: 6,
     },
 
     checkboxRow: {
