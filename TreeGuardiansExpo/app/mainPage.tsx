@@ -1,5 +1,6 @@
-import { View, StyleSheet } from 'react-native';
-import React, { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import * as Location from 'expo-location';
 import MapComponent from '../components/base/MapComponent';
 import { router } from 'expo-router';
 import { NavigationButton } from '../components/base/NavigationButton';
@@ -30,8 +31,48 @@ export default function MainPage() {
   // Selected tree
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
 
+  const plotWithDeviceLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Location permission is required');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+
+      if (!currentTree) return;
+
+      const completeTree: Tree = {
+        ...currentTree,
+        id: Date.now().toString(),
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      } as Tree;
+
+      setPlottedTrees((prev) => [...prev, completeTree]);
+
+      // Reset state
+      setCurrentTree(null);
+      setPlotMode(null);
+      setIsPlotting(false);
+
+    } catch (error) {
+      console.warn(error);
+    }
+  };
+
+  // Device trigger for plotting tree with location
+  useEffect(() => {
+    if (plotMode === 'device' && currentTree) {
+      plotWithDeviceLocation();
+    }
+  }, [plotMode, currentTree]);
+
   return (
     <AppContainer noPadding>
+      <View style={{ flex: 1 }}>
       <MapComponent
         style={StyleSheet.absoluteFillObject}
         isPlotting={isPlotting}
@@ -70,7 +111,15 @@ export default function MainPage() {
           </div>
         `}
       />
-      
+
+      {/* Adding background dim when a dashboard is open */}
+      {(showDashboard || selectedTree !== null) && (
+        <View
+        style={Theme.dimOverlay}
+        pointerEvents="auto"
+      /> 
+      )}
+
       {/* Ensure the tree has values before opening, otherwise do not allow */}
       {selectedTree !== null && (
         <TreeDetailsDashboard
@@ -78,7 +127,7 @@ export default function MainPage() {
         onClose={() => setSelectedTree(null)}
         />
       )}
-
+      
       {showDashboard && (
       <PlotDashboard
         onConfirm={(details) => {
@@ -166,6 +215,7 @@ export default function MainPage() {
           />
         </View>
       )}
+      </View>
     </AppContainer>
   );
 }
@@ -173,6 +223,8 @@ export default function MainPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    zIndex: 20,
+    elevation: 20,
   },
 
   topLeft: {

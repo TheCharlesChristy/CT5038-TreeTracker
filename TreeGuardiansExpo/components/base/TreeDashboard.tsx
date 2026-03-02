@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
@@ -25,9 +24,6 @@ const removePhoto = (index: number) => {
 
   return (
     <View style={styles.overlay}>
-      {/* Blur Background */}
-      <BlurView intensity={50} style={StyleSheet.absoluteFill} />
-      <View style={styles.dim} />
 
       {/* Centered Card */}
       <View style={styles.card}>
@@ -95,34 +91,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 999,
   },
-  dim: {
-    ...StyleSheet.absoluteFillObject,
-  },
+
   card: {
     width: '90%',
     maxHeight: height * 0.9,
     padding: 20,
     borderRadius: Theme.Radius.medium,
   },
+
   photoGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 10,
   },
+
   photoBox: {
     width: '22%',
     aspectRatio: 1,
     backgroundColor: Theme.Colours.gray,
     borderRadius: Theme.Radius.medium,
   },
+
   footer: {
     marginTop: 20,
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
+
   button: {
     width: 100,
   },
+
   deleteButton: {
     position: 'absolute',
     top: 5,

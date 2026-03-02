@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton'
 import { AppInput } from './AppInput'
@@ -84,9 +83,6 @@ export default function PlotDashboard({
 
   return (
     <View style={styles.overlay}>
-      {/* Blur Background */}
-      <BlurView intensity={50} style={StyleSheet.absoluteFill}/>
-      <View style={styles.dim}/>
 
       {/* Centre card */}
       <View style={styles.card}>
@@ -242,10 +238,6 @@ const styles = StyleSheet.create({
         zIndex: 999, // required for web
     },
 
-    dim: {
-      ...StyleSheet.absoluteFillObject,
-    },
-
     errorText: {
       borderColor: Theme.Colours.error,
     },
@@ -333,5 +325,5 @@ const styles = StyleSheet.create({
     button: {
     flex: 1,
     marginHorizontal: 5,
-    }
+    },
 });

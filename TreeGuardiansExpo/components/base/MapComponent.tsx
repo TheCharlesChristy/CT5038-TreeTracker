@@ -35,6 +35,7 @@ function MapWeb({
   isPlotting = false,
   plottedTrees = [],
   renderTreeIcon,
+
 }: MapComponentProps) {
   const mapRef = useRef<any>(null);
   const onPressRef = useRef(onPress);

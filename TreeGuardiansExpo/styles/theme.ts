@@ -11,6 +11,16 @@ export const Theme = {
   Radius,
   Border,
 
+  dimOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.37)',
+    zIndex: 50,
+  },
+
   background: {
     flex: 1,
   },
