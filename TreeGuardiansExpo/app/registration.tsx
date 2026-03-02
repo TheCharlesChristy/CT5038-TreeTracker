@@ -64,8 +64,10 @@ export default function CreateAccount() {
 
   return (
     <AppContainer scrollable>
-      {/* Top Left Back */}
-      <NavigationButton onPress={() => router.back()} />
+      {/* Top Left Home */}
+      <NavigationButton onPress={() => router.push('/')}>
+        Home
+      </NavigationButton>
 
       {/* Form Content */}
       <View style={styles.formContainer}>
