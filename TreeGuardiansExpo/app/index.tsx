@@ -5,9 +5,11 @@ import { AppButton } from '../components/base/AppButton';
 import { NavigationButton } from '../components/base/NavigationButton';
 import { Theme } from '../styles/theme';
 import { router } from 'expo-router';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 export default function Index() {
   return (
+    <ActionSheetProvider>
     <AppContainer backgroundImage={require('../assets/images/CharltonKings.webp')}>
 
       {/* Top Left Back */}
@@ -40,5 +42,6 @@ export default function Index() {
         />
       </View>
     </AppContainer>
+    </ActionSheetProvider>
   );
 };

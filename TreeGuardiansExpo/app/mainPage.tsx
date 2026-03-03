@@ -10,6 +10,7 @@ import PlotDashboard from '../components/base/PlotDashboard';
 import { Theme } from '@/styles';
 import { Tree, TreeDetails } from '../objects/TreeDetails';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 export default function MainPage() {
   // Plot mode toggle
@@ -71,6 +72,7 @@ export default function MainPage() {
   }, [plotMode, currentTree]);
 
   return (
+    <ActionSheetProvider>
     <AppContainer noPadding>
       <View style={{ flex: 1 }}>
       <MapComponent
@@ -148,7 +150,6 @@ export default function MainPage() {
 
         onSelectDevice={() => {
           setPlotMode('device');
-          // setIsPlotting(true);
           setShowDashboard(false);
         }}
       />
@@ -217,6 +218,7 @@ export default function MainPage() {
       )}
       </View>
     </AppContainer>
+    </ActionSheetProvider>
   );
 }
 

@@ -3,7 +3,7 @@ export type TreeDetails = {
     treeType: string;
     wildlife: string;
     disease?: string,
-    photos?: Blob;
+    photos?: string[];
 }
 
 // when the tree is sucessfully placed

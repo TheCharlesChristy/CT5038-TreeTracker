@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Image, StyleSheet, Dimensions } from 'react-native';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
@@ -13,15 +13,6 @@ interface TreeDetailsDashboardProps {
 }
 
 export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashboardProps) {
-  // For now, placeholders are blank
-const [photos, setPhotos] = useState<(string | null)[]>([ null, null, null, null ])
-
-const removePhoto = (index: number) => {
-    const updated = [...photos];
-    updated[index] = null;
-    setPhotos(updated);
-}
-
   return (
     <View style={styles.overlay}>
 
@@ -42,30 +33,24 @@ const removePhoto = (index: number) => {
           </>
         )}
 
-        <AppText style={Theme.Typography.title}>
-          Upload Photos
-        </AppText>
+  <AppText style={Theme.Typography.title}>
+    Photos
+  </AppText>
 
-        <View style={styles.photoGrid}>
-          {photos.map((photo, index) => (
-            <View key={index} style={styles.photoBox}>
-              {photo && (
-                <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => removePhoto(index)}
-                >
-                  <AppText
-                  style={{
-                    color: Theme.Colours.error,
-                    fontSize: 60,
-                    fontWeight: 'bold',
-                  }}> X </AppText>
-
-                </TouchableOpacity>
-              )}
+  <View style={styles.photoGrid}>
+    {(tree.photos ?? []).length === 0 ? (
+      <AppText>No Photos Uploaded</AppText>
+    ) : (
+        (tree.photos ?? []).map((photo, index) => (
+          <View key={index} style={styles.photoBox}>
+            <Image
+            source={{ uri: photo }}
+            style={styles.image}
+            />
             </View>
-          ))}
-        </View>
+        ))
+      )}
+  </View>
 
         <View style={styles.footer}>
           <AppButton
@@ -105,11 +90,23 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
+  image: {
+    width: '100%',
+    height: '100%',
+    borderRadius: Theme.Radius.small,
+  },
+
   photoBox: {
-    width: '22%',
+    width: '17%',
     aspectRatio: 1,
-    backgroundColor: Theme.Colours.gray,
-    borderRadius: Theme.Radius.medium,
+    borderRadius: Theme.Border.medium,
+    borderWidth: 3,
+    borderColor: Theme.Colours.black,
+    marginBottom: 10,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderStyle: 'solid',
   },
 
   footer: {
