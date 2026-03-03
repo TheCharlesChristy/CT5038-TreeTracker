@@ -1,7 +1,7 @@
 import { Platform, View, StyleProp, ViewStyle } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { WebViewMessageEvent } from 'react-native-webview';
-import { Tree } from '../../objects/TreeDetails';
+import { Tree } from '@/objects/TreeDetails';
 
 interface MapComponentProps {
   style?: StyleProp<ViewStyle>;

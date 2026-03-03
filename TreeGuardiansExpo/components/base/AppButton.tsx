@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { AppText } from './AppText';
-import { Theme } from '../../styles/theme';
+import { Theme } from '@/styles/theme';
 
 type Variant = 'primary' | 'secondary' | 'accent' | 'outline' | 'invisible';
 

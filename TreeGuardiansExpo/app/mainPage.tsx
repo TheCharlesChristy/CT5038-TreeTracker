@@ -1,14 +1,14 @@
 import { View, StyleSheet, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import * as Location from 'expo-location';
-import MapComponent from '../components/base/MapComponent';
+import MapComponent from '@/components/base/MapComponent';
 import { router } from 'expo-router';
-import { NavigationButton } from '../components/base/NavigationButton';
-import { AppContainer } from '../components/base/AppContainer';
+import { NavigationButton } from '@/components/base/NavigationButton';
+import { AppContainer } from '@/components/base/AppContainer';
 import { AppButton } from '@/components/base/AppButton';
-import PlotDashboard from '../components/base/PlotDashboard';
+import PlotDashboard from '@/components/base/PlotDashboard';
 import { Theme } from '@/styles';
-import { Tree, TreeDetails } from '../objects/TreeDetails';
+import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 

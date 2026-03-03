@@ -1,16 +1,14 @@
 import { View } from 'react-native';
-import { AppContainer } from '../components/base/AppContainer';
-import { AppText } from '../components/base/AppText';
-import { AppButton } from '../components/base/AppButton';
-import { NavigationButton } from '../components/base/NavigationButton';
-import { Theme } from '../styles/theme';
+import { AppContainer } from '@/components/base/AppContainer';
+import { AppText } from '@/components/base/AppText';
+import { AppButton } from '@/components/base/AppButton';
+import { NavigationButton } from '@/components/base/NavigationButton';
+import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
-import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 export default function Index() {
   return (
-    <ActionSheetProvider>
-    <AppContainer backgroundImage={require('../assets/images/CharltonKings.webp')}>
+    <AppContainer backgroundImage={require('@/assets/images/CharltonKings.webp')}>
 
       {/* Top Left Back */}
       <NavigationButton onPress={() => router.push('/themePreview')}>
@@ -42,6 +40,5 @@ export default function Index() {
         />
       </View>
     </AppContainer>
-    </ActionSheetProvider>
   );
 };

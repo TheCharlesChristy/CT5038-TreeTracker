@@ -1,12 +1,12 @@
 import { View } from 'react-native';
-import { AppContainer } from '../components/base/AppContainer';
-import { AppText } from '../components/base/AppText';
-import { AppButton } from '../components/base/AppButton';
-import { NavigationButton } from '../components/base/NavigationButton';
-import { Theme } from '../styles/theme';
+import { AppContainer } from '@/components/base/AppContainer';
+import { AppText } from '@/components/base/AppText';
+import { AppButton } from '@/components/base/AppButton';
+import { NavigationButton } from '@/components/base/NavigationButton';
+import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
 
-export default function CreateAccount() {
+export default function Login() {
   return (
     <AppContainer>
       

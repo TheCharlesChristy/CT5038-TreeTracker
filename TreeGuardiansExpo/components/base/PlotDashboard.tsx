@@ -4,7 +4,7 @@ import { Theme } from '@/styles';
 import { AppButton } from './AppButton'
 import { AppInput } from './AppInput'
 import { AppText } from './AppText'
-import { TreeDetails } from '../../objects/TreeDetails';
+import { TreeDetails } from '@/objects/TreeDetails';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native'
 import { useActionSheet } from '@expo/react-native-action-sheet';

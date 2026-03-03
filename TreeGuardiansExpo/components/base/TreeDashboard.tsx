@@ -3,7 +3,7 @@ import { View, Image, StyleSheet, Dimensions } from 'react-native';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
-import { Tree } from '../../objects/TreeDetails';
+import { Tree } from '@/objects/TreeDetails';
 
 const { height } = Dimensions.get('window');
 

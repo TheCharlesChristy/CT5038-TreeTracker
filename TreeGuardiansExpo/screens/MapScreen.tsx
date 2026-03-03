@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import MapComponent from '../components/base/MapComponent';
-import PlotDashboard from '../components/base/PlotDashboard';
-import { Tree, TreeDetails } from '../objects/TreeDetails';
+import MapComponent from '@/components/base/MapComponent';
+import PlotDashboard from '@/components/base/PlotDashboard';
+import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function MapScreen() {
     // determining how the user will plot the tree, either by map location or physically
@@ -42,7 +43,7 @@ export default function MapScreen() {
         if (!pendingCoordinate) return;
 
         const newTree = {
-            id: Date.now().toString(),
+            id: uuidv4(),
             latitude: pendingCoordinate.latitude,
             longitude: pendingCoordinate.longitude,
             ...details, // Spreads treeType, wildlife, disease
