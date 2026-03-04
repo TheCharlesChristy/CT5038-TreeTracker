@@ -11,6 +11,7 @@ import { Theme } from '@/styles';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function MainPage() {
   // Plot mode toggle
@@ -47,12 +48,12 @@ export default function MainPage() {
 
       const completeTree: Tree = {
         ...currentTree,
-        id: Date.now().toString(),
+        id: uuidv4(),
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       } as Tree;
 
-      setPlottedTrees((prev) => [...prev, completeTree]);
+      uploadTreeToServer(completeTree);
 
       // Reset state
       setCurrentTree(null);
@@ -71,6 +72,122 @@ export default function MainPage() {
     }
   }, [plotMode, currentTree]);
 
+  // ===================================================================================================
+  // Uploading and fetching trees
+
+  const uploadPhotos = async (treeId: string, photos: string[]) => {
+  if (!photos || photos.length === 0) return;
+
+  const formData = new FormData();
+  formData.append("tree_id", treeId);
+
+  for (let i = 0; i < photos.length; i++) {
+    let uri = photos[i];
+
+    // Handle web blob URLs
+    if (uri.startsWith("blob:")) {
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const file = new File([blob], `photo_${i}.jpg`, { type: blob.type });
+        formData.append("photos[]", file);
+      } catch (err) {
+        console.error("Failed to convert blob URL to file:", err);
+        continue; // skip this photo
+      }
+    } 
+    // Handle mobile file:// URIs
+    else {
+      if (!uri.startsWith("file://")) uri = "file://" + uri;
+      formData.append("photos[]", {
+        uri,
+        name: `photo_${i}.jpg`,
+        type: "image/jpeg",
+      } as any);
+    }
+  }
+
+  try {
+    const response = await fetch(
+      "https://s4316157-ctxxxx.uogs.co.uk/api/upload-photos.php",
+      {
+        method: "POST",
+        body: formData,
+        // Do NOT set Content-Type manually for FormData
+      }
+    );
+
+    // For debugging, parse as text first to catch HTML errors
+    const text = await response.text();
+    console.log("Upload response:", text);
+
+    // Try JSON parse if response is JSON
+    try {
+      const data = JSON.parse(text);
+      if (!response.ok || data.error) {
+        throw new Error(data.error || "Upload failed");
+      }
+      console.log("Photos uploaded successfully:", data);
+    } catch {
+      console.warn("Non-JSON response received from server.");
+    }
+  } catch (error) {
+    console.error("Photo upload error:", error);
+  }
+};
+
+  const uploadTreeToServer = async (tree: Tree) => {
+    try {
+      const response = await fetch("https://s4316157-ctxxxx.uogs.co.uk/api/create-tree.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(tree),
+      });
+
+      if (!response.ok) {
+        throw new Error("Server error");
+      }
+
+      // upload photos seperately since they are optional
+      if (tree.photos && tree.photos.length > 0) {
+        await uploadPhotos(tree.id, tree.photos);
+      }
+
+      // refresh markers from DB
+      await fetchTreesFromServer();
+
+      console.log("Tree saved to database");
+
+      } catch (error) {
+        console.error("Server upload failed:", error);
+        Alert.alert("Upload Failed", "Tree could not be saved to server.");
+      }
+    };
+
+  const fetchTreesFromServer = async () => {
+    try {
+      const response = await fetch(
+        "https://s4316157-ctxxxx.uogs.co.uk/api/get-trees.php"
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch trees");
+      }
+
+      setPlottedTrees(data);
+    } catch (error) {
+      console.error("Fetch error:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTreesFromServer();
+  }, []);
+
   return (
     <ActionSheetProvider>
     <AppContainer noPadding>
@@ -86,12 +203,12 @@ export default function MainPage() {
           
           const completeTree: Tree = {
             ...currentTree,
-            id: Date.now().toString(),
+            id: uuidv4(),
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,
             } as Tree;
 
-          setPlottedTrees((prev) => [...prev, completeTree])
+          uploadTreeToServer(completeTree);
 
           setCurrentTree(null);
           setIsPlotting(false);
@@ -161,7 +278,6 @@ export default function MainPage() {
           <NavigationButton
             onPress={() => {
               setIsPlotting(false);
-              setPlottedTrees([]); // Clears temporary markers
               router.push('/');
             }}
           >

@@ -31,8 +31,8 @@ export default function Index() {
         >
           TreeGuardians
         </AppText>
-        <AppButton title="Login" variant="accent" onPress={() => router.push('/login')} />
-        <AppButton title="Create Account" variant="primary" onPress={() => router.push('/registration')} />
+        <AppButton title="Login" variant="accent" onPress={() => router.push('/(auth)/login')} />
+        <AppButton title="Create Account" variant="primary" onPress={() => router.push('/(auth)/registration')} />
         <AppButton
           title="Continue as Guest"
           variant="secondary"
