@@ -89,7 +89,7 @@ export default function PlotDashboard({
 
       // blocking gifs
       if (asset.mimeType === 'image/gif') {
-        alert('GIF files are not suppoted. Please select a static Image');
+        alert('GIF files are not supported. Please select a static Image');
         return;
       }
 
