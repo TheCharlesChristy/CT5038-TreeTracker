@@ -18,7 +18,7 @@ else
     echo "No PHP files found."
 fi
 
-exit 0
+# exit 0
 
 # 3. JS/Expo Lint
 echo ">> Running JS/Expo Lint..."
