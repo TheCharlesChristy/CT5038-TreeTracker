@@ -43,6 +43,11 @@ export default function CreateAccount() {
       return;
     }
 
+    if (!confirmPassword) {
+      Alert.alert('Error', 'Please confirm your password');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
@@ -124,6 +129,7 @@ export default function CreateAccount() {
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
+              containerStyle={styles.passwordInputContainer}
             />
             <AppText variant="caption" style={styles.helpText}>
               Must be at least 8 characters
@@ -187,7 +193,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputGroup: {
-    marginBottom: Theme.Spacing.medium,
+    marginBottom: 0,
   },
   label: {
     marginBottom: Theme.Spacing.small,
@@ -196,7 +202,11 @@ const styles = StyleSheet.create({
   },
   helpText: {
     marginTop: Theme.Spacing.extraSmall,
+    marginBottom: Theme.Spacing.medium,
     color: Theme.Colours.gray,
+  },
+  passwordInputContainer: {
+    marginBottom: 0,
   },
   submitButton: {
     marginTop: Theme.Spacing.large,
