@@ -1,3 +1,11 @@
+<<<<<<< HEAD:TreeGuardiansExpo/app/(auth)/registration.tsx
+import { View } from 'react-native';
+import { AppContainer } from '@/components/base/AppContainer';
+import { AppText } from '@/components/base/AppText';
+import { AppButton } from '@/components/base/AppButton';
+import { NavigationButton } from '@/components/base/NavigationButton';
+import { Theme } from '@/styles/theme';
+=======
 import { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { AppContainer } from '../components/base/AppContainer';
@@ -6,6 +14,7 @@ import { AppButton } from '../components/base/AppButton';
 import { AppInput } from '../components/base/AppInput';
 import { NavigationButton } from '../components/base/NavigationButton';
 import { Theme } from '../styles/theme';
+>>>>>>> main:TreeGuardiansExpo/app/registration.tsx
 import { router } from 'expo-router';
 
 export default function CreateAccount() {

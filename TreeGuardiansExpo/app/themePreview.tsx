@@ -1,11 +1,11 @@
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { NavigationButton } from '../components/base/NavigationButton';
-import { AppContainer } from '../components/base/AppContainer';
-import { AppText } from '../components/base/AppText';
-import { AppButton } from '../components/base/AppButton';
-import { AppInput } from '../components/base/AppInput';
-import { Theme } from '../styles/theme';
+import { NavigationButton } from '@/components/base/NavigationButton';
+import { AppContainer } from '@/components/base/AppContainer';
+import { AppText } from '@/components/base/AppText';
+import { AppButton } from '@/components/base/AppButton';
+import { AppInput } from '@/components/base/AppInput';
+import { Theme } from '@/styles/theme';
 
 export default function ThemePreview() {
   return (
