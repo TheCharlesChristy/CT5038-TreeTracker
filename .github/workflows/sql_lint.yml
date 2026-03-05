@@ -1,0 +1,12 @@
+  sql-lint:
+    name: SQL Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SQLFluff
+        run: pip install sqlfluff
+
+      - name: Run SQLFluff
+        run: sqlfluff lint .
