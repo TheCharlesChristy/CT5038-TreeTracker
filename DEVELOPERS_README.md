@@ -9,214 +9,116 @@ To help enforce this, we will follow best scrum practices to help our work be sp
 
 # Development Environment (IMPORTANT)
 
-## Mandatory: Use the Dev Container
-
-**All team members MUST develop within the provided Dev Container.** This is non-negotiable for the following reasons:
-
-1. **Consistency**: Everyone has identical PHP versions, extensions, and database configurations
-2. **No "Works on My Machine"**: Eliminates environment-specific bugs
-3. **Fair Assessment**: Ensures all code is tested in the same environment
-4. **Quick Onboarding**: New team members are productive within minutes
-5. **Professional Practice**: Mirrors real-world development workflows
-
 ## Setting Up Your Environment
 
-### First Time Setup (15 minutes)
+### Prerequisites
 
-1. **Install Prerequisites** (if not already installed):
-   - Docker Desktop ([download here](https://www.docker.com/products/docker-desktop))
-   - Visual Studio Code ([download here](https://code.visualstudio.com/))
-   - Dev Containers extension (install from VS Code extensions marketplace)
+Install the following tools before getting started:
 
-2. **Clone and Open**:
+- **Node.js** (LTS version recommended — [download here](https://nodejs.org/))
+- **npm** (comes with Node.js)
+- **Expo CLI**: `npm install -g expo-cli`
+- **Docker Desktop** ([download here](https://www.docker.com/products/docker-desktop)) — required for pre-commit hooks
+- **Python 3** and **pip** — required for pre-commit
+- A mobile device or emulator:
+  - **Android**: Android Studio with an emulator, or a physical device with Expo Go installed
+  - **iOS**: Xcode simulator (macOS only), or a physical device with Expo Go installed
+
+### First Time Setup
+
+1. **Clone and Install**:
    ```bash
-   git clone https://github.com/TheCharlesChristy/CT5038-DatabaseApp.git
-   cd CT5038-DatabaseApp
-   code .
+   git clone https://github.com/TheCharlesChristy/CT5038-TreeTracker.git
+   cd CT5038-TreeTracker/TreeGuardiansExpo
+   npm install
    ```
 
-3. **Start Dev Container**:
-   - Click "Reopen in Container" when prompted
-   - OR press `F1` → "Dev Containers: Reopen in Container"
-   - Wait 5-10 minutes for initial build (subsequent starts are under 1 minute)
-
-4. **Verify Setup**:
+2. **Install Pre-commit Hooks** (Important!):
+   We use `pre-commit` to ensure code quality before every commit. The hooks run inside Docker, so Docker Desktop must be running.
    ```bash
-   php example-db-test.php
-   ```
-   Should show successful connections to all databases.
-
-5. **Install Pre-commit Hooks** (Important!):
-   We use `pre-commit` to ensure code quality before every commit.
-   ```bash
-   # Install pre-commit (if not already installed)
+   # From the repo root
    pip install pre-commit
-   
-   # Install the git hooks
    pre-commit install
    ```
-   Now, every time you run `git commit`, the linters will run automatically in a Docker container.
+   Now, every time you run `git commit`, the linters will run automatically.
+
+3. **Start the development server**:
+   ```bash
+   # From the TreeGuardiansExpo directory
+   npm start
+   ```
+   Then press `a` for Android, `i` for iOS, or `w` for web.
 
 ## Development Workflow
 
 ### Daily Workflow
 
-1. **Start Day**: Open project in VS Code → Container starts automatically
-2. **Develop**: Write code, test locally, commit changes
-3. **End Day**: Close VS Code → Container stops automatically
+1. **Start Day**: Open a terminal in `TreeGuardiansExpo/` and run `npm start`
+2. **Develop**: Write code, test on device/simulator, commit changes
+3. **End Day**: Stop the dev server with `Ctrl+C`
 
 ### Working with Code
 
-- **All PHP files** should be in `/var/www/html` (your workspace root)
-- **Database files** (SQLite) should be in `/var/db/sqlite/`
-- **Test your changes** by accessing http://localhost:8080
-- **Use XDebug** for debugging (breakpoints work in VS Code)
-
-### Database Development
-
-You have three database options available:
-
-#### SQLite (Recommended for Simple Features)
-- **Use for**: Small features, prototyping, unit tests
-- **Pros**: No server needed, file-based, fast setup
-- **Connection**: `new PDO('sqlite:/var/db/sqlite/mydb.db')`
-
-#### MySQL (Recommended for Production-Like Testing)
-- **Use for**: Complex queries, transactions, team collaboration
-- **Pros**: Industry standard, robust, ACID compliant
-- **Connection**: `new PDO('mysql:host=mysql;dbname=devdb', 'devuser', 'devpassword')`
-- **Access**: mysql CLI or Adminer at http://localhost:8081
-
-#### PostgreSQL (Alternative to MySQL)
-- **Use for**: Advanced features, JSON support, specific requirements
-- **Pros**: Advanced features, strong standards compliance
-- **Connection**: `new PDO('pgsql:host=postgres;dbname=devdb', 'postgres', 'postgres')`
-- **Access**: psql CLI or Adminer at http://localhost:8081
-
-### Database Management Tools
-
-#### Adminer (Web GUI) - Recommended for Beginners
-- URL: http://localhost:8081
-- Visual interface for database management
-- Supports all database types
-- Perfect for browsing data, running queries, creating tables
-
-#### SQLTools (VS Code Extension) - Pre-configured
-- Click database icon in VS Code sidebar
-- Pre-configured connections to MySQL and PostgreSQL
-- Write and execute queries without leaving VS Code
-
-#### Command Line (Advanced)
-```bash
-# MySQL
-mysql -h mysql -u devuser -pdevpassword devdb
-
-# PostgreSQL
-psql -h postgres -U postgres devdb
-```
+- **App screens** live in `TreeGuardiansExpo/app/`
+- **Reusable components** live in `TreeGuardiansExpo/components/`
+- **Styles and theme tokens** live in `TreeGuardiansExpo/styles/`
+- **Database schema** is defined in `schema.sql` at the repo root
 
 ## Testing Your Code
 
 ### Local Testing (Before Creating PR)
 
-1. **Test in Browser**: http://localhost:8080/your-file.php
-2. **Test Database Connections**: Run `php example-db-test.php`
-3. **Check for PHP Errors**: View terminal output or browser errors
-4. **Test All Endpoints**: Manually test all API endpoints you've modified
+1. **Run the app** on a device or emulator and manually test your changes
+2. **Lint your code** before committing:
+   ```bash
+   # From the TreeGuardiansExpo directory
+   npm run lint
+   ```
 
 ### Code Quality Checks
 
-Before creating a pull request:
+The pre-commit hooks run automatically on `git commit`. To run them manually:
 
 ```bash
-# Check PHP syntax
-php -l your-file.php
-
-# Run any tests (if we add them later)
-php test-runner.php
+# From the repo root
+pre-commit run --all-files
 ```
 
 ## Common Development Tasks
 
-### Installing PHP Dependencies
+### Installing JavaScript Dependencies
 
 ```bash
-composer require vendor/package-name
-```
-
-### Accessing Container Shell
-
-You're already in the container! The VS Code terminal IS the container terminal.
-
-### Viewing Logs
-
-```bash
-# Apache error logs
-tail -f /var/log/apache2/error.log
-
-# Apache access logs
-tail -f /var/log/apache2/access.log
-```
-
-### Restarting Apache
-
-```bash
-apachectl restart
+# From the TreeGuardiansExpo directory
+npm install <package-name>
 ```
 
 ## Troubleshooting
 
-### "I Changed Code But Don't See Changes"
+### "Metro bundler not starting"
 
-1. Hard refresh browser: `Ctrl+Shift+R` (or `Cmd+Shift+R`)
-2. Check you're editing the right file
-3. Restart Apache: `apachectl restart`
-4. Check for PHP syntax errors in terminal
+1. Ensure you are in the `TreeGuardiansExpo/` directory
+2. Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
+3. Clear the Metro cache: `npx expo start --clear`
 
-### "Database Connection Failed"
+### "Pre-commit hooks failing"
 
-1. Ensure containers are running: `docker ps` (should see app, mysql, postgres)
-2. Use correct hostname:
-   - ✅ `mysql` (from PHP code)
-   - ❌ `localhost` (wrong when connecting from PHP)
-3. Check credentials match the ones in the table above
-4. View database logs: `docker-compose -f .devcontainer/docker-compose.yml logs mysql`
-
-### "Container Won't Start"
-
-1. Ensure Docker Desktop is running
-2. Check port conflicts (8080, 8081, 3306, 5432 must be free)
-3. Rebuild container: `F1` → "Dev Containers: Rebuild Container"
-4. As last resort, clean rebuild:
-   ```bash
-   docker-compose -f .devcontainer/docker-compose.yml down -v
-   docker system prune -a
-   ```
-   Then reopen in container
-
-### "Permission Denied" Errors
-
-```bash
-# Fix file permissions
-sudo chown -R www-data:www-data /var/www/html
-sudo chmod -R 755 /var/www/html
-```
+1. Ensure Docker Desktop is running (hooks run inside a Docker container)
+2. Ensure `pre-commit` is installed: `pip install pre-commit`
+3. Run hooks manually for more detail: `pre-commit run --all-files`
 
 ## Important Notes for Team Development
 
 ### DO:
-- ✅ Always develop in the dev container
+- ✅ Develop locally using Expo
 - ✅ Commit your changes regularly
 - ✅ Test thoroughly before creating PR
-- ✅ Use Adminer or SQLTools for database work
+- ✅ Run linting before pushing (`npm run lint`)
 - ✅ Document your database schema changes
 - ✅ Ask for help in team chat if stuck
 
 ### DON'T:
-- ❌ Develop on your local machine (not in container)
-- ❌ Modify the Dockerfile without team discussion
-- ❌ Commit database files to Git
-- ❌ Change database passwords (use the defaults)
+- ❌ Commit `node_modules/` or build artifacts to Git
 - ❌ Install packages without updating documentation
 - ❌ Push directly to main (always use branches and PRs)
 
