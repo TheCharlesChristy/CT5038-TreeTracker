@@ -1,0 +1,30 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies for PHP, Python, and Node.js
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    software-properties-common \
+    python3 \
+    python3-pip \
+    unzip \
+    && add-apt-repository ppa:ondrej/php -y \
+    && apt-get update \
+    && apt-get install -y \
+    php8.2-cli \
+    php8.2-common \
+    php8.2-mbstring \
+    php8.2-xml \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
+# Install SQLFluff
+RUN pip3 install sqlfluff
+
+# Verify versions
+RUN node -v && npm -v && php -v && sqlfluff --version
