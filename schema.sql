@@ -57,12 +57,12 @@ CREATE TABLE trees (
 CREATE TABLE tree_creation_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
-    creator_user_id bigint unsigned NOT NULL,
+    creator_user_id bigint unsigned,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_creation_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE,
     CONSTRAINT fk_creation_user FOREIGN KEY (creator_user_id)
-    REFERENCES users (id) ON DELETE SET NULL
+    REFERENCES users (id) ON DELETE RESTRICT
 ) engine = InnoDB;
 
 -- Specific tree characteristics
@@ -88,6 +88,7 @@ CREATE TABLE guardians (
     user_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
     PRIMARY KEY (user_id,tree_id),
+    INDEX idx_guardians_tree_id (tree_id),
     CONSTRAINT fk_guardians_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT fk_guardians_tree FOREIGN KEY (tree_id)
@@ -108,7 +109,8 @@ CREATE TABLE photos (
 CREATE TABLE tree_photos (
     photo_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
-    PRIMARY KEY (photo_id,tree_id),
+    PRIMARY KEY (tree_id,photo_id),
+    INDEX idx_treephotos_photo (photo_id),
     CONSTRAINT fk_treephotos_photo FOREIGN KEY (photo_id)
     REFERENCES photos (id) ON DELETE CASCADE,
     CONSTRAINT fk_treephotos_tree FOREIGN KEY (tree_id)
@@ -118,7 +120,7 @@ CREATE TABLE tree_photos (
 -- Comments
 CREATE TABLE comments (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
-    user_id bigint unsigned NOT NULL,
+    user_id bigint unsigned,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_comments_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE SET NULL

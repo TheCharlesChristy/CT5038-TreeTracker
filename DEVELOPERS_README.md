@@ -13,31 +13,25 @@ To help enforce this, we will follow best scrum practices to help our work be sp
 
 ### Prerequisites
 
-Install the following tools before getting started:
-
-- **Node.js** (LTS version recommended — [download here](https://nodejs.org/))
-- **npm** (comes with Node.js)
-- **Expo CLI**: `npm install -g expo-cli`
-- **Docker Desktop** ([download here](https://www.docker.com/products/docker-desktop)) — required for pre-commit hooks
-- **Python 3** and **pip** — required for pre-commit
-- A mobile device or emulator:
-  - **Android**: Android Studio with an emulator, or a physical device with Expo Go installed
-  - **iOS**: Xcode simulator (macOS only), or a physical device with Expo Go installed
+1. **Install Docker Desktop** ([download here](https://www.docker.com/products/docker-desktop))
+2. **Install Visual Studio Code** ([download here](https://code.visualstudio.com/))
+3. **Install Python** (for pre-commit)
 
 ### First Time Setup
 
-1. **Clone and Install**:
+1. **Clone the repo**:
    ```bash
    git clone https://github.com/TheCharlesChristy/CT5038-TreeTracker.git
-   cd CT5038-TreeTracker/TreeGuardiansExpo
-   npm install
+   cd CT5038-TreeTracker
    ```
 
 2. **Install Pre-commit Hooks** (Important!):
-   We use `pre-commit` to ensure code quality before every commit. The hooks run inside Docker, so Docker Desktop must be running.
+   We use `pre-commit` to ensure code quality before every commit.
    ```bash
    # From the repo root
    pip install pre-commit
+
+   # Install the git hooks
    pre-commit install
    ```
    Now, every time you run `git commit`, the linters will run automatically.
@@ -49,76 +43,80 @@ Install the following tools before getting started:
    ```
    Then press `a` for Android, `i` for iOS, or `w` for web.
 
+3. **Start Developing**: Open the project in VS Code and begin coding.
+
 ## Development Workflow
 
 ### Daily Workflow
 
-1. **Start Day**: Open a terminal in `TreeGuardiansExpo/` and run `npm start`
-2. **Develop**: Write code, test on device/simulator, commit changes
-3. **End Day**: Stop the dev server with `Ctrl+C`
+1. **Develop**: Write code, test locally, commit changes
+2. **Pre-commit hooks**: Linting runs automatically on `git commit`
+3. **CI Checks**: GitHub Actions workflows enforce lint checks on every push/PR
 
 ### Working with Code
 
-- **App screens** live in `TreeGuardiansExpo/app/`
-- **Reusable components** live in `TreeGuardiansExpo/components/`
-- **Styles and theme tokens** live in `TreeGuardiansExpo/styles/`
-- **Database schema** is defined in `schema.sql` at the repo root
+- **Mobile App**: The Expo/React Native project lives in `TreeGuardiansExpo/`
+- **Database Schema**: See `schema.sql` for the MySQL schema
+- **Linting**: Run `pre-commit run --all-files` to check your code manually
+
+### Database Development
+
+The project uses MySQL. Apply the schema with:
+
+```bash
+mysql -u <user> -p<password> <database> < schema.sql
+```
 
 ## Testing Your Code
 
 ### Local Testing (Before Creating PR)
 
-1. **Run the app** on a device or emulator and manually test your changes
-2. **Lint your code** before committing:
-   ```bash
-   # From the TreeGuardiansExpo directory
-   npm run lint
-   ```
+1. **Lint checks**: Run `pre-commit run --all-files` to run all linters locally
+2. **JS/Expo**: `cd TreeGuardiansExpo && npm run lint`
+3. **SQL**: `sqlfluff lint schema.sql`
 
 ### Code Quality Checks
 
-The pre-commit hooks run automatically on `git commit`. To run them manually:
+Before creating a pull request, the pre-commit hook will automatically run linters. You can also run them manually:
 
 ```bash
-# From the repo root
 pre-commit run --all-files
 ```
 
 ## Common Development Tasks
 
-### Installing JavaScript Dependencies
+### Installing JS Dependencies
 
 ```bash
-# From the TreeGuardiansExpo directory
-npm install <package-name>
+cd TreeGuardiansExpo
+npm install
 ```
 
 ## Troubleshooting
 
-### "Metro bundler not starting"
+### "Pre-commit Hooks Not Running"
 
-1. Ensure you are in the `TreeGuardiansExpo/` directory
-2. Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
-3. Clear the Metro cache: `npx expo start --clear`
+1. Ensure pre-commit is installed: `pip install pre-commit`
+2. Install hooks: `pre-commit install`
+3. Run manually: `pre-commit run --all-files`
 
-### "Pre-commit hooks failing"
+### "Docker Not Found"
 
-1. Ensure Docker Desktop is running (hooks run inside a Docker container)
-2. Ensure `pre-commit` is installed: `pip install pre-commit`
-3. Run hooks manually for more detail: `pre-commit run --all-files`
+1. Ensure Docker Desktop is running
+2. Verify with `docker --version`
 
 ## Important Notes for Team Development
 
 ### DO:
-- ✅ Develop locally using Expo
+- ✅ Install pre-commit hooks before your first commit
 - ✅ Commit your changes regularly
 - ✅ Test thoroughly before creating PR
-- ✅ Run linting before pushing (`npm run lint`)
 - ✅ Document your database schema changes
 - ✅ Ask for help in team chat if stuck
 
 ### DON'T:
-- ❌ Commit `node_modules/` or build artifacts to Git
+- ❌ Skip linting (pre-commit hooks enforce this automatically)
+- ❌ Commit database files to Git
 - ❌ Install packages without updating documentation
 - ❌ Push directly to main (always use branches and PRs)
 
