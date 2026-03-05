@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Image, StyleSheet, Dimensions } from 'react-native';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';

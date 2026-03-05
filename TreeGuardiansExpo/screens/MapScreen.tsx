@@ -19,7 +19,7 @@ export default function MapScreen() {
     // additional states for tree plotting
     const [trees, setTrees] = useState<Tree[]>([]);
 
-    // Will we need this in the future? <<-------------------------------------
+    // This is needed for plotting
     const [isPlotting, setIsPlotting] = useState(false);
 
     // additional states for tree selection

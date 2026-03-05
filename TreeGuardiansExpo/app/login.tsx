@@ -1,20 +1,11 @@
-<<<<<<< HEAD:TreeGuardiansExpo/app/(auth)/login.tsx
-import { View } from 'react-native';
+import { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
+import { AppInput } from '@/components/base/AppInput';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
-=======
-import { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { AppContainer } from '../components/base/AppContainer';
-import { AppText } from '../components/base/AppText';
-import { AppButton } from '../components/base/AppButton';
-import { AppInput } from '../components/base/AppInput';
-import { NavigationButton } from '../components/base/NavigationButton';
-import { Theme } from '../styles/theme';
->>>>>>> main:TreeGuardiansExpo/app/login.tsx
 import { router } from 'expo-router';
 
 export default function Login() {
