@@ -108,7 +108,8 @@ CREATE TABLE photos (
 CREATE TABLE tree_photos (
     photo_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
-    PRIMARY KEY (photo_id,tree_id),
+    PRIMARY KEY (tree_id,photo_id),
+    INDEX idx_treephotos_photo (photo_id),
     CONSTRAINT fk_treephotos_photo FOREIGN KEY (photo_id)
     REFERENCES photos (id) ON DELETE CASCADE,
     CONSTRAINT fk_treephotos_tree FOREIGN KEY (tree_id)
