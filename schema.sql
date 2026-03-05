@@ -62,7 +62,7 @@ CREATE TABLE tree_creation_data (
     CONSTRAINT fk_creation_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE,
     CONSTRAINT fk_creation_user FOREIGN KEY (creator_user_id)
-    REFERENCES users (id) ON DELETE SET NULL
+    REFERENCES users (id) ON DELETE RESTRICT
 ) engine = InnoDB;
 
 -- Specific tree characteristics
