@@ -43,6 +43,11 @@ export default function CreateAccount() {
       return;
     }
 
+    if (!confirmPassword) {
+      Alert.alert('Error', 'Please confirm your password');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
