@@ -1,2 +1,9 @@
 .*
+!.gitignore
+!.pre-commit-config.yaml
+!.dockerignore
+!.github
+!.vscode
+!.devcontainer
 node_modules
+pre-commit.log

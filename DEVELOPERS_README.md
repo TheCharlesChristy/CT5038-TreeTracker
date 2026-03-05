@@ -46,6 +46,17 @@ To help enforce this, we will follow best scrum practices to help our work be sp
    ```
    Should show successful connections to all databases.
 
+5. **Install Pre-commit Hooks** (Important!):
+   We use `pre-commit` to ensure code quality before every commit.
+   ```bash
+   # Install pre-commit (if not already installed)
+   pip install pre-commit
+   
+   # Install the git hooks
+   pre-commit install
+   ```
+   Now, every time you run `git commit`, the linters will run automatically in a Docker container.
+
 ## Development Workflow
 
 ### Daily Workflow

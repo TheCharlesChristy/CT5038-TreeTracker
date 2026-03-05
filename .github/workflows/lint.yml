@@ -51,7 +51,7 @@ jobs:
         run: pip install sqlfluff
 
       - name: Run SQLFluff
-        run: sqlfluff lint . --dialect postgres
+        run: sqlfluff lint . --dialect mysql
 
   # -----------------------------
   # PHP Lint
