@@ -88,6 +88,7 @@ CREATE TABLE guardians (
     user_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
     PRIMARY KEY (user_id,tree_id),
+    INDEX idx_guardians_tree_id (tree_id),
     CONSTRAINT fk_guardians_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT fk_guardians_tree FOREIGN KEY (tree_id)
