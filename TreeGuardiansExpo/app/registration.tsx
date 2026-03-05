@@ -122,6 +122,7 @@ export default function CreateAccount() {
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
+              containerStyle={styles.passwordInputContainer}
             />
             <AppText variant="caption" style={styles.helpText}>
               Must be at least 8 characters
@@ -194,7 +195,11 @@ const styles = StyleSheet.create({
   },
   helpText: {
     marginTop: Theme.Spacing.extraSmall,
+    marginBottom: Theme.Spacing.medium,
     color: Theme.Colours.gray,
+  },
+  passwordInputContainer: {
+    marginBottom: 0,
   },
   submitButton: {
     marginTop: Theme.Spacing.large,
