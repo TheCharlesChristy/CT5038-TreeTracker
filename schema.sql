@@ -6,7 +6,7 @@
  * It will not run as-is on PostgreSQL or SQLite.
  *
  * To apply this schema on MySQL, for example:
- * mysql -u <user> -p<password> <database> < DATABASE_SCHEMA.sql
+ * mysql -u <user> -p<password> <database> < schema.sql
  *
  * For other databases, use an engine-specific schema or migrations.
  * Note: Images are stored as URLs/Paths to keep the DB lightweight.

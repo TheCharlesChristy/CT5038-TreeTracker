@@ -25,12 +25,14 @@ echo ">> Running JS/Expo Lint..."
 if [ -d "TreeGuardiansExpo" ]; then
     cd TreeGuardiansExpo
     
-    # Check if node_modules exists, otherwise warn or install
-    # Since we are mounting the volume, we expect the user to have installed deps
-    # But if not, we can try to install (might take time)
+    # Check if node_modules exists; do not install automatically to avoid
+    # creating root-owned files or mutating the working tree from this script.
+    # Dependencies must be installed before running this script.
     if [ ! -d "node_modules" ]; then
-        echo "node_modules not found in TreeGuardiansExpo. Installing dependencies..."
-        npm ci
+        echo "ERROR: node_modules not found in TreeGuardiansExpo."
+        echo "Please install JS/Expo dependencies before running this script, e.g.:"
+        echo "  (cd TreeGuardiansExpo && npm ci)"
+        exit 1
     fi
     
     echo ">> Running Expo Lint (Fixing)..."
