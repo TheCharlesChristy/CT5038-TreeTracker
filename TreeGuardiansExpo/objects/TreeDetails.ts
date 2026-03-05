@@ -6,7 +6,7 @@ export type TreeDetails = {
     photos?: string[];
 }
 
-// when the tree is sucessfully placed
+// when the tree is successfully placed
 export type Tree = TreeDetails & {
     id: string;
     latitude: number;
