@@ -1,0 +1,56 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: treetracker_dev
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "3307:3306"
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      START_EXPO: "false"
+      PORT: 4000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_DATABASE: treetracker_dev
+      DB_ALLOW_CREATE_DATABASE: "true"
+      DB_SCHEMA_PATH: /app/src/db/schema.sql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    command: ["npm", "start"]
+
+  server-test:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: test
+      START_EXPO: "false"
+      RUN_DB_TESTS: "true"
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_DATABASE: treetracker_test
+      DB_ALLOW_CREATE_DATABASE: "true"
+      DB_SCHEMA_PATH: /app/src/db/schema.sql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: ["npm", "run", "check"]
+    profiles: ["test"]

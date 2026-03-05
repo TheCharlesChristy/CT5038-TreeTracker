@@ -74,6 +74,8 @@ mysql -u <user> -p<password> <database> < schema.sql
 1. **Lint checks**: Run `pre-commit run --all-files` to run all linters locally
 2. **JS/Expo**: `cd TreeGuardiansExpo && npm run lint`
 3. **SQL**: `sqlfluff lint schema.sql`
+4. **All checks script**: `./scripts/run_all_checks.sh`
+5. **Backend Docker tests**: `./scripts/test.sh`
 
 ### Code Quality Checks
 
@@ -81,6 +83,12 @@ Before creating a pull request, the pre-commit hook will automatically run linte
 
 ```bash
 pre-commit run --all-files
+```
+
+Or run all repository checks directly:
+
+```bash
+./scripts/run_all_checks.sh
 ```
 
 ## Common Development Tasks
