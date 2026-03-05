@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputGroup: {
-    marginBottom: Theme.Spacing.medium,
+    marginBottom: 0,
   },
   label: {
     marginBottom: Theme.Spacing.small,
