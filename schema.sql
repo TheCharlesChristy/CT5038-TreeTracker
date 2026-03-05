@@ -1,16 +1,16 @@
 /*
  * Tree Tracking System Schema (MySQL / MariaDB)
- * --------------------------
+ * ---------------------------------------------
  * NOTE: This schema targets MySQL-compatible databases only and uses
- *       MySQL-specific features (e.g., UNSIGNED, AUTO_INCREMENT, ENGINE).
- *       It will not run as-is on PostgreSQL or SQLite.
+ * MySQL-specific features (e.g., UNSIGNED, AUTO_INCREMENT, ENGINE).
+ * It will not run as-is on PostgreSQL or SQLite.
  *
- *       To apply this schema on MySQL, for example:
- *           mysql -u <user> -p<password> <database> < DATABASE_SCHEMA.sql
+ * To apply this schema on MySQL, for example:
+ * mysql -u <user> -p<password> <database> < DATABASE_SCHEMA.sql
  *
- *       For other databases, use an engine-specific schema or migrations.
+ * For other databases, use an engine-specific schema or migrations.
  * Note: Images are stored as URLs/Paths to keep the DB lightweight.
- * Lat/Lon uses DECIMAL(9,6) for ~10cm precision.
+ * Lat/Lon uses DECIMAL(9, 6) for ~10cm precision.
  */
 
 -- Setup Users and Auth
@@ -30,7 +30,8 @@ CREATE TABLE user_passwords (
 
 CREATE TABLE admins (
   user_id bigint unsigned PRIMARY KEY,
-  CONSTRAINT fk_admins_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  CONSTRAINT fk_admins_user FOREIGN KEY (user_id)
+  REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 CREATE TABLE user_sessions (
@@ -38,7 +39,8 @@ CREATE TABLE user_sessions (
   user_id bigint unsigned NOT NULL,
   session_token char(64) NOT NULL UNIQUE,
   expires_at DATETIME NOT NULL,
-  CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  CONSTRAINT fk_sessions_user FOREIGN KEY (user_id)
+  REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 -- Core Tree Data
@@ -68,7 +70,7 @@ CREATE TABLE tree_data (
   id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
   tree_id bigint unsigned NOT NULL,
   avoided_runoff decimal(10,2) NULL, -- in m^3
-  carbon_dioxide_stored decimal(10,2) NULL, -- in kg  
+  carbon_dioxide_stored decimal(10,2) NULL, -- in kg
   carbon_dioxide_removed decimal(10,2) NULL, -- in kg
   water_intercepted decimal(10,2) NULL, -- in m^3
   air_quality_improvement decimal(10,2) NULL, -- in g/year
@@ -86,8 +88,10 @@ CREATE TABLE guardians (
   user_id bigint unsigned NOT NULL,
   tree_id bigint unsigned NOT NULL,
   PRIMARY KEY (user_id,tree_id),
-  CONSTRAINT fk_guardians_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-  CONSTRAINT fk_guardians_tree FOREIGN KEY (tree_id) REFERENCES trees (id) ON DELETE CASCADE
+  CONSTRAINT fk_guardians_user FOREIGN KEY (user_id)
+  REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_guardians_tree FOREIGN KEY (tree_id)
+  REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 -- Media Storage
@@ -105,8 +109,10 @@ CREATE TABLE tree_photos (
   photo_id bigint unsigned NOT NULL,
   tree_id bigint unsigned NOT NULL,
   PRIMARY KEY (photo_id,tree_id),
-  CONSTRAINT fk_treephotos_photo FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE,
-  CONSTRAINT fk_treephotos_tree FOREIGN KEY (tree_id) REFERENCES trees (id) ON DELETE CASCADE
+  CONSTRAINT fk_treephotos_photo FOREIGN KEY (photo_id)
+  REFERENCES photos (id) ON DELETE CASCADE,
+  CONSTRAINT fk_treephotos_tree FOREIGN KEY (tree_id)
+  REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 -- Comments
@@ -114,7 +120,8 @@ CREATE TABLE comments (
   id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
   user_id bigint unsigned NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_comments_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+  CONSTRAINT fk_comments_user FOREIGN KEY (user_id)
+  REFERENCES users (id) ON DELETE SET NULL
 ) engine = InnoDB;
 
 -- Comment photos
@@ -122,8 +129,10 @@ CREATE TABLE comment_photos (
   comment_id bigint unsigned NOT NULL,
   photo_id bigint unsigned NOT NULL,
   PRIMARY KEY (comment_id,photo_id),
-  CONSTRAINT fk_commentphotos_comment FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE,
-  CONSTRAINT fk_commentphotos_photo FOREIGN KEY (photo_id) REFERENCES photos (id) ON DELETE CASCADE
+  CONSTRAINT fk_commentphotos_comment FOREIGN KEY (comment_id)
+  REFERENCES comments (id) ON DELETE CASCADE,
+  CONSTRAINT fk_commentphotos_photo FOREIGN KEY (photo_id)
+  REFERENCES photos (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 -- Comments on trees
@@ -133,8 +142,10 @@ CREATE TABLE comments_tree (
   content text NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (comment_id,tree_id),
-  CONSTRAINT fk_comments_tree FOREIGN KEY (tree_id) REFERENCES trees (id) ON DELETE CASCADE,
-  CONSTRAINT fk_comments_comment FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE
+  CONSTRAINT fk_comments_tree FOREIGN KEY (tree_id)
+  REFERENCES trees (id) ON DELETE CASCADE,
+  CONSTRAINT fk_comments_comment FOREIGN KEY (comment_id)
+  REFERENCES comments (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 -- Comment replies (threaded comments)
@@ -144,10 +155,11 @@ CREATE TABLE comment_replies (
   content text NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (comment_id,parent_comment_id),
-  CONSTRAINT fk_replies_comment FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE,
-  CONSTRAINT fk_replies_parent FOREIGN KEY (parent_comment_id) REFERENCES comments (id) ON DELETE CASCADE
+  CONSTRAINT fk_replies_comment FOREIGN KEY (comment_id)
+  REFERENCES comments (id) ON DELETE CASCADE,
+  CONSTRAINT fk_replies_parent FOREIGN KEY (parent_comment_id)
+  REFERENCES comments (id) ON DELETE CASCADE
 ) engine = InnoDB;
-
 
 -- Observation Subtypes
 CREATE TABLE wildlife_observations (
@@ -156,8 +168,10 @@ CREATE TABLE wildlife_observations (
   wildlife varchar(255) NOT NULL,
   wildlife_found tinyint(1) NOT NULL DEFAULT 0,
   observation_notes text,
-  CONSTRAINT fk_wildlife_base FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE,
-  CONSTRAINT fk_wildlife_tree FOREIGN KEY (tree_id) REFERENCES trees (id) ON DELETE CASCADE
+  CONSTRAINT fk_wildlife_base FOREIGN KEY (comment_id)
+  REFERENCES comments (id) ON DELETE CASCADE,
+  CONSTRAINT fk_wildlife_tree FOREIGN KEY (tree_id)
+  REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 CREATE TABLE disease_observations (
@@ -165,14 +179,18 @@ CREATE TABLE disease_observations (
   tree_id bigint unsigned NOT NULL,
   disease varchar(255) NOT NULL,
   evidence text,
-  CONSTRAINT fk_disease_base FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE,
-  CONSTRAINT fk_disease_tree FOREIGN KEY (tree_id) REFERENCES trees (id) ON DELETE CASCADE
+  CONSTRAINT fk_disease_base FOREIGN KEY (comment_id)
+  REFERENCES comments (id) ON DELETE CASCADE,
+  CONSTRAINT fk_disease_tree FOREIGN KEY (tree_id)
+  REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
 CREATE TABLE seen_observations (
   comment_id bigint unsigned PRIMARY KEY,
   tree_id bigint unsigned NOT NULL,
   observation_notes text,
-  CONSTRAINT fk_seen_base FOREIGN KEY (comment_id) REFERENCES comments (id) ON DELETE CASCADE,
-  CONSTRAINT fk_seen_tree FOREIGN KEY (tree_id) REFERENCES trees (id) ON DELETE CASCADE
+  CONSTRAINT fk_seen_base FOREIGN KEY (comment_id)
+  REFERENCES comments (id) ON DELETE CASCADE,
+  CONSTRAINT fk_seen_tree FOREIGN KEY (tree_id)
+  REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
