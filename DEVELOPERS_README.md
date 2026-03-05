@@ -28,13 +28,20 @@ To help enforce this, we will follow best scrum practices to help our work be sp
 2. **Install Pre-commit Hooks** (Important!):
    We use `pre-commit` to ensure code quality before every commit.
    ```bash
-   # Install pre-commit (if not already installed)
+   # From the repo root
    pip install pre-commit
 
    # Install the git hooks
    pre-commit install
    ```
-   Now, every time you run `git commit`, the linters will run automatically in a Docker container.
+   Now, every time you run `git commit`, the linters will run automatically.
+
+3. **Start the development server**:
+   ```bash
+   # From the TreeGuardiansExpo directory
+   npm start
+   ```
+   Then press `a` for Android, `i` for iOS, or `w` for web.
 
 3. **Start Developing**: Open the project in VS Code and begin coding.
 
