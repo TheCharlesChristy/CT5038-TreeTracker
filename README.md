@@ -153,3 +153,37 @@ users/42
 ```
 
 Using path based lookups for API endpoints forces developers to follow best practices in both API calling/handling and database design.
+
+## Node Backend And DB Middleware
+
+The repository now includes a Node backend in `server/` that follows the canonical requirements in `ServerRequirements.md`.
+
+### DB Access Rules (Hard Constraint)
+
+- All database operations must go through the database middleware endpoint surface in `server/src/db/index.js`.
+- Only `server/src/db/**` is allowed to import SQL client libraries.
+- Raw SQL usage (`.query(`) is blocked outside middleware by `server/scripts/enforce-db-lock.js`.
+
+### Endpoint Groups
+
+`users`, `userPasswords`, `admins`, `userSessions`, `trees`, `treeCreationData`, `treeData`, `guardians`, `photos`, `treePhotos`, `comments`, `commentPhotos`, `commentsTree`, `commentReplies`, `wildlifeObservations`, `diseaseObservations`, `seenObservations`, and `workflows`.
+
+### Adding New Endpoints
+
+1. Add input validation in `server/src/db/validation.js`.
+2. Add or extend a named endpoint inside `server/src/db/index.js`.
+3. Use prepared statements only; do not export raw pool/connection/query access.
+4. Use middleware transactions for multi-table operations.
+5. Add tests in `server/test/` and run backend checks.
+
+### Containerized Server Run/Test
+
+Use `docker-compose.server.yml` to run the Node backend with MySQL and to execute backend tests inside the server image.
+
+- Run server: `docker compose -f docker-compose.server.yml up --build server`
+- Run lock + unit + integration tests in container: `docker compose -f docker-compose.server.yml --profile test up --build --abort-on-container-exit --exit-code-from server-test server-test`
+
+Convenience scripts are available in `scripts/`:
+
+- `./scripts/test.sh` runs containerized backend tests.
+- `./scripts/run_all_checks.sh` runs repo-wide checks used by pre-commit.
