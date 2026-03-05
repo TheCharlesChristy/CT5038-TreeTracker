@@ -9,214 +9,107 @@ To help enforce this, we will follow best scrum practices to help our work be sp
 
 # Development Environment (IMPORTANT)
 
-## Mandatory: Use the Dev Container
-
-**All team members MUST develop within the provided Dev Container.** This is non-negotiable for the following reasons:
-
-1. **Consistency**: Everyone has identical PHP versions, extensions, and database configurations
-2. **No "Works on My Machine"**: Eliminates environment-specific bugs
-3. **Fair Assessment**: Ensures all code is tested in the same environment
-4. **Quick Onboarding**: New team members are productive within minutes
-5. **Professional Practice**: Mirrors real-world development workflows
-
 ## Setting Up Your Environment
 
-### First Time Setup (15 minutes)
+### Prerequisites
 
-1. **Install Prerequisites** (if not already installed):
-   - Docker Desktop ([download here](https://www.docker.com/products/docker-desktop))
-   - Visual Studio Code ([download here](https://code.visualstudio.com/))
-   - Dev Containers extension (install from VS Code extensions marketplace)
+1. **Install Docker Desktop** ([download here](https://www.docker.com/products/docker-desktop))
+2. **Install Visual Studio Code** ([download here](https://code.visualstudio.com/))
+3. **Install Python** (for pre-commit)
 
-2. **Clone and Open**:
+### First Time Setup
+
+1. **Clone the repo**:
    ```bash
-   git clone https://github.com/TheCharlesChristy/CT5038-DatabaseApp.git
-   cd CT5038-DatabaseApp
-   code .
+   git clone https://github.com/TheCharlesChristy/CT5038-TreeTracker.git
+   cd CT5038-TreeTracker
    ```
 
-3. **Start Dev Container**:
-   - Click "Reopen in Container" when prompted
-   - OR press `F1` → "Dev Containers: Reopen in Container"
-   - Wait 5-10 minutes for initial build (subsequent starts are under 1 minute)
-
-4. **Verify Setup**:
-   ```bash
-   php example-db-test.php
-   ```
-   Should show successful connections to all databases.
-
-5. **Install Pre-commit Hooks** (Important!):
+2. **Install Pre-commit Hooks** (Important!):
    We use `pre-commit` to ensure code quality before every commit.
    ```bash
    # Install pre-commit (if not already installed)
    pip install pre-commit
-   
+
    # Install the git hooks
    pre-commit install
    ```
    Now, every time you run `git commit`, the linters will run automatically in a Docker container.
 
+3. **Start Developing**: Open the project in VS Code and begin coding.
+
 ## Development Workflow
 
 ### Daily Workflow
 
-1. **Start Day**: Open project in VS Code → Container starts automatically
-2. **Develop**: Write code, test locally, commit changes
-3. **End Day**: Close VS Code → Container stops automatically
+1. **Develop**: Write code, test locally, commit changes
+2. **Pre-commit hooks**: Linting runs automatically on `git commit`
+3. **CI Checks**: GitHub Actions workflows enforce lint checks on every push/PR
 
 ### Working with Code
 
-- **All PHP files** should be in `/var/www/html` (your workspace root)
-- **Database files** (SQLite) should be in `/var/db/sqlite/`
-- **Test your changes** by accessing http://localhost:8080
-- **Use XDebug** for debugging (breakpoints work in VS Code)
+- **Mobile App**: The Expo/React Native project lives in `TreeGuardiansExpo/`
+- **Database Schema**: See `schema.sql` for the MySQL schema
+- **Linting**: Run `pre-commit run --all-files` to check your code manually
 
 ### Database Development
 
-You have three database options available:
+The project uses MySQL. Apply the schema with:
 
-#### SQLite (Recommended for Simple Features)
-- **Use for**: Small features, prototyping, unit tests
-- **Pros**: No server needed, file-based, fast setup
-- **Connection**: `new PDO('sqlite:/var/db/sqlite/mydb.db')`
-
-#### MySQL (Recommended for Production-Like Testing)
-- **Use for**: Complex queries, transactions, team collaboration
-- **Pros**: Industry standard, robust, ACID compliant
-- **Connection**: `new PDO('mysql:host=mysql;dbname=devdb', 'devuser', 'devpassword')`
-- **Access**: mysql CLI or Adminer at http://localhost:8081
-
-#### PostgreSQL (Alternative to MySQL)
-- **Use for**: Advanced features, JSON support, specific requirements
-- **Pros**: Advanced features, strong standards compliance
-- **Connection**: `new PDO('pgsql:host=postgres;dbname=devdb', 'postgres', 'postgres')`
-- **Access**: psql CLI or Adminer at http://localhost:8081
-
-### Database Management Tools
-
-#### Adminer (Web GUI) - Recommended for Beginners
-- URL: http://localhost:8081
-- Visual interface for database management
-- Supports all database types
-- Perfect for browsing data, running queries, creating tables
-
-#### SQLTools (VS Code Extension) - Pre-configured
-- Click database icon in VS Code sidebar
-- Pre-configured connections to MySQL and PostgreSQL
-- Write and execute queries without leaving VS Code
-
-#### Command Line (Advanced)
 ```bash
-# MySQL
-mysql -h mysql -u devuser -pdevpassword devdb
-
-# PostgreSQL
-psql -h postgres -U postgres devdb
+mysql -u <user> -p<password> <database> < schema.sql
 ```
 
 ## Testing Your Code
 
 ### Local Testing (Before Creating PR)
 
-1. **Test in Browser**: http://localhost:8080/your-file.php
-2. **Test Database Connections**: Run `php example-db-test.php`
-3. **Check for PHP Errors**: View terminal output or browser errors
-4. **Test All Endpoints**: Manually test all API endpoints you've modified
+1. **Lint checks**: Run `pre-commit run --all-files` to run all linters locally
+2. **JS/Expo**: `cd TreeGuardiansExpo && npm run lint`
+3. **SQL**: `sqlfluff lint schema.sql`
 
 ### Code Quality Checks
 
-Before creating a pull request:
+Before creating a pull request, the pre-commit hook will automatically run linters. You can also run them manually:
 
 ```bash
-# Check PHP syntax
-php -l your-file.php
-
-# Run any tests (if we add them later)
-php test-runner.php
+pre-commit run --all-files
 ```
 
 ## Common Development Tasks
 
-### Installing PHP Dependencies
+### Installing JS Dependencies
 
 ```bash
-composer require vendor/package-name
-```
-
-### Accessing Container Shell
-
-You're already in the container! The VS Code terminal IS the container terminal.
-
-### Viewing Logs
-
-```bash
-# Apache error logs
-tail -f /var/log/apache2/error.log
-
-# Apache access logs
-tail -f /var/log/apache2/access.log
-```
-
-### Restarting Apache
-
-```bash
-apachectl restart
+cd TreeGuardiansExpo
+npm install
 ```
 
 ## Troubleshooting
 
-### "I Changed Code But Don't See Changes"
+### "Pre-commit Hooks Not Running"
 
-1. Hard refresh browser: `Ctrl+Shift+R` (or `Cmd+Shift+R`)
-2. Check you're editing the right file
-3. Restart Apache: `apachectl restart`
-4. Check for PHP syntax errors in terminal
+1. Ensure pre-commit is installed: `pip install pre-commit`
+2. Install hooks: `pre-commit install`
+3. Run manually: `pre-commit run --all-files`
 
-### "Database Connection Failed"
-
-1. Ensure containers are running: `docker ps` (should see app, mysql, postgres)
-2. Use correct hostname:
-   - ✅ `mysql` (from PHP code)
-   - ❌ `localhost` (wrong when connecting from PHP)
-3. Check credentials match the ones in the table above
-4. View database logs: `docker-compose -f .devcontainer/docker-compose.yml logs mysql`
-
-### "Container Won't Start"
+### "Docker Not Found"
 
 1. Ensure Docker Desktop is running
-2. Check port conflicts (8080, 8081, 3306, 5432 must be free)
-3. Rebuild container: `F1` → "Dev Containers: Rebuild Container"
-4. As last resort, clean rebuild:
-   ```bash
-   docker-compose -f .devcontainer/docker-compose.yml down -v
-   docker system prune -a
-   ```
-   Then reopen in container
-
-### "Permission Denied" Errors
-
-```bash
-# Fix file permissions
-sudo chown -R www-data:www-data /var/www/html
-sudo chmod -R 755 /var/www/html
-```
+2. Verify with `docker --version`
 
 ## Important Notes for Team Development
 
 ### DO:
-- ✅ Always develop in the dev container
+- ✅ Install pre-commit hooks before your first commit
 - ✅ Commit your changes regularly
 - ✅ Test thoroughly before creating PR
-- ✅ Use Adminer or SQLTools for database work
 - ✅ Document your database schema changes
 - ✅ Ask for help in team chat if stuck
 
 ### DON'T:
-- ❌ Develop on your local machine (not in container)
-- ❌ Modify the Dockerfile without team discussion
+- ❌ Skip linting (pre-commit hooks enforce this automatically)
 - ❌ Commit database files to Git
-- ❌ Change database passwords (use the defaults)
 - ❌ Install packages without updating documentation
 - ❌ Push directly to main (always use branches and PRs)
 

@@ -57,7 +57,7 @@ CREATE TABLE trees (
 CREATE TABLE tree_creation_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
-    creator_user_id bigint unsigned NOT NULL,
+    creator_user_id bigint unsigned,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_creation_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE,
@@ -118,7 +118,7 @@ CREATE TABLE tree_photos (
 -- Comments
 CREATE TABLE comments (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
-    user_id bigint unsigned NOT NULL,
+    user_id bigint unsigned,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_comments_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE SET NULL
