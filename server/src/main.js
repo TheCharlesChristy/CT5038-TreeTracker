@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const { spawn } = require("child_process");
 const { loadConfig } = require("./config");
 const db = require("./db");
@@ -9,9 +10,15 @@ async function startExpo(config) {
     return null;
   }
 
+  const expoPath = path.resolve(config.expoProjectPath);
+  if (!fs.existsSync(expoPath)) {
+    console.warn(`[server] skipping Expo start: EXPO_PROJECT_PATH does not exist (${expoPath})`);
+    return null;
+  }
+
   const expoCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   const child = spawn(expoCommand, ["expo", "start"], {
-    cwd: path.resolve(config.expoProjectPath),
+    cwd: expoPath,
     stdio: "inherit"
   });
 
@@ -29,7 +36,7 @@ async function bootstrap() {
   const config = loadConfig();
   await db.init(config.db);
 
-  const http = createHttpServer({ port: config.port, db });
+  const http = createHttpServer({ port: config.port, db, dbTestBenchEnabled: config.dbTestBenchEnabled });
   await http.start();
   console.log(`[server] HTTP listening on :${config.port}`);
 

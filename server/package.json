@@ -6,7 +6,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "node src/main.js",
-    "lint": "node scripts/enforce-db-lock.js",
+    "lint": "npm run db-lock:check",
+    "db-lock:check": "node scripts/enforce-db-lock.js",
     "test": "node --test",
     "test:integration": "RUN_DB_TESTS=true node --test test/integration.db.test.js",
     "check": "npm run lint && npm test"

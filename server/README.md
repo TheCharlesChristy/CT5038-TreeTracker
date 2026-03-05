@@ -6,11 +6,17 @@ The canonical server requirements are in `ServerRequirements.md` at the reposito
 
 ## Database Lock Rules
 
-- Only `server/src/db/**` may import SQL client libraries (`mysql`, `mysql2`, `knex`, `sequelize`, etc.).
-- Application code outside `server/src/db/**` must not execute raw SQL or call `.query(`.
-- DB access must use exported database endpoint groups from `server/src/db/index.js`.
+- DB client creation is runtime-locked: direct `mysql2` client factories (`createPool`, `createConnection`) are blocked outside `server/src/db/**`.
+- Second-layer runtime lock guards `query`/`execute` on created clients, so leaked client objects cannot run SQL from outside middleware.
+- Application code outside `server/src/db/**` must use exported database endpoint groups from `server/src/db/index.js`.
+- Direct SQL access attempts outside middleware throw `DB_LOCK_VIOLATION`.
 
-These rules are enforced by `server/scripts/enforce-db-lock.js` and CI (`npm run lint`).
+### Endpoint Groups
+
+- Table groups: `users`, `userPasswords`, `admins`, `userSessions`, `trees`, `treeCreationData`, `treeData`, `guardians`, `photos`, `treePhotos`, `comments`, `commentPhotos`, `commentsTree`, `commentReplies`, `wildlifeObservations`, `diseaseObservations`, `seenObservations`.
+- Workflow groups: `workflows.auth`, `workflows.trees`, `workflows.photos`, `workflows.comments`, `workflows.observations`, `workflows.users`.
+
+The lock is enforced in software by `server/src/db/runtime-lock.js`, and verified in CI by `server/scripts/enforce-db-lock.js` (`npm run db-lock:check`).
 
 ## Boot Flow
 
@@ -27,6 +33,29 @@ These rules are enforced by `server/scripts/enforce-db-lock.js` and CI (`npm run
 3. Keep SQL in middleware only and use prepared statements (`?` placeholders).
 4. For multi-table writes, implement via `transaction(async (tx) => ...)`.
 5. Add or update tests in `server/test/`.
+
+## Manual DB Test Bench API (Development)
+
+When `DB_TEST_BENCH_ENABLED=true` (enabled by default outside production), the server exposes routes for manual endpoint testing:
+
+- `GET /db/testbench/endpoints` returns all callable middleware endpoints.
+- `POST /db/testbench/invoke` executes any endpoint by name.
+
+`POST /db/testbench/invoke` body format:
+
+```json
+{
+	"endpoint": "users.list",
+	"args": [{ "limit": 10, "offset": 0 }]
+}
+```
+
+Read-only database inspection helpers are available under the `debug.*` endpoint group:
+
+- `debug.listTables()`
+- `debug.countRows(tableName)`
+- `debug.listRows(tableName, { limit, offset, order })`
+- `debug.previewAll({ limit, order })`
 
 ## Docker Usage
 

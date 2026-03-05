@@ -1,67 +1,24 @@
-const fs = require("fs");
-const path = require("path");
-
-const ROOT = path.resolve(__dirname, "..", "..");
-const SERVER_ROOT = path.resolve(ROOT, "server");
-const DB_ROOT = path.resolve(SERVER_ROOT, "src", "db");
-
-const IMPORT_BAN = /\bfrom\s+['\"](?:mysql2?|knex|sequelize|typeorm|pg)['\"]|\brequire\((['\"])(?:mysql2?|knex|sequelize|typeorm|pg)\1\)/;
-const QUERY_BAN = /\.query\s*\(/;
-
-function walk(dir, output = []) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const target = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (["node_modules", ".git", ".expo", "dist", "build"].includes(entry.name)) {
-        continue;
-      }
-      walk(target, output);
-    } else if (/\.(js|cjs|mjs|ts|tsx)$/.test(entry.name)) {
-      output.push(target);
-    }
-  }
-  return output;
-}
-
-function isUnderDb(filePath) {
-  const relative = path.relative(DB_ROOT, filePath);
-  return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
-function checkFile(filePath) {
-  if (path.resolve(filePath) === path.resolve(__filename)) {
-    return [];
-  }
-
-  const content = fs.readFileSync(filePath, "utf8");
-  const relativePath = path.relative(ROOT, filePath);
-  const violations = [];
-
-  if (!isUnderDb(filePath) && IMPORT_BAN.test(content)) {
-    violations.push(`${relativePath}: forbidden DB driver import outside server/src/db`);
-  }
-
-  if (!isUnderDb(filePath) && QUERY_BAN.test(content)) {
-    violations.push(`${relativePath}: forbidden .query( usage outside server/src/db`);
-  }
-
-  return violations;
-}
+const mysqlPromise = require("mysql2/promise");
 
 function main() {
-  const files = walk(ROOT);
-  const violations = files.flatMap(checkFile);
+  // Importing db installs the runtime lock for mysql2 client factories.
+  require("../src/db");
 
-  if (violations.length > 0) {
-    console.error("Database lock check failed:");
-    for (const violation of violations) {
-      console.error(` - ${violation}`);
+  try {
+    mysqlPromise.createPool({ host: "127.0.0.1", user: "root", database: "any" });
+  } catch (error) {
+    if (error && error.code === "DB_LOCK_VIOLATION") {
+      console.log("Database runtime lock check passed.");
+      return;
     }
+
+    console.error("Database runtime lock check failed with unexpected error:");
+    console.error(error);
     process.exit(1);
   }
 
-  console.log("Database lock check passed.");
+  console.error("Database runtime lock check failed: direct DB client creation was not blocked.");
+  process.exit(1);
 }
 
 main();
