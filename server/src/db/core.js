@@ -70,7 +70,7 @@ function splitSqlStatements(sqlText) {
 }
 
 function tableNameFromCreateStatement(statement) {
-  const match = statement.match(/^CREATE\s+TABLE\s+`?([A-Za-z0-9_]+)`?\s*\(/i);
+  const match = statement.match(/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?([A-Za-z0-9_]+)`?\s*\(/i);
   return match ? match[1] : null;
 }
 

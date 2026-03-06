@@ -43,7 +43,9 @@ function loadConfig() {
     startExpo: parseBool("START_EXPO", process.env.NODE_ENV !== "production"),
     expoProjectPath: process.env.EXPO_PROJECT_PATH || path.join(root, "TreeGuardiansExpo"),
     expoFatalOnExit: parseBool("EXPO_FATAL_ON_EXIT", false),
-    dbTestBenchEnabled: parseBool("DB_TEST_BENCH_ENABLED", process.env.NODE_ENV !== "production")
+    dbTestBenchEnabled: process.env.NODE_ENV === "production"
+      ? false
+      : parseBool("DB_TEST_BENCH_ENABLED", true)
   };
 }
 

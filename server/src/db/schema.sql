@@ -14,27 +14,27 @@
  */
 
 -- Setup Users and Auth
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     username varchar(100) NOT NULL UNIQUE,
     email varchar(255),
     phone varchar(50)
 ) engine = InnoDB;
 
-CREATE TABLE user_passwords (
+CREATE TABLE IF NOT EXISTS user_passwords (
     user_id bigint unsigned PRIMARY KEY,
     password_hash varchar(255) NOT NULL,
     CONSTRAINT fk_passwords_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
-CREATE TABLE admins (
+CREATE TABLE IF NOT EXISTS admins (
     user_id bigint unsigned PRIMARY KEY,
     CONSTRAINT fk_admins_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
-CREATE TABLE user_sessions (
+CREATE TABLE IF NOT EXISTS user_sessions (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     user_id bigint unsigned NOT NULL,
     session_token char(64) NOT NULL UNIQUE,
@@ -44,7 +44,7 @@ CREATE TABLE user_sessions (
 ) engine = InnoDB;
 
 -- Core Tree Data
-CREATE TABLE trees (
+CREATE TABLE IF NOT EXISTS trees (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     latitude decimal(9,6) NOT NULL,
     longitude decimal(9,6) NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE trees (
 ) engine = InnoDB;
 
 -- Tree creation data
-CREATE TABLE tree_creation_data (
+CREATE TABLE IF NOT EXISTS tree_creation_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     creator_user_id bigint unsigned,
@@ -66,7 +66,7 @@ CREATE TABLE tree_creation_data (
 ) engine = InnoDB;
 
 -- Specific tree characteristics
-CREATE TABLE tree_data (
+CREATE TABLE IF NOT EXISTS tree_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     avoided_runoff decimal(10,2) NULL, -- in m^3
@@ -84,7 +84,7 @@ CREATE TABLE tree_data (
 ) engine = InnoDB;
 
 -- Relationship: Users watching over specific trees
-CREATE TABLE guardians (
+CREATE TABLE IF NOT EXISTS guardians (
     user_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
     PRIMARY KEY (user_id,tree_id),
@@ -96,7 +96,7 @@ CREATE TABLE guardians (
 ) engine = InnoDB;
 
 -- Media Storage
-CREATE TABLE photos (
+CREATE TABLE IF NOT EXISTS photos (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     image_url text NOT NULL,
     mime_type varchar(100),
@@ -106,7 +106,7 @@ CREATE TABLE photos (
     UNIQUE INDEX uq_photo_sha256 (sha256)
 ) engine = InnoDB;
 
-CREATE TABLE tree_photos (
+CREATE TABLE IF NOT EXISTS tree_photos (
     photo_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
     PRIMARY KEY (tree_id,photo_id),
@@ -118,7 +118,7 @@ CREATE TABLE tree_photos (
 ) engine = InnoDB;
 
 -- Comments
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     user_id bigint unsigned,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -127,7 +127,7 @@ CREATE TABLE comments (
 ) engine = InnoDB;
 
 -- Comment photos
-CREATE TABLE comment_photos (
+CREATE TABLE IF NOT EXISTS comment_photos (
     comment_id bigint unsigned NOT NULL,
     photo_id bigint unsigned NOT NULL,
     PRIMARY KEY (comment_id,photo_id),
@@ -138,7 +138,7 @@ CREATE TABLE comment_photos (
 ) engine = InnoDB;
 
 -- Comments on trees
-CREATE TABLE comments_tree (
+CREATE TABLE IF NOT EXISTS comments_tree (
     comment_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
     content text NOT NULL,
@@ -151,7 +151,7 @@ CREATE TABLE comments_tree (
 ) engine = InnoDB;
 
 -- Comment replies (threaded comments)
-CREATE TABLE comment_replies (
+CREATE TABLE IF NOT EXISTS comment_replies (
     comment_id bigint unsigned NOT NULL,
     parent_comment_id bigint unsigned NOT NULL,
     content text NOT NULL,
@@ -164,7 +164,7 @@ CREATE TABLE comment_replies (
 ) engine = InnoDB;
 
 -- Observation Subtypes
-CREATE TABLE wildlife_observations (
+CREATE TABLE IF NOT EXISTS wildlife_observations (
     comment_id bigint unsigned PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     wildlife varchar(255) NOT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE wildlife_observations (
     REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
-CREATE TABLE disease_observations (
+CREATE TABLE IF NOT EXISTS disease_observations (
     comment_id bigint unsigned PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     disease varchar(255) NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE disease_observations (
     REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
-CREATE TABLE seen_observations (
+CREATE TABLE IF NOT EXISTS seen_observations (
     comment_id bigint unsigned PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     observation_notes text,

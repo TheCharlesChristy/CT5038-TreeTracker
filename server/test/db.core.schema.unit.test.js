@@ -29,5 +29,7 @@ test("selectSchemaStatementsForMissingTables only returns CREATE TABLE for missi
 test("tableNameFromCreateStatement supports quoted and unquoted identifiers", () => {
   assert.equal(__private.tableNameFromCreateStatement("CREATE TABLE users (id int)"), "users");
   assert.equal(__private.tableNameFromCreateStatement("CREATE TABLE `users` (id int)"), "users");
+  assert.equal(__private.tableNameFromCreateStatement("CREATE TABLE IF NOT EXISTS users (id int)"), "users");
+  assert.equal(__private.tableNameFromCreateStatement("CREATE TABLE IF NOT EXISTS `users` (id int)"), "users");
   assert.equal(__private.tableNameFromCreateStatement("CREATE INDEX idx_users ON users (id)"), null);
 });

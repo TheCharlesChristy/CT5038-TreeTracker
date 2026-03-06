@@ -182,8 +182,6 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
   const flatEndpoints = flattenEndpointMap(endpointMap);
 
   const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-
     if (req.method === "OPTIONS") {
       applyCorsHeaders(res);
       res.writeHead(204);
@@ -192,6 +190,13 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
     }
 
     try {
+      let url;
+      try {
+        url = new URL(req.url || "/", "http://localhost");
+      } catch {
+        sendJson(res, 400, { error: "Bad request", code: "BadRequestError" });
+        return;
+      }
       if (req.method === "GET" && url.pathname === "/health") {
         sendJson(res, 200, { status: "ok" });
         return;
