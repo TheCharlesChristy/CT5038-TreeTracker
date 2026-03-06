@@ -2,7 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const mysql = require("mysql2");
 const mysqlPromise = require("mysql2/promise");
-const { createLeakedPromisePool } = require("../src/db/test-helpers/lock-fixtures");
+const { createLeakedPromisePool, createLeakedCallbackPool } = require("../src/db/test-helpers/lock-fixtures");
+const { installDbClientLock } = require("../src/db/runtime-lock");
 
 // Importing db installs runtime lock hooks in mysql2 factory methods.
 require("../src/db");
@@ -33,4 +34,21 @@ test("second-layer lock blocks query/execute outside middleware on leaked client
   } finally {
     await pool.end();
   }
+});
+
+
+test("second-layer lock blocks getConnection callback and promise wrappers outside middleware", async () => {
+  const pool = createLeakedCallbackPool();
+  try {
+    assert.throws(() => pool.promise(), (error) => error && error.code === "DB_LOCK_VIOLATION");
+    assert.throws(() => pool.getConnection(() => {}), (error) => error && error.code === "DB_LOCK_VIOLATION");
+    assert.throws(() => pool.getConnection(), (error) => error && error.code === "DB_LOCK_VIOLATION");
+  } finally {
+    await pool.end();
+  }
+});
+
+test("runtime lock install is idempotent", () => {
+  assert.doesNotThrow(() => installDbClientLock());
+  assert.doesNotThrow(() => installDbClientLock());
 });

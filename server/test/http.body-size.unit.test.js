@@ -22,7 +22,8 @@ function sendJsonPost({ port, path, body }) {
         path,
         headers: {
           "content-type": "application/json",
-          "content-length": Buffer.byteLength(body)
+          "content-length": Buffer.byteLength(body),
+          connection: "close"
         }
       },
       (res) => {

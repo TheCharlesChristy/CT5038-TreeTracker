@@ -146,8 +146,9 @@ async function parseJsonBody(req) {
       }
 
       try {
+        const parsed = JSON.parse(raw);
         settled = true;
-        resolve(JSON.parse(raw));
+        resolve(parsed);
       } catch (error) {
         const parseError = new Error("Invalid JSON body");
         parseError.name = "ValidationError";
@@ -169,15 +170,52 @@ function sendJson(res, status, payload) {
 
 function toErrorStatus(error) {
   const code = error?.name || error?.code;
+  if (code === "UnsupportedMediaTypeError") return 415;
   if (code === "ValidationError") return 400;
   if (code === "PayloadTooLargeError") return 413;
   if (code === "AuthError") return 401;
+  if (code === "ForbiddenError") return 403;
   if (code === "NotFoundError") return 404;
   if (code === "ConflictError") return 409;
   return 500;
 }
 
-function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
+function contentTypeIsJson(value) {
+  return String(value || "")
+    .toLowerCase()
+    .split(";")[0]
+    .trim() === "application/json";
+}
+
+function createAuthError(name, message) {
+  const error = new Error(message);
+  error.name = name;
+  return error;
+}
+
+function authorizeTestBench(req, token) {
+  if (!token) {
+    return;
+  }
+
+  const authHeader = String(req.headers.authorization || "");
+  const bearerPrefix = "bearer ";
+  const bearerToken = authHeader.toLowerCase().startsWith(bearerPrefix)
+    ? authHeader.slice(bearerPrefix.length).trim()
+    : null;
+  const headerToken = req.headers["x-testbench-token"];
+  const providedToken = bearerToken || (typeof headerToken === "string" ? headerToken : null);
+
+  if (!providedToken) {
+    throw createAuthError("AuthError", "Missing testbench authorization token");
+  }
+
+  if (providedToken !== token) {
+    throw createAuthError("ForbiddenError", "Invalid testbench authorization token");
+  }
+}
+
+function createHttpServer({ port, db, dbTestBenchEnabled = false, dbTestBenchToken = null }) {
   const endpointMap = listDbEndpoints(db);
   const flatEndpoints = flattenEndpointMap(endpointMap);
 
@@ -209,6 +247,7 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
       }
 
       if (dbTestBenchEnabled && req.method === "GET" && url.pathname === "/db/testbench/endpoints") {
+        authorizeTestBench(req, dbTestBenchToken);
         sendJson(res, 200, {
           endpoints: endpointMap,
           flatEndpoints
@@ -217,7 +256,22 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
       }
 
       if (dbTestBenchEnabled && req.method === "POST" && url.pathname === "/db/testbench/invoke") {
+        authorizeTestBench(req, dbTestBenchToken);
+
+        if (!contentTypeIsJson(req.headers["content-type"])) {
+          req.resume();
+          const unsupported = new Error("Content-Type must be application/json");
+          unsupported.name = "UnsupportedMediaTypeError";
+          throw unsupported;
+        }
+
         const body = await parseJsonBody(req);
+        if (!body || typeof body !== "object" || Array.isArray(body) || !body.endpoint) {
+          const payloadError = new Error("Request body must include endpoint");
+          payloadError.name = "ValidationError";
+          throw payloadError;
+        }
+
         if (!flatEndpoints.includes(body.endpoint)) {
           sendJson(res, 404, { error: "Unknown endpoint", code: "NotFoundError" });
           return;
@@ -249,8 +303,19 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
 
   return {
     start() {
-      return new Promise((resolve) => {
-        server.listen(port, () => resolve(server));
+      return new Promise((resolve, reject) => {
+        const onError = (error) => {
+          server.off("listening", onListening);
+          reject(error);
+        };
+        const onListening = () => {
+          server.off("error", onError);
+          resolve(server);
+        };
+
+        server.once("error", onError);
+        server.once("listening", onListening);
+        server.listen(port);
       });
     },
     stop() {

@@ -36,12 +36,19 @@ The lock is enforced in software by `server/src/db/runtime-lock.js`, and verifie
 
 ## Manual DB Test Bench API (Development)
 
-When `DB_TEST_BENCH_ENABLED=true` (enabled by default outside production), the server exposes routes for manual endpoint testing:
+By default, DB testbench routes are disabled.
+
+Enable explicitly with `DB_TEST_BENCH_ENABLED=true` (never enabled automatically in production). For secure usage, set `DB_TEST_BENCH_TOKEN` and pass it either as:
+
+- `Authorization: Bearer <token>`
+- `x-testbench-token: <token>`
+
+When enabled, the server exposes:
 
 - `GET /db/testbench/endpoints` returns all callable middleware endpoints.
 - `POST /db/testbench/invoke` executes any endpoint by name.
 
-`POST /db/testbench/invoke` body format:
+`POST /db/testbench/invoke` requires `Content-Type: application/json` and body format:
 
 ```json
 {

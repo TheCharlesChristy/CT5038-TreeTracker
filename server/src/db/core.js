@@ -74,12 +74,51 @@ function tableNameFromCreateStatement(statement) {
   return match ? match[1] : null;
 }
 
-function selectSchemaStatementsForMissingTables(statements, missingTables) {
-  const missing = new Set(missingTables);
-  return statements.filter((statement) => {
-    const tableName = tableNameFromCreateStatement(statement);
-    return tableName && missing.has(tableName);
-  });
+function buildSchemaMigrations(statements) {
+  return statements.map((statement, index) => ({
+    version: `schema-${String(index + 1).padStart(4, "0")}`,
+    statement
+  }));
+}
+
+async function ensureMigrationsTable(executor) {
+  await run(
+    executor,
+    `
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        version varchar(64) PRIMARY KEY,
+        applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) engine = InnoDB
+    `
+  );
+}
+
+async function listAppliedMigrationVersions(executor) {
+  const rows = await run(executor, "SELECT version FROM schema_migrations ORDER BY version ASC");
+  return rows.map((row) => row.version);
+}
+
+async function applyMigrations(executor, schemaPath) {
+  const schemaSql = await fs.readFile(schemaPath, "utf-8");
+  const statements = splitSqlStatements(schemaSql);
+  const migrations = buildSchemaMigrations(statements);
+
+  await ensureMigrationsTable(executor);
+  const appliedVersions = new Set(await listAppliedMigrationVersions(executor));
+  const definedVersions = new Set(migrations.map((migration) => migration.version));
+
+  const unknownApplied = [...appliedVersions].filter((version) => !definedVersions.has(version));
+  if (unknownApplied.length > 0) {
+    throw new DbError(`Inconsistent migration history. Unknown versions: ${unknownApplied.join(", ")}`);
+  }
+
+  for (const migration of migrations) {
+    if (appliedVersions.has(migration.version)) {
+      continue;
+    }
+    await run(executor, migration.statement);
+    await run(executor, "INSERT INTO schema_migrations (version) VALUES (?)", [migration.version]);
+  }
 }
 
 async function run(executor, sql, params = []) {
@@ -108,7 +147,7 @@ async function run(executor, sql, params = []) {
   try {
     const [rows] = await executor.execute(executionSql, executionParams);
     const elapsed = Date.now() - start;
-    if (elapsed >= config.slowQueryMs) {
+    if (config && elapsed >= config.slowQueryMs) {
       log("slow-query", { elapsedMs: elapsed, sql: executionSql });
     }
     return rows;
@@ -235,16 +274,8 @@ async function init(userConfig) {
     queueLimit: 0
   });
 
-  const missingTables = await ensureTablesExist(pool);
-  if (missingTables.length > 0) {
-    log("applying-schema", { missingTables });
-    const schemaSql = await fs.readFile(config.schemaPath, "utf-8");
-    const statements = splitSqlStatements(schemaSql);
-    const statementsToApply = selectSchemaStatementsForMissingTables(statements, missingTables);
-    for (const statement of statementsToApply) {
-      await run(pool, statement);
-    }
-  }
+  log("applying-migrations");
+  await applyMigrations(pool, config.schemaPath);
 
   const stillMissing = await ensureTablesExist(pool);
   if (stillMissing.length > 0) {
@@ -318,6 +349,6 @@ module.exports = {
   __private: {
     splitSqlStatements,
     tableNameFromCreateStatement,
-    selectSchemaStatementsForMissingTables
+    buildSchemaMigrations
   }
 };

@@ -36,7 +36,12 @@ async function bootstrap() {
   const config = loadConfig();
   await db.init(config.db);
 
-  const http = createHttpServer({ port: config.port, db, dbTestBenchEnabled: config.dbTestBenchEnabled });
+  const http = createHttpServer({
+    port: config.port,
+    db,
+    dbTestBenchEnabled: config.dbTestBenchEnabled,
+    dbTestBenchToken: config.dbTestBenchToken
+  });
   await http.start();
   console.log(`[server] HTTP listening on :${config.port}`);
 
