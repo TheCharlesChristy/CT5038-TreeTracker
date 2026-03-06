@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install SQLFluff
-        run: pip install sqlfluff
+        run: pip install sqlfluff==3.4.0
 
       - name: Run SQLFluff
         run: sqlfluff lint . --dialect mysql

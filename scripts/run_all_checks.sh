@@ -7,8 +7,12 @@ echo "------------------------------------------------"
 
 # 1. SQL Lint
 echo ">> Running SQL Lint (Fixing)..."
-sqlfluff fix . --dialect mysql --force || { echo "SQL Fix failed"; exit 1; }
-sqlfluff lint . --dialect mysql || { echo "SQL Lint failed after fix"; exit 1; }
+if [ -n "$(find . -name '*.sql' -print -quit)" ]; then
+    find . -name '*.sql' -print0 | xargs -0 sqlfluff fix --force || { echo "SQL Fix failed"; exit 1; }
+    find . -name '*.sql' -print0 | xargs -0 sqlfluff lint || { echo "SQL Lint failed after fix"; exit 1; }
+else
+    echo "No SQL files found."
+fi
 
 # 2. PHP Lint
 echo ">> Running PHP Lint..."
