@@ -45,7 +45,7 @@ function loadConfig() {
     expoFatalOnExit: parseBool("EXPO_FATAL_ON_EXIT", false),
     dbTestBenchEnabled: process.env.NODE_ENV === "production"
       ? false
-      : parseBool("DB_TEST_BENCH_ENABLED", true)
+      : parseBool("DB_TEST_BENCH_ENABLED", false)
   };
 }
 

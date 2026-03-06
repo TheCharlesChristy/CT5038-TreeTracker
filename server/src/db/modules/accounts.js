@@ -56,10 +56,7 @@ function createAccountEndpoints(ctx) {
     async deleteById(id, tx) {
       ensurePositiveInt("id", id);
       const result = await run(runtimeExecutor(tx), "DELETE FROM users WHERE id = ?", [id]);
-      if (result.affectedRows === 0) {
-        throw new NotFoundError(`User ${id} not found`);
-      }
-      return { deleted: true };
+      return { deleted: result.affectedRows > 0 };
     },
 
     async existsById(id, tx) {

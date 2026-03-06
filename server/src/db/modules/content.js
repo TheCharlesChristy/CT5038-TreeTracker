@@ -15,7 +15,7 @@ function createContentEndpoints(ctx) {
 
       const result = await run(
         runtimeExecutor(tx),
-        "INSERT INTO photos (image_url, mime_type, byte_size, sha256, created_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO photos (image_url, mime_type, byte_size, sha256, created_at) VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
         [payload.imageUrl, payload.mimeType || null, payload.byteSize ?? null, payload.sha256 || null, createdAt || null]
       );
       return this.getById(Number(result.insertId), tx);
@@ -144,7 +144,7 @@ function createContentEndpoints(ctx) {
         ensurePositiveInt("userId", payload.userId);
       }
       const createdAt = toDateInput("createdAt", payload.createdAt);
-      const result = await run(runtimeExecutor(tx), "INSERT INTO comments (user_id, created_at) VALUES (?, ?)", [
+      const result = await run(runtimeExecutor(tx), "INSERT INTO comments (user_id, created_at) VALUES (?, COALESCE(?, CURRENT_TIMESTAMP))", [
         payload.userId || null,
         createdAt || null
       ]);
@@ -269,7 +269,7 @@ function createContentEndpoints(ctx) {
 
       await run(
         runtimeExecutor(tx),
-        "INSERT INTO comments_tree (comment_id, tree_id, content, created_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO comments_tree (comment_id, tree_id, content, created_at) VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
         [payload.commentId, payload.treeId, payload.content, createdAt || null]
       );
       return this.get({ commentId: payload.commentId, treeId: payload.treeId }, tx);
@@ -347,7 +347,7 @@ function createContentEndpoints(ctx) {
 
       await run(
         runtimeExecutor(tx),
-        "INSERT INTO comment_replies (comment_id, parent_comment_id, content, created_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO comment_replies (comment_id, parent_comment_id, content, created_at) VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
         [payload.commentId, payload.parentCommentId, payload.content, createdAt || null]
       );
       return this.get({ commentId: payload.commentId, parentCommentId: payload.parentCommentId }, tx);

@@ -92,7 +92,7 @@ function createTreeEndpoints(ctx) {
 
       const result = await run(
         runtimeExecutor(tx),
-        "INSERT INTO tree_creation_data (tree_id, creator_user_id, created_at) VALUES (?, ?, ?)",
+        "INSERT INTO tree_creation_data (tree_id, creator_user_id, created_at) VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
         [payload.treeId, payload.creatorUserId || null, createdAt || null]
       );
       return this.getById(Number(result.insertId), tx);

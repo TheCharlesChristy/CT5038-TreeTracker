@@ -219,12 +219,12 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
       if (dbTestBenchEnabled && req.method === "POST" && url.pathname === "/db/testbench/invoke") {
         const body = await parseJsonBody(req);
         if (!flatEndpoints.includes(body.endpoint)) {
-          sendJson(res, 404, { error: "Unknown endpoint" });
+          sendJson(res, 404, { error: "Unknown endpoint", code: "NotFoundError" });
           return;
         }
         const fn = resolveDbEndpoint(db, body.endpoint);
         if (!fn) {
-          sendJson(res, 404, { error: "Unknown endpoint" });
+          sendJson(res, 404, { error: "Unknown endpoint", code: "NotFoundError" });
           return;
         }
 
