@@ -61,7 +61,7 @@ function createTreeEndpoints(ctx) {
     async findNear(params, tx) {
       ensureLatitude(params.latitude);
       ensureLongitude(params.longitude);
-      assert(typeof params.radiusMeters === "number" && params.radiusMeters > 0, "radiusMeters must be > 0");
+      assert(Number.isFinite(params.radiusMeters) && params.radiusMeters > 0, "radiusMeters must be a finite number > 0");
       const limit = params.limit === undefined ? 50 : Number(params.limit);
       assert(Number.isInteger(limit) && limit > 0 && limit <= 500, "limit must be integer 1..500");
 

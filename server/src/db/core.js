@@ -69,6 +69,19 @@ function splitSqlStatements(sqlText) {
     .filter(Boolean);
 }
 
+function tableNameFromCreateStatement(statement) {
+  const match = statement.match(/^CREATE\s+TABLE\s+`?([A-Za-z0-9_]+)`?\s*\(/i);
+  return match ? match[1] : null;
+}
+
+function selectSchemaStatementsForMissingTables(statements, missingTables) {
+  const missing = new Set(missingTables);
+  return statements.filter((statement) => {
+    const tableName = tableNameFromCreateStatement(statement);
+    return tableName && missing.has(tableName);
+  });
+}
+
 async function run(executor, sql, params = []) {
   const start = Date.now();
   let executionSql = sql;
@@ -227,7 +240,8 @@ async function init(userConfig) {
     log("applying-schema", { missingTables });
     const schemaSql = await fs.readFile(config.schemaPath, "utf-8");
     const statements = splitSqlStatements(schemaSql);
-    for (const statement of statements) {
+    const statementsToApply = selectSchemaStatementsForMissingTables(statements, missingTables);
+    for (const statement of statementsToApply) {
       await run(pool, statement);
     }
   }
@@ -300,5 +314,10 @@ module.exports = {
     ensureHex64,
     ensureNumberOrNull,
     normalizeListParams
+  },
+  __private: {
+    splitSqlStatements,
+    tableNameFromCreateStatement,
+    selectSchemaStatementsForMissingTables
   }
 };

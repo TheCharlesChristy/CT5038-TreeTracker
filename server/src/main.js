@@ -64,7 +64,7 @@ async function bootstrap() {
       console.error("[server] failed closing DB", error);
     }
 
-    process.exit(0);
+    process.exit(process.exitCode ?? 0);
   }
 
   process.on("SIGINT", () => shutdown("SIGINT"));

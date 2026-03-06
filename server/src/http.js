@@ -1,5 +1,7 @@
 const http = require("http");
 
+const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+
 function applyCorsHeaders(res) {
   res.setHeader("access-control-allow-origin", "*");
   res.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
@@ -89,32 +91,72 @@ function resolveDbEndpoint(db, endpointPath) {
   return candidate.bind(owner);
 }
 
+function payloadTooLargeError() {
+  const error = new Error(`Request body exceeds ${MAX_JSON_BODY_BYTES} bytes`);
+  error.name = "PayloadTooLargeError";
+  return error;
+}
+
 async function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
+    let size = 0;
+    let settled = false;
+
+    const finishWithError = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      reject(error);
+    };
+
+    const contentLengthHeader = Number(req.headers["content-length"]);
+    if (Number.isFinite(contentLengthHeader) && contentLengthHeader > MAX_JSON_BODY_BYTES) {
+      finishWithError(payloadTooLargeError());
+      req.resume();
+      return;
+    }
 
     req.on("data", (chunk) => {
+      if (settled) {
+        return;
+      }
+
+      size += chunk.length;
+      if (size > MAX_JSON_BODY_BYTES) {
+        finishWithError(payloadTooLargeError());
+        req.resume();
+        return;
+      }
+
       chunks.push(chunk);
     });
 
     req.on("end", () => {
+      if (settled) {
+        return;
+      }
+
       const raw = Buffer.concat(chunks).toString("utf-8");
       if (!raw) {
+        settled = true;
         resolve({});
         return;
       }
 
       try {
+        settled = true;
         resolve(JSON.parse(raw));
       } catch (error) {
         const parseError = new Error("Invalid JSON body");
         parseError.name = "ValidationError";
-        reject(parseError);
+        finishWithError(parseError);
       }
     });
 
     req.on("error", (error) => {
-      reject(error);
+      finishWithError(error);
     });
   });
 }
@@ -128,6 +170,7 @@ function sendJson(res, status, payload) {
 function toErrorStatus(error) {
   const code = error?.name || error?.code;
   if (code === "ValidationError") return 400;
+  if (code === "PayloadTooLargeError") return 413;
   if (code === "AuthError") return 401;
   if (code === "NotFoundError") return 404;
   if (code === "ConflictError") return 409;
@@ -170,6 +213,10 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false }) {
 
       if (dbTestBenchEnabled && req.method === "POST" && url.pathname === "/db/testbench/invoke") {
         const body = await parseJsonBody(req);
+        if (!flatEndpoints.includes(body.endpoint)) {
+          sendJson(res, 404, { error: "Unknown endpoint" });
+          return;
+        }
         const fn = resolveDbEndpoint(db, body.endpoint);
         if (!fn) {
           sendJson(res, 404, { error: "Unknown endpoint" });
