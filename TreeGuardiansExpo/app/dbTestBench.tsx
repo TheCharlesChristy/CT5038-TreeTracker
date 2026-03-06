@@ -642,6 +642,7 @@ export default function DbTestBenchPage() {
   const isTwoColumn = width >= 1024;
 
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
+  const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [endpointFilter, setEndpointFilter] = useState('');
   const [endpoints, setEndpoints] = useState<string[]>([]);
@@ -799,7 +800,10 @@ export default function DbTestBenchPage() {
     });
     const startedAt = Date.now();
 
-    const response = await fetch(url);
+    const trimmedToken = token.trim();
+    const response = await fetch(url, {
+      headers: trimmedToken ? { authorization: `Bearer ${trimmedToken}` } : {},
+    });
     const data = await parseResponsePayload(response);
     const elapsedMs = Date.now() - startedAt;
 
@@ -827,10 +831,12 @@ export default function DbTestBenchPage() {
     });
     const startedAt = Date.now();
 
+    const trimmedToken = token.trim();
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        ...(trimmedToken ? { authorization: `Bearer ${trimmedToken}` } : {}),
       },
       body: JSON.stringify(payload),
     });
@@ -986,6 +992,14 @@ export default function DbTestBenchPage() {
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="http://localhost:4000"
+          />
+          <AppInput
+            value={token}
+            onChangeText={setToken}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            placeholder="Auth token (DB_TEST_BENCH_TOKEN)"
           />
 
           <View style={styles.rowButtons}>

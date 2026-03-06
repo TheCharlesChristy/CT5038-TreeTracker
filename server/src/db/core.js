@@ -1,7 +1,7 @@
 const fs = require("fs/promises");
 const mysql = require("mysql2/promise");
 const { DbError, ConflictError, ValidationError } = require("../errors");
-const { installDbClientLock } = require("./runtime-lock");
+const { installDbClientLock, runWithDbAccess } = require("./runtime-lock");
 const {
   assert,
   ensurePositiveInt,
@@ -122,6 +122,7 @@ async function applyMigrations(executor, schemaPath) {
 }
 
 async function run(executor, sql, params = []) {
+  return runWithDbAccess(async () => {
   const start = Date.now();
   let executionSql = sql;
   let executionParams = params;
@@ -160,6 +161,7 @@ async function run(executor, sql, params = []) {
     }
     throw new DbError("Database operation failed", { cause: error });
   }
+  });
 }
 
 function runtimeExecutor(tx) {
@@ -307,6 +309,7 @@ async function health() {
 }
 
 async function transaction(fn) {
+  return runWithDbAccess(async () => {
   ensureReady();
   const connection = await pool.getConnection();
   try {
@@ -321,6 +324,7 @@ async function transaction(fn) {
   } finally {
     connection.release();
   }
+  });
 }
 
 module.exports = {

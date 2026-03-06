@@ -12,7 +12,7 @@ function createDbStub() {
   };
 }
 
-function sendJsonPost({ port, path, body }) {
+function sendJsonPost({ port, path, body, extraHeaders = {} }) {
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -23,7 +23,8 @@ function sendJsonPost({ port, path, body }) {
         headers: {
           "content-type": "application/json",
           "content-length": Buffer.byteLength(body),
-          connection: "close"
+          connection: "close",
+          ...extraHeaders
         }
       },
       (res) => {
@@ -46,7 +47,8 @@ test("POST /db/testbench/invoke rejects oversized JSON bodies with 413", async (
   const httpServer = createHttpServer({
     port: 0,
     db: createDbStub(),
-    dbTestBenchEnabled: true
+    dbTestBenchEnabled: true,
+    dbTestBenchToken: "test-token"
   });
 
   const listeningServer = await httpServer.start();
@@ -62,7 +64,8 @@ test("POST /db/testbench/invoke rejects oversized JSON bodies with 413", async (
     const response = await sendJsonPost({
       port,
       path: "/db/testbench/invoke",
-      body
+      body,
+      extraHeaders: { authorization: "Bearer test-token" }
     });
 
     assert.equal(response.status, 413);

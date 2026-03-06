@@ -1,9 +1,21 @@
 const path = require("path");
+const { AsyncLocalStorage } = require("node:async_hooks");
 const mysql = require("mysql2");
 const mysqlPromise = require("mysql2/promise");
 
 const DB_ROOT = path.resolve(__dirname).replace(/\\/g, "/");
 let installed = false;
+
+// Cheap per-call context flag — set by runWithDbAccess() at middleware entrypoints.
+const dbAccessStore = new AsyncLocalStorage();
+
+function isDbAccessAllowed() {
+  return dbAccessStore.getStore() === true;
+}
+
+function runWithDbAccess(fn) {
+  return dbAccessStore.run(true, fn);
+}
 
 function createLockError() {
   const error = new Error(
@@ -58,7 +70,7 @@ function wrapClientMethod(client, methodName) {
   }
 
   function guardedClientMethod(...args) {
-    if (!isDbMiddlewareCaller()) {
+    if (!isDbAccessAllowed()) {
       throw createLockError();
     }
     return original.apply(this, args);
@@ -75,7 +87,7 @@ function wrapGetConnection(client) {
   }
 
   function guardedGetConnection(...args) {
-    if (!isDbMiddlewareCaller()) {
+    if (!isDbAccessAllowed()) {
       throw createLockError();
     }
 
@@ -104,7 +116,7 @@ function wrapPromiseFactory(client) {
   }
 
   function guardedPromiseFactory(...args) {
-    if (!isDbMiddlewareCaller()) {
+    if (!isDbAccessAllowed()) {
       throw createLockError();
     }
     return wrapClient(original.apply(this, args));
@@ -155,5 +167,6 @@ function installDbClientLock() {
 }
 
 module.exports = {
-  installDbClientLock
+  installDbClientLock,
+  runWithDbAccess
 };

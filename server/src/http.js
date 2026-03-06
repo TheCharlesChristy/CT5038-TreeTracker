@@ -195,7 +195,7 @@ function createAuthError(name, message) {
 
 function authorizeTestBench(req, token) {
   if (!token) {
-    return;
+    throw createAuthError("InternalError", "Testbench is enabled but no token is configured");
   }
 
   const authHeader = String(req.headers.authorization || "");
@@ -216,6 +216,13 @@ function authorizeTestBench(req, token) {
 }
 
 function createHttpServer({ port, db, dbTestBenchEnabled = false, dbTestBenchToken = null }) {
+  if (dbTestBenchEnabled && !dbTestBenchToken) {
+    throw new Error(
+      "DB_TEST_BENCH_ENABLED is set but no DB_TEST_BENCH_TOKEN was provided. " +
+      "The testbench can invoke write-capable DB endpoints and must not run unauthenticated."
+    );
+  }
+
   const endpointMap = listDbEndpoints(db);
   const flatEndpoints = flattenEndpointMap(endpointMap);
 

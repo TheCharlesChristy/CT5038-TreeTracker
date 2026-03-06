@@ -68,6 +68,17 @@ run_local_server_with_expo() {
     $COMPOSE_CMD -f docker-compose.server.yml up -d mysql
     wait_for_mysql
 
+    # DB test bench is opt-in: export DB_TEST_BENCH_TOKEN=<token> before running
+    # this script to enable /db/testbench/* endpoints.  Without a token the
+    # endpoints are disabled entirely, so they cannot be reached on port 4000.
+    if [ -n "${DB_TEST_BENCH_TOKEN:-}" ]; then
+        echo "DB test bench ENABLED (token provided)."
+        _TESTBENCH_ENABLED=true
+    else
+        echo "DB test bench disabled. To enable it, export DB_TEST_BENCH_TOKEN=<token> before running this script."
+        _TESTBENCH_ENABLED=false
+    fi
+
     echo "Starting server on host (server will launch Expo)..."
     cd "$REPO_ROOT/server"
     START_EXPO=true \
@@ -81,7 +92,8 @@ run_local_server_with_expo() {
     DB_DATABASE=treetracker_dev \
     DB_ALLOW_CREATE_DATABASE=true \
     DB_SCHEMA_PATH="$REPO_ROOT/server/src/db/schema.sql" \
-    DB_TEST_BENCH_ENABLED=true \
+    DB_TEST_BENCH_ENABLED="$_TESTBENCH_ENABLED" \
+    DB_TEST_BENCH_TOKEN="${DB_TEST_BENCH_TOKEN:-}" \
     npm start
 }
 
