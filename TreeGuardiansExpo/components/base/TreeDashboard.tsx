@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Image,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
@@ -7,86 +15,126 @@ import { Tree } from '@/objects/TreeDetails';
 
 const { height } = Dimensions.get('window');
 
+type ActiveField =
+  | 'notes'
+  | 'wildlife'
+  | 'disease'
+  | 'diameter'
+  | 'height'
+  | 'circumference';
+
 interface TreeDetailsDashboardProps {
   tree: Tree;
   onClose: () => void;
 }
 
-export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashboardProps) {
-  // Toggles for optional fields
-  const [showWildlife, setShowWildlife] = useState(false);
-  const [showDisease, setShowDisease] = useState(false);
-  const [showDiameter, setShowDiameter] = useState(false);
-  const [showHeight, setShowHeight] = useState(false);
-  const [showCircumference, setShowCircumference] = useState(false);
+export default function TreeDetailsDashboard({
+  tree,
+  onClose,
+}: TreeDetailsDashboardProps) {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
 
-  // Map optional fields dynamically
-  const optionalFields: {
-    key: keyof Tree;
-    label: string;
-    unit?: string;
-    toggle: boolean;
-    setToggle: (val: boolean) => void;
-  }[] = [
-    { key: 'wildlife', label: 'Wildlife', toggle: showWildlife, setToggle: setShowWildlife },
-    { key: 'disease', label: 'Disease', toggle: showDisease, setToggle: setShowDisease },
-    { key: 'diameter', label: 'Diameter', unit: 'cm', toggle: showDiameter, setToggle: setShowDiameter },
-    { key: 'height', label: 'Height', unit: 'm', toggle: showHeight, setToggle: setShowHeight },
-    { key: 'circumference', label: 'Circumference', unit: 'cm', toggle: showCircumference, setToggle: setShowCircumference },
-  ];
+  const hasValue = (value: string | number | undefined | null) => {
+    if (value === undefined || value === null) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  };
+
+  const availableFields = useMemo(
+    () => [
+      { key: 'notes' as ActiveField, label: 'Notes', value: tree.notes },
+      { key: 'wildlife' as ActiveField, label: 'Wildlife', value: tree.wildlife },
+      { key: 'disease' as ActiveField, label: 'Disease', value: tree.disease },
+      { key: 'diameter' as ActiveField, label: 'Diameter', value: tree.diameter, unit: 'cm' },
+      { key: 'height' as ActiveField, label: 'Height', value: tree.height, unit: 'm' },
+      { key: 'circumference' as ActiveField, label: 'Circumference', value: tree.circumference, unit: 'cm' },
+    ],
+    [tree]
+  );
+
+  const [activeField, setActiveField] = useState<ActiveField>('notes');
+
+  const activeData =
+    availableFields.find((field) => field.key === activeField) ??
+    availableFields[0];
+
+  const hasDisplayValue = hasValue(activeData?.value);
+
+  const displayValue =
+    activeData && hasDisplayValue
+      ? `${activeData.value}${activeData.unit ? ` ${activeData.unit}` : ''}`
+      : 'No information provided';
 
   return (
     <View style={styles.overlay}>
       <View style={styles.card}>
-        <AppText style={Theme.Typography.title}>Tree Details</AppText>
+        <ScrollView
+          contentContainerStyle={styles.cardContent}
+          showsVerticalScrollIndicator={true}
+        >
+          <AppText style={Theme.Typography.title}>Tree Details</AppText>
 
-        {/* Notes */}
-        <AppText style={Theme.Typography.subtitle}>Notes / Seen Observations:</AppText>
-        <AppText style={Theme.Typography.body}>{tree.notes || 'No notes provided'}</AppText>
-
-        {/* Optional Fields with Checkboxes */}
-        {optionalFields.map(field => (
-          tree[field.key] && (
-            <View key={field.key}>
+          <View style={styles.selectorRow}>
+            {availableFields.map((field) => (
               <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => field.setToggle(!field.toggle)}
+                key={field.key}
+                onPress={() => setActiveField(field.key)}
+                style={[
+                  styles.selectorButton,
+                  activeField === field.key && styles.selectorActive,
+                ]}
               >
-                <View style={[styles.checkbox, field.toggle && styles.checkboxActive]} />
-                <AppText>{`Show ${field.label}`}</AppText>
+                <AppText style={styles.selectorText}>{field.label}</AppText>
               </TouchableOpacity>
-              {field.toggle && (
+            ))}
+          </View>
+
+          <View style={styles.infoBox}>
+            <AppText style={Theme.Typography.subtitle}>
+              {activeData?.label ?? 'Details'}
+            </AppText>
+
+            <AppText style={Theme.Typography.body}>
+              {displayValue}
+            </AppText>
+          </View>
+
+          <AppText style={[Theme.Typography.title, { marginTop: 15 }]}>
+            Photos
+          </AppText>
+
+          <View style={styles.photoGrid}>
+            {(tree.photos ?? []).length === 0 ? (
+              <View style={styles.noPhotosBox}>
                 <AppText style={Theme.Typography.body}>
-                  {tree[field.key]}{field.unit ? ` ${field.unit}` : ''}
+                  No Photos Uploaded
                 </AppText>
-              )}
-            </View>
-          )
-        ))}
-
-        {/* Photos */}
-        <AppText style={[Theme.Typography.title, { marginTop: 15 }]}>Photos</AppText>
-        <View style={styles.photoGrid}>
-          {(tree.photos ?? []).length === 0 ? (
-            <AppText>No Photos Uploaded</AppText>
-          ) : (
-            (tree.photos ?? []).map((photo, index) => (
-              <View key={index} style={styles.photoBox}>
-                <Image source={{ uri: photo }} style={styles.image} />
               </View>
-            ))
-          )}
-        </View>
+            ) : (
+              (tree.photos ?? []).map((photo, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.photoBox,
+                    isMobile ? styles.photoBoxMobile : styles.photoBoxDesktop,
+                  ]}
+                >
+                  <Image source={{ uri: photo }} style={styles.image} />
+                </View>
+              ))
+            )}
+          </View>
 
-        {/* Close Button */}
-        <View style={styles.footer}>
-          <AppButton
-            title="Close"
-            variant="secondary"
-            onPress={onClose}
-            style={styles.button}
-          />
-        </View>
+          <View style={styles.footer}>
+            <AppButton
+              title="Close"
+              variant="secondary"
+              onPress={onClose}
+              style={styles.button}
+            />
+          </View>
+        </ScrollView>
       </View>
     </View>
   );
@@ -111,6 +159,53 @@ const styles = StyleSheet.create({
     borderRadius: Theme.Radius.medium,
   },
 
+  cardContent: {
+    paddingBottom: 10,
+    paddingRight: 6,
+  },
+
+  selectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginVertical: 12,
+  },
+
+  selectorButton: {
+    width: '31%',
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: Theme.Radius.small,
+    borderWidth: 1,
+    borderColor: Theme.Colours.gray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  selectorActive: {
+    backgroundColor: Theme.Colours.accent,
+    borderColor: Theme.Colours.accent,
+  },
+
+  selectorText: {
+    textAlign: 'center',
+    flexShrink: 1,
+    fontWeight: 'bold',
+  },
+
+  infoBox: {
+    minHeight: 100,
+    borderWidth: 3,
+    borderColor: Theme.Colours.gray,
+    borderRadius: Theme.Radius.small,
+    backgroundColor: Theme.Colours.white,
+    padding: 12,
+    marginBottom: 10,
+    justifyContent: 'center',
+  },
+
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -118,22 +213,41 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
+  noPhotosBox: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: Theme.Colours.gray,
+    borderRadius: Theme.Radius.small,
+    paddingVertical: 25,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  photoBox: {
+    aspectRatio: 1,
+    borderRadius: Theme.Radius.small,
+    borderWidth: 2,
+    borderColor: Theme.Colours.black,
+    marginBottom: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderStyle: 'solid',
+    overflow: 'hidden',
+  },
+
+  photoBoxMobile: {
+    width: '48%',
+  },
+
+  photoBoxDesktop: {
+    width: '23%',
+  },
+
   image: {
     width: '100%',
     height: '100%',
     borderRadius: Theme.Radius.small,
-  },
-
-  photoBox: {
-    width: '17%',
-    aspectRatio: 1,
-    borderRadius: Theme.Border.medium,
-    borderWidth: 3,
-    borderColor: Theme.Colours.black,
-    marginBottom: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderStyle: 'solid',
   },
 
   footer: {
@@ -143,25 +257,6 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    width: 100,
-  },
-
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 5,
-  },
-
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: Theme.Border.extraSmall,
-    borderColor: Theme.Colours.gray,
-    marginRight: 10,
-    borderRadius: Theme.Radius.small,
-  },
-
-  checkboxActive: {
-    backgroundColor: Theme.Colours.accent,
+    flex: 1,
   },
 });
