@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AppText } from './AppText';
 import { Theme } from '@/styles/theme';
 
@@ -9,7 +9,7 @@ interface AppButtonProps {
   title: string;
   onPress: () => void;
   variant?: Variant;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   textStyle?: any;
 }
 

@@ -146,12 +146,13 @@ function MapMobile({
   const WebView = require('react-native-webview').default;
   const webViewRef = useRef<any>(null);
 
-  // send tree updates to WebView
+  // send tree updates to WebView. Not the most efficient of methods but for the scale of this project and not having tens of thousands of trees and users, 
+  // it makes it so there is a single source of trees to update and send from especially since this mapview is not global and only to charlton kings
   useEffect(() => {
     if (!webViewRef.current) return;
 
     const treesToSend = plottedTrees.map((tree) => ({
-      ...tree, // spreads treeType, wildlife, disease
+      ...tree, // spreads tree details
       iconHtml: renderTreeIcon ? renderTreeIcon(tree) : '🌳',
     }));
 
@@ -162,98 +163,98 @@ function MapMobile({
       })
     );
   }, [plottedTrees, renderTreeIcon]);
-
+  
   const leafletHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport"
-content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-html, body, #map {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-</style>
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-</head>
-<body>
-<div id="map"></div>
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <meta name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+  html, body, #map {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  </style>
+  <link rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  </head>
+  <body>
+  <div id="map"></div>
 
-<script>
-function initMap() {
-  var southWest = L.latLng(${BOUNDS.southWest.lat}, ${BOUNDS.southWest.lng});
-  var northEast = L.latLng(${BOUNDS.northEast.lat}, ${BOUNDS.northEast.lng});
-  var bounds = L.latLngBounds(southWest, northEast);
+  <script>
+  function initMap() {
+    var southWest = L.latLng(${BOUNDS.southWest.lat}, ${BOUNDS.southWest.lng});
+    var northEast = L.latLng(${BOUNDS.northEast.lat}, ${BOUNDS.northEast.lng});
+    var bounds = L.latLngBounds(southWest, northEast);
 
-  var map = L.map('map', {
-    center: [${CENTER.lat}, ${CENTER.lng}],
-    zoom: ${MIN_ZOOM},
-    minZoom: ${MIN_ZOOM},
-    maxZoom: ${MAX_ZOOM},
-    maxBounds: bounds,
-    maxBoundsViscosity: 1.0,
-    zoomControl: false
-  });
+    var map = L.map('map', {
+      center: [${CENTER.lat}, ${CENTER.lng}],
+      zoom: ${MIN_ZOOM},
+      minZoom: ${MIN_ZOOM},
+      maxZoom: ${MAX_ZOOM},
+      maxBounds: bounds,
+      maxBoundsViscosity: 1.0,
+      zoomControl: false
+    });
 
-  L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { attribution: '© OpenStreetMap contributors', bounds: bounds }
-  ).addTo(map);
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { attribution: '© OpenStreetMap contributors', bounds: bounds }
+    ).addTo(map);
 
-  L.control.zoom({ position: 'topright' }).addTo(map);
+    L.control.zoom({ position: 'topright' }).addTo(map);
 
-  var treeLayer = L.layerGroup().addTo(map);
+    var treeLayer = L.layerGroup().addTo(map);
 
-  map.on('click', function(e) {
-    window.ReactNativeWebView.postMessage(JSON.stringify({
-      type: 'mapPress',
-      latitude: e.latlng.lat,
-      longitude: e.latlng.lng
-    }));
-  });
+    map.on('click', function(e) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'mapPress',
+        latitude: e.latlng.lat,
+        longitude: e.latlng.lng
+      }));
+    });
 
-  function handleMessage(event) {
-    const data = JSON.parse(event.data);
+    function handleMessage(event) {
+      const data = JSON.parse(event.data);
 
-    if (data.type === 'updateTrees' && data.plottedTrees) {
-      treeLayer.clearLayers();
+      if (data.type === 'updateTrees' && data.plottedTrees) {
+        treeLayer.clearLayers();
 
-      data.plottedTrees.forEach(function(tree) {
-        const html = tree.iconHtml || '🌳';
+        data.plottedTrees.forEach(function(tree) {
+          const html = tree.iconHtml || '🌳';
 
-        const icon = L.divIcon({html, className: '', iconSize: [50,50], iconAnchor: [25,25] });
-        const marker = L.marker([tree.latitude, tree.longitude], { icon }).addTo(treeLayer);
+          const icon = L.divIcon({html, className: '', iconSize: [50,50], iconAnchor: [25,25] });
+          const marker = L.marker([tree.latitude, tree.longitude], { icon }).addTo(treeLayer);
 
-        // adding click event
-        marker.on('click', function() {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'treeClick',
-          tree: tree
-          }));
+          // adding click event
+          marker.on('click', function() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'treeClick',
+            tree: tree
+            }));
+          });
         });
-      });
+      }
     }
+
+    document.addEventListener('message', handleMessage);
+    window.addEventListener('message', handleMessage);
   }
 
-  document.addEventListener('message', handleMessage);
-  window.addEventListener('message', handleMessage);
-}
+  window.onload = initMap;
+  </script>
 
-window.onload = initMap;
-</script>
+  <script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  onload="initMap()">
+  </script>
 
-<script
-src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-onload="initMap()">
-</script>
-
-</body>
-</html>
-`;
+  </body>
+  </html>
+  `;
 
   return (
     <WebView
