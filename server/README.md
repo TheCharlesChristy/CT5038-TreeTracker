@@ -24,6 +24,7 @@ The lock is enforced in software by `server/src/db/runtime-lock.js`, and verifie
 - Run `await db.init(config.db)`.
 - Start HTTP health endpoints (`/health`, `/db/health`).
 - In development (`START_EXPO=true` and non-production), spawn `npx expo start` in `EXPO_PROJECT_PATH`.
+- In local Docker development, unmatched HTTP routes are proxied to Expo so `http://localhost:4000/` behaves like the Expo dev entrypoint while `/health` and `/db/health` stay on the backend.
 - On `SIGINT`/`SIGTERM`, stop Expo child, stop HTTP server, then close DB pool.
 
 ## How To Add A DB Endpoint
@@ -66,17 +67,27 @@ Read-only database inspection helpers are available under the `debug.*` endpoint
 
 ## Docker Usage
 
-Build the server image:
+Build the production server image:
 
 ```bash
-docker build -t tree-tracker-server ./server
+docker build -t tree-tracker-server -f server/Dockerfile --target production .
 ```
 
-Run the server with MySQL via Compose:
+Run the local development stack with MySQL and the Android emulator via Compose:
 
 ```bash
-docker compose -f docker-compose.server.yml up --build server
+docker compose -f docker-compose.server.yml up --build server android-emulator
 ```
+
+The `server` service runs the Node backend and launches Expo from the mounted `TreeGuardiansExpo/` project. The `android-emulator` service installs the Android SDK, creates an emulator, exposes VNC on `localhost:5900`, and exposes noVNC on `http://localhost:6080/vnc.html`. Inside the emulator, both `localhost:4000` and `localhost:8081` are wired back to the server container through `adb reverse`.
+
+For the normal local development workflow, run:
+
+```bash
+./scripts/start_local_server.sh
+```
+
+That starts the full development stack in the foreground. The server container watches backend files, Expo reloads frontend changes, the Android container opens Expo inside the emulator automatically, and the script tears everything down when you press `Ctrl+C`. Runtime logs are mirrored into the repository `logs/` directory for each container.
 
 Run backend lock checks and tests inside containers (unit + integration):
 

@@ -193,6 +193,93 @@ function createAuthError(name, message) {
   return error;
 }
 
+function sendProxyError(res, error) {
+  if (res.headersSent) {
+    res.end();
+    return;
+  }
+
+  sendJson(res, 502, {
+    error: error?.message || "Expo dev server is unavailable",
+    code: "BadGatewayError"
+  });
+}
+
+function proxyHttpRequest(req, res, target) {
+  const proxyReq = http.request(
+    {
+      host: target.host,
+      port: target.port,
+      method: req.method,
+      path: req.url,
+      headers: {
+        ...req.headers,
+        host: `${target.host}:${target.port}`
+      }
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+      proxyRes.pipe(res);
+    }
+  );
+
+  proxyReq.on("error", (error) => {
+    sendProxyError(res, error);
+  });
+
+  req.pipe(proxyReq);
+}
+
+function proxyUpgradeRequest(req, socket, head, target) {
+  const proxyReq = http.request({
+    host: target.host,
+    port: target.port,
+    method: req.method,
+    path: req.url,
+    headers: {
+      ...req.headers,
+      connection: req.headers.connection || "Upgrade",
+      host: `${target.host}:${target.port}`
+    }
+  });
+
+  proxyReq.on("upgrade", (proxyRes, proxySocket, proxyHead) => {
+    const statusMessage = proxyRes.statusMessage || "Switching Protocols";
+    socket.write(`HTTP/1.1 ${proxyRes.statusCode || 101} ${statusMessage}\r\n`);
+
+    for (const [key, value] of Object.entries(proxyRes.headers)) {
+      if (value === undefined) {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          socket.write(`${key}: ${item}\r\n`);
+        }
+        continue;
+      }
+      socket.write(`${key}: ${value}\r\n`);
+    }
+
+    socket.write("\r\n");
+
+    if (head?.length) {
+      proxySocket.write(head);
+    }
+    if (proxyHead?.length) {
+      socket.write(proxyHead);
+    }
+
+    proxySocket.pipe(socket);
+    socket.pipe(proxySocket);
+  });
+
+  proxyReq.on("error", () => {
+    socket.destroy();
+  });
+
+  proxyReq.end();
+}
+
 function authorizeTestBench(req, token) {
   if (!token) {
     throw createAuthError("InternalError", "Testbench is enabled but no token is configured");
@@ -215,7 +302,14 @@ function authorizeTestBench(req, token) {
   }
 }
 
-function createHttpServer({ port, db, dbTestBenchEnabled = false, dbTestBenchToken = null }) {
+function createHttpServer({
+  port,
+  db,
+  dbTestBenchEnabled = false,
+  dbTestBenchToken = null,
+  expoProxyEnabled = false,
+  expoProxyTarget = null
+}) {
   if (dbTestBenchEnabled && !dbTestBenchToken) {
     throw new Error(
       "DB_TEST_BENCH_ENABLED is set but no DB_TEST_BENCH_TOKEN was provided. " +
@@ -298,6 +392,11 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false, dbTestBenchTok
         return;
       }
 
+      if (expoProxyEnabled && expoProxyTarget) {
+        proxyHttpRequest(req, res, expoProxyTarget);
+        return;
+      }
+
       sendJson(res, 404, { error: "Not found" });
     } catch (error) {
       const status = toErrorStatus(error);
@@ -307,6 +406,12 @@ function createHttpServer({ port, db, dbTestBenchEnabled = false, dbTestBenchTok
       });
     }
   });
+
+  if (expoProxyEnabled && expoProxyTarget) {
+    server.on("upgrade", (req, socket, head) => {
+      proxyUpgradeRequest(req, socket, head, expoProxyTarget);
+    });
+  }
 
   return {
     start() {

@@ -7,3 +7,5 @@
 !.devcontainer
 node_modules
 pre-commit.log
+logs/*.log
+!logs/.gitkeep

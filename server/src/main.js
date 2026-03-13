@@ -17,9 +17,13 @@ async function startExpo(config) {
   }
 
   const expoCommand = process.platform === "win32" ? "npx.cmd" : "npx";
-  const child = spawn(expoCommand, ["expo", "start"], {
+  const child = spawn(expoCommand, ["expo", "start", "--port", String(config.expoDevServerPort)], {
     cwd: expoPath,
-    stdio: "inherit"
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: process.env.EXPO_DEVTOOLS_LISTEN_ADDRESS || "0.0.0.0"
+    }
   });
 
   child.on("exit", (code, signal) => {
@@ -40,7 +44,11 @@ async function bootstrap() {
     port: config.port,
     db,
     dbTestBenchEnabled: config.dbTestBenchEnabled,
-    dbTestBenchToken: config.dbTestBenchToken
+    dbTestBenchToken: config.dbTestBenchToken,
+    expoProxyEnabled: config.expoProxyEnabled,
+    expoProxyTarget: config.startExpo
+      ? { host: "127.0.0.1", port: config.expoDevServerPort }
+      : null
   });
   await http.start();
   console.log(`[server] HTTP listening on :${config.port}`);

@@ -180,8 +180,11 @@ The repository now includes a Node backend in `server/` that follows the canonic
 
 Use `docker-compose.server.yml` to run the Node backend with MySQL and to execute backend tests inside the server image.
 
-- Run server: `docker compose -f docker-compose.server.yml up --build server`
+- Run the local development stack: `./scripts/start_local_server.sh`
+- Run the same stack directly with Compose: `docker compose -f docker-compose.server.yml up --build server android-emulator`
 - Run lock + unit + integration tests in container: `docker compose -f docker-compose.server.yml --profile test up --build --abort-on-container-exit --exit-code-from server-test server-test`
+
+The local development flow is intentionally one command. `./scripts/start_local_server.sh` starts MySQL, the Node server, Expo, and the Android emulator container together. The server container watches `server/src/**` and restarts automatically, Expo watches `TreeGuardiansExpo/**`, `http://localhost:4000/` proxies to the Expo dev server, and the Android emulator is available through noVNC at `http://localhost:6080/vnc.html`. Stop the whole stack with `Ctrl+C`. Runtime logs are written to `logs/mysql.log`, `logs/server.log`, `logs/android-emulator.log`, and `logs/server-test.log`.
 
 Convenience scripts are available in `scripts/`:
 

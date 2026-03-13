@@ -5,6 +5,7 @@
   "type": "commonjs",
   "main": "src/main.js",
   "scripts": {
+    "dev": "node --watch src/main.js",
     "start": "node src/main.js",
     "lint": "npm run db-lock:check",
     "db-lock:check": "node scripts/enforce-db-lock.js",

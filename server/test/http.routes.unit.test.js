@@ -24,8 +24,12 @@ function sendRequest({ port, method = "GET", path = "/", headers = {}, body }) {
       res.on("data", (chunk) => chunks.push(chunk));
       res.on("end", () => {
         const raw = Buffer.concat(chunks).toString("utf-8");
-        const parsed = raw ? JSON.parse(raw) : null;
-        resolve({ status: res.statusCode, headers: res.headers, body: parsed });
+        const isJson = String(res.headers["content-type"] || "").startsWith("application/json");
+        resolve({
+          status: res.statusCode,
+          headers: res.headers,
+          body: isJson && raw ? JSON.parse(raw) : raw || null
+        });
       });
     });
     req.setTimeout(5000, () => reject(new Error("request timeout")));
@@ -104,6 +108,38 @@ test("invalid path and endpoint responses map correctly", async () => {
     assert.equal(missing.body.error, "Not found");
   } finally {
     await httpServer.stop();
+  }
+});
+
+test("unmatched routes proxy to the Expo dev server when enabled", async () => {
+  const expoServer = http.createServer((req, res) => {
+    res.writeHead(200, { "content-type": "text/plain" });
+    res.end(`expo:${req.url}`);
+  });
+  await new Promise((resolve) => expoServer.listen(0, "127.0.0.1", resolve));
+  const expoPort = expoServer.address().port;
+
+  const httpServer = createHttpServer({
+    port: 0,
+    db: createDbStub(),
+    expoProxyEnabled: true,
+    expoProxyTarget: { host: "127.0.0.1", port: expoPort }
+  });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+
+  try {
+    const proxied = await sendRequest({ port, path: "/" });
+    assert.equal(proxied.status, 200);
+    assert.equal(proxied.body, "expo:/");
+
+    const health = await sendRequest({ port, path: "/health" });
+    assert.equal(health.status, 200);
+    assert.equal(health.body.status, "ok");
+  } finally {
+    await httpServer.stop();
+    await new Promise((resolve) => expoServer.close(resolve));
   }
 });
 
