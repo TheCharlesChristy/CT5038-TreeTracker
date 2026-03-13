@@ -21,7 +21,10 @@ const BOUNDS = {
   northEast: { lat: 51.905, lng: -2.020 },
 };
 
-const CENTER = { lat: 51.886, lng: -2.047 };
+const CENTER = {
+  lat: (BOUNDS.southWest.lat + BOUNDS.northEast.lat) / 2,
+  lng: (BOUNDS.southWest.lng + BOUNDS.northEast.lng) / 2,
+};
 const MIN_ZOOM = 14; // Can't zoom out past this — keeps user inside the area
 const MAX_ZOOM = 18;
 
