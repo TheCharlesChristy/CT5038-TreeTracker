@@ -1,6 +1,6 @@
 # Tree Tracker Node Backend
 
-This server is the backend runtime that initializes the database middleware and optionally starts Expo for local development.
+This server is the backend runtime that loads `server/.env`, initializes the database middleware, and optionally starts Expo for local development.
 
 The canonical server requirements are in `ServerRequirements.md` at the repository root.
 
@@ -20,7 +20,8 @@ The lock is enforced in software by `server/src/db/runtime-lock.js`, and verifie
 
 ## Boot Flow
 
-- Load env configuration via `server/src/config.js`.
+- Load `server/.env` via `server/bootstrap.js`, without overwriting already-set process env values.
+- Parse env configuration via `server/src/config.js`.
 - Run `await db.init(config.db)`.
 - Start HTTP health endpoints (`/health`, `/db/health`).
 - In development (`START_EXPO=true` and non-production), spawn `npx expo start` in `EXPO_PROJECT_PATH`.
@@ -36,28 +37,16 @@ Use Plesk to run the Node server from `server/`, and let that server publish the
 
 Use this if Plesk can just start a Node app and you do not want a separate deploy script.
 
-1. In Plesk, configure the Node app to run from `server/` with startup file `app.js`.
+1. Copy `server/.env.example` to `server/.env` on the server and set the production values there.
 
-2. Set these environment variables in Plesk:
-
-```bash
-NODE_ENV=production
-START_EXPO=false
-EXPO_STATIC_ENABLED=true
-EXPO_WEB_DIST_PATH=/app/TreeGuardiansExpo/dist
-EXPO_AUTO_PREPARE=true
-PORT=<plesk-node-port>
-DB_HOST=...
-DB_PORT=3306
-DB_USER=...
-DB_PASSWORD=...
-DB_DATABASE=...
-```
+2. In Plesk, configure the Node app to run from `server/` with startup file `bootstrap.js` or `app.js`.
 
 3. Press deploy in Plesk. On startup, the backend will:
 
 - install Expo dependencies in `TreeGuardiansExpo/` if `node_modules/` is missing
 - run `npm run export:web`
+- create the configured database if it is missing and `DB_ALLOW_CREATE_DATABASE=true`
+- apply schema migrations
 
 Then the backend will serve the generated `TreeGuardiansExpo/dist/` build from `/`.
 
@@ -65,28 +54,14 @@ Then the backend will serve the generated `TreeGuardiansExpo/dist/` build from `
 
 Use this if you want Plesk to prepare the build before the Node app starts.
 
-1. In Plesk, configure the Node app to run from `server/` with startup file `app.js`.
+1. Copy `server/.env.example` to `server/.env` on the server and set the production values there.
 
-2. Set the deployment command to:
+2. In Plesk, configure the Node app to run from `server/` with startup file `bootstrap.js` or `app.js`.
+
+3. Set the deployment command to:
 
 ```bash
 bash ./scripts/plesk-deploy.sh
-```
-
-3. Set these environment variables in Plesk:
-
-```bash
-NODE_ENV=production
-START_EXPO=false
-EXPO_STATIC_ENABLED=true
-EXPO_WEB_DIST_PATH=/app/TreeGuardiansExpo/dist
-EXPO_AUTO_PREPARE=false
-PORT=<plesk-node-port>
-DB_HOST=...
-DB_PORT=3306
-DB_USER=...
-DB_PASSWORD=...
-DB_DATABASE=...
 ```
 
 4. Press deploy in Plesk. The deploy script will:
@@ -95,7 +70,7 @@ DB_DATABASE=...
 - install backend dependencies in `server/`
 - run `npm run export:web`
 
-Then the backend startup will serve the generated `TreeGuardiansExpo/dist/` build from `/`.
+Then the backend startup will load `server/.env`, create the configured database if required, apply schema migrations, and serve the generated `TreeGuardiansExpo/dist/` build from `/`.
 
 With that setup:
 
@@ -104,6 +79,13 @@ With that setup:
 - Backend endpoints like `/health` and `/db/health` still work from the same Node process.
 
 If you want the backend to rebuild the Expo web bundle again on every startup instead of relying on the deploy script, set `EXPO_AUTO_PREPARE=true`.
+
+## `.env` Usage
+
+- Commit `server/.env.example`; do not commit `server/.env`.
+- Keep a different untracked `server/.env` file in each environment, including Plesk and local Docker.
+- Existing process env values take precedence over `server/.env`, so Plesk or Docker can still override individual settings when needed.
+- Local Docker commands in `scripts/` now expect `server/.env` to exist before they start.
 
 ## How To Add A DB Endpoint
 
@@ -158,6 +140,8 @@ docker compose -f docker-compose.server.yml up --build server android-emulator
 ```
 
 The `server` service runs the Node backend and launches Expo from the mounted `TreeGuardiansExpo/` project. The `android-emulator` service installs the Android SDK, creates an emulator, exposes VNC on `localhost:5900`, and exposes noVNC on `http://localhost:6080/vnc.html`. Inside the emulator, both `localhost:4000` and `localhost:8081` are wired back to the server container through `adb reverse`.
+
+Before running Docker locally, copy `server/.env.example` to `server/.env` and keep Docker-specific values there.
 
 For the normal local development workflow, run:
 

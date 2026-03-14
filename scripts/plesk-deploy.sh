@@ -4,6 +4,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$REPO_ROOT/server"
 EXPO_DIR="$REPO_ROOT/TreeGuardiansExpo"
+ENV_FILE="$SERVER_DIR/.env"
+ENV_TEMPLATE="$SERVER_DIR/.env.example"
 
 log() {
     echo "[plesk-deploy] $*"
@@ -64,6 +66,11 @@ build_expo_web() {
 
 main() {
     log "Starting deploy preparation"
+    if [ ! -f "$ENV_FILE" ]; then
+        echo "[plesk-deploy] Missing $ENV_FILE" >&2
+        echo "[plesk-deploy] Copy $ENV_TEMPLATE to $ENV_FILE and set the deployment values first." >&2
+        exit 1
+    fi
     install_dependencies "$SERVER_DIR" "server"
     install_dependencies "$EXPO_DIR" "Expo"
     run_optional_backend_checks

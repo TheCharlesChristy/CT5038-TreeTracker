@@ -13,6 +13,8 @@ WORKDIR /workspace/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci
 
+COPY server/bootstrap.js ./bootstrap.js
+COPY server/app.js ./app.js
 COPY server/src ./src
 COPY server/scripts ./scripts
 COPY server/test ./test

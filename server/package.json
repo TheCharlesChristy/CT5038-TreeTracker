@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
-  "main": "app.js",
+  "main": "bootstrap.js",
   "scripts": {
-    "dev": "node --watch src/main.js",
-    "start": "node app.js",
+    "dev": "node --watch bootstrap.js",
+    "start": "node bootstrap.js",
     "lint": "npm run db-lock:check",
     "db-lock:check": "node scripts/enforce-db-lock.js",
     "test": "node --test",

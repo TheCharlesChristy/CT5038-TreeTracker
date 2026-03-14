@@ -3,9 +3,17 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+ENV_FILE="$REPO_ROOT/server/.env"
+ENV_TEMPLATE="$REPO_ROOT/server/.env.example"
 
 if ! command -v docker >/dev/null 2>&1; then
     echo "Docker is required for scripts/start_local_server.sh"
+    exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Missing $ENV_FILE"
+    echo "Copy $ENV_TEMPLATE to $ENV_FILE and adjust the values for your environment."
     exit 1
 fi
 

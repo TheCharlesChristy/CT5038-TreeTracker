@@ -85,7 +85,7 @@ async function startExpo(config) {
   return child;
 }
 
-async function bootstrap() {
+async function bootstrap({ exitOnShutdown = false } = {}) {
   const config = loadConfig();
   await prepareExpoWeb(config);
   await db.init(config.db);
@@ -108,6 +108,7 @@ async function bootstrap() {
   const expoChild = await startExpo(config);
 
   let shuttingDown = false;
+  let signalHandlersInstalled = false;
   async function shutdown(signal) {
     if (shuttingDown) return;
     shuttingDown = true;
@@ -129,16 +130,39 @@ async function bootstrap() {
       console.error("[server] failed closing DB", error);
     }
 
-    process.exit(process.exitCode ?? 0);
+    if (signalHandlersInstalled) {
+      process.off("SIGINT", handleSigint);
+      process.off("SIGTERM", handleSigterm);
+      signalHandlersInstalled = false;
+    }
+
+    if (exitOnShutdown) {
+      process.exit(process.exitCode ?? 0);
+    }
   }
 
-  process.on("SIGINT", () => shutdown("SIGINT"));
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  const handleSigint = () => shutdown("SIGINT");
+  const handleSigterm = () => shutdown("SIGTERM");
+  process.on("SIGINT", handleSigint);
+  process.on("SIGTERM", handleSigterm);
+  signalHandlersInstalled = true;
 
   console.log("[server] ready");
+
+  return {
+    config,
+    http,
+    shutdown
+  };
 }
 
-bootstrap().catch((error) => {
-  console.error("[server] failed to boot", error);
-  process.exit(1);
-});
+async function runCli() {
+  await bootstrap({ exitOnShutdown: true });
+}
+
+module.exports = {
+  bootstrap,
+  prepareExpoWeb,
+  startExpo,
+  runCli
+};

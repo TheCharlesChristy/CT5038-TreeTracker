@@ -302,6 +302,7 @@ function proxyHttpRequest(req, res, target) {
       }
     },
     (proxyRes) => {
+      applyCorsHeaders(res);
       res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
       proxyRes.pipe(res);
     }
