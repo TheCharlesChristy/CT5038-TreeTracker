@@ -1,6 +1,26 @@
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 
 const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+const MIME_TYPES = {
+  ".css": "text/css; charset=utf-8",
+  ".gif": "image/gif",
+  ".html": "text/html; charset=utf-8",
+  ".ico": "image/x-icon",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".webp": "image/webp",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2"
+};
 
 function applyCorsHeaders(res) {
   res.setHeader("access-control-allow-origin", "*");
@@ -168,6 +188,70 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function sendStaticFile(req, res, filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[extension] || "application/octet-stream";
+  const stat = fs.statSync(filePath);
+
+  res.writeHead(200, {
+    "content-type": contentType,
+    "content-length": stat.size
+  });
+
+  if (req.method === "HEAD") {
+    res.end();
+    return;
+  }
+
+  fs.createReadStream(filePath)
+    .on("error", () => {
+      if (!res.headersSent) {
+        res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
+      }
+      res.end("Failed to read static file");
+    })
+    .pipe(res);
+}
+
+function resolveStaticRoute(staticRoot, pathname) {
+  const decodedPath = decodeURIComponent(pathname);
+  const trimmedPath = decodedPath.replace(/^\/+/, "");
+  const candidatePath = path.resolve(staticRoot, `.${path.sep}${trimmedPath}`);
+
+  if (candidatePath !== staticRoot && !candidatePath.startsWith(`${staticRoot}${path.sep}`)) {
+    return null;
+  }
+
+  if (fs.existsSync(candidatePath)) {
+    const stat = fs.statSync(candidatePath);
+    if (stat.isFile()) {
+      return candidatePath;
+    }
+    if (stat.isDirectory()) {
+      const indexPath = path.join(candidatePath, "index.html");
+      if (fs.existsSync(indexPath) && fs.statSync(indexPath).isFile()) {
+        return indexPath;
+      }
+    }
+  }
+
+  const htmlCandidate = path.resolve(staticRoot, `.${path.sep}${trimmedPath}.html`);
+  if (
+    htmlCandidate.startsWith(`${staticRoot}${path.sep}`) &&
+    fs.existsSync(htmlCandidate) &&
+    fs.statSync(htmlCandidate).isFile()
+  ) {
+    return htmlCandidate;
+  }
+
+  const spaFallback = path.join(staticRoot, "index.html");
+  if (fs.existsSync(spaFallback) && fs.statSync(spaFallback).isFile()) {
+    return spaFallback;
+  }
+
+  return null;
+}
+
 function toErrorStatus(error) {
   const code = error?.name || error?.code;
   if (code === "UnsupportedMediaTypeError") return 415;
@@ -308,6 +392,8 @@ function createHttpServer({
   dbTestBenchEnabled = false,
   dbTestBenchToken = null,
   expoProxyEnabled = false,
+  expoStaticEnabled = false,
+  expoWebDistPath = null,
   expoProxyTarget = null
 }) {
   if (dbTestBenchEnabled && !dbTestBenchToken) {
@@ -319,6 +405,7 @@ function createHttpServer({
 
   const endpointMap = listDbEndpoints(db);
   const flatEndpoints = flattenEndpointMap(endpointMap);
+  const staticRoot = expoStaticEnabled && expoWebDistPath ? path.resolve(expoWebDistPath) : null;
 
   const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
@@ -395,6 +482,14 @@ function createHttpServer({
       if (expoProxyEnabled && expoProxyTarget) {
         proxyHttpRequest(req, res, expoProxyTarget);
         return;
+      }
+
+      if (staticRoot && (req.method === "GET" || req.method === "HEAD")) {
+        const staticFilePath = resolveStaticRoute(staticRoot, url.pathname);
+        if (staticFilePath) {
+          sendStaticFile(req, res, staticFilePath);
+          return;
+        }
       }
 
       sendJson(res, 404, { error: "Not found" });

@@ -27,6 +27,7 @@ function required(name) {
 function loadConfig() {
   const root = path.resolve(__dirname, "..", "..");
   const startExpo = parseBool("START_EXPO", process.env.NODE_ENV !== "production");
+  const expoProjectPath = process.env.EXPO_PROJECT_PATH || path.join(root, "TreeGuardiansExpo");
   return {
     nodeEnv: process.env.NODE_ENV || "development",
     port: parseNumber("PORT", 4000),
@@ -42,10 +43,13 @@ function loadConfig() {
       schemaPath: process.env.DB_SCHEMA_PATH || path.join(__dirname, "db", "schema.sql")
     },
     startExpo,
-    expoProjectPath: process.env.EXPO_PROJECT_PATH || path.join(root, "TreeGuardiansExpo"),
+    expoProjectPath,
     expoDevServerPort: parseNumber("EXPO_DEV_SERVER_PORT", 8081),
     expoFatalOnExit: parseBool("EXPO_FATAL_ON_EXIT", false),
     expoProxyEnabled: parseBool("EXPO_PROXY_ENABLED", startExpo),
+    expoStaticEnabled: parseBool("EXPO_STATIC_ENABLED", !startExpo),
+    expoWebDistPath: process.env.EXPO_WEB_DIST_PATH || path.join(expoProjectPath, "dist"),
+    expoAutoPrepare: parseBool("EXPO_AUTO_PREPARE", !startExpo),
     dbTestBenchEnabled: process.env.NODE_ENV === "production"
       ? false
       : parseBool("DB_TEST_BENCH_ENABLED", false),

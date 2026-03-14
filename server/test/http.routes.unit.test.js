@@ -2,6 +2,9 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");
 const net = require("node:net");
+const os = require("node:os");
+const fs = require("node:fs");
+const path = require("node:path");
 const { createHttpServer } = require("../src/http");
 
 function createDbStub(health = { ready: true }) {
@@ -203,5 +206,39 @@ test("testbench auth and payload contract enforce status mapping", async () => {
     assert.equal(ok.body.endpoint, "trees.list");
   } finally {
     await httpServer.stop();
+  }
+});
+
+test("unmatched GET routes serve the exported Expo web build when enabled", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "expo-static-"));
+  fs.writeFileSync(path.join(tempRoot, "index.html"), "<!doctype html><html><body>expo web</body></html>");
+  fs.mkdirSync(path.join(tempRoot, "_expo"));
+  fs.writeFileSync(path.join(tempRoot, "_expo", "static.js"), "console.log('ok');");
+
+  const httpServer = createHttpServer({
+    port: 0,
+    db: createDbStub(),
+    expoStaticEnabled: true,
+    expoWebDistPath: tempRoot
+  });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+
+  try {
+    const root = await sendRequest({ port, path: "/" });
+    assert.equal(root.status, 200);
+    assert.match(root.body, /expo web/);
+
+    const asset = await sendRequest({ port, path: "/_expo/static.js" });
+    assert.equal(asset.status, 200);
+    assert.equal(asset.body, "console.log('ok');");
+
+    const nested = await sendRequest({ port, path: "/mainPage" });
+    assert.equal(nested.status, 200);
+    assert.match(nested.body, /expo web/);
+  } finally {
+    await httpServer.stop();
+    fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 });

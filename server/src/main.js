@@ -5,6 +5,55 @@ const { loadConfig } = require("./config");
 const db = require("./db");
 const { createHttpServer } = require("./http");
 
+function runCommand(command, args, options) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { ...options, stdio: "inherit" });
+
+    child.on("error", reject);
+    child.on("exit", (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(
+        new Error(
+          `${command} ${args.join(" ")} failed with code=${code} signal=${signal || "none"}`
+        )
+      );
+    });
+  });
+}
+
+async function prepareExpoWeb(config) {
+  if (!config.expoStaticEnabled || !config.expoAutoPrepare) {
+    return;
+  }
+
+  const expoPath = path.resolve(config.expoProjectPath);
+  if (!fs.existsSync(expoPath)) {
+    throw new Error(`EXPO_PROJECT_PATH does not exist (${expoPath})`);
+  }
+
+  const packageJsonPath = path.join(expoPath, "package.json");
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(`Expo project is missing package.json (${packageJsonPath})`);
+  }
+
+  const nodeModulesPath = path.join(expoPath, "node_modules");
+  const hasNodeModules = fs.existsSync(nodeModulesPath);
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+
+  if (!hasNodeModules) {
+    const installArgs = fs.existsSync(path.join(expoPath, "package-lock.json")) ? ["ci"] : ["install"];
+    console.log(`[server] installing Expo web dependencies in ${expoPath}`);
+    await runCommand(npmCommand, installArgs, { cwd: expoPath, env: process.env });
+  }
+
+  console.log(`[server] exporting Expo web bundle to ${path.resolve(config.expoWebDistPath)}`);
+  await runCommand(npmCommand, ["run", "export:web"], { cwd: expoPath, env: process.env });
+}
+
 async function startExpo(config) {
   if (!config.startExpo || config.nodeEnv === "production") {
     return null;
@@ -38,6 +87,7 @@ async function startExpo(config) {
 
 async function bootstrap() {
   const config = loadConfig();
+  await prepareExpoWeb(config);
   await db.init(config.db);
 
   const http = createHttpServer({
@@ -46,6 +96,8 @@ async function bootstrap() {
     dbTestBenchEnabled: config.dbTestBenchEnabled,
     dbTestBenchToken: config.dbTestBenchToken,
     expoProxyEnabled: config.expoProxyEnabled,
+    expoStaticEnabled: config.expoStaticEnabled,
+    expoWebDistPath: config.expoWebDistPath,
     expoProxyTarget: config.startExpo
       ? { host: "127.0.0.1", port: config.expoDevServerPort }
       : null

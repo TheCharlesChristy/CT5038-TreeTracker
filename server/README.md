@@ -25,7 +25,52 @@ The lock is enforced in software by `server/src/db/runtime-lock.js`, and verifie
 - Start HTTP health endpoints (`/health`, `/db/health`).
 - In development (`START_EXPO=true` and non-production), spawn `npx expo start` in `EXPO_PROJECT_PATH`.
 - In local Docker development, unmatched HTTP routes are proxied to Expo so `http://localhost:4000/` behaves like the Expo dev entrypoint while `/health` and `/db/health` stay on the backend.
+- In production or Plesk (`START_EXPO=false`), unmatched `GET`/`HEAD` routes can serve the exported Expo web build from `EXPO_WEB_DIST_PATH` so `https://your-site/` opens the Expo app instead of returning backend `404`.
 - On `SIGINT`/`SIGTERM`, stop Expo child, stop HTTP server, then close DB pool.
+
+## Plesk Deployment For Expo Web
+
+Use Plesk to run the Node server from `server/`, and let that server publish the Expo web app at the site root.
+
+1. In Plesk, configure the Node app to run from `server/` with startup file `src/main.js`.
+
+2. Set the deployment command to:
+
+```bash
+bash ./scripts/plesk-deploy.sh
+```
+
+3. Set these environment variables in Plesk:
+
+```bash
+NODE_ENV=production
+START_EXPO=false
+EXPO_STATIC_ENABLED=true
+EXPO_WEB_DIST_PATH=/app/TreeGuardiansExpo/dist
+EXPO_AUTO_PREPARE=false
+PORT=<plesk-node-port>
+DB_HOST=...
+DB_PORT=3306
+DB_USER=...
+DB_PASSWORD=...
+DB_DATABASE=...
+```
+
+4. Press deploy in Plesk. The deploy script will:
+
+- install Expo dependencies in `TreeGuardiansExpo/` if `node_modules/` is missing
+- install backend dependencies in `server/`
+- run `npm run export:web`
+
+Then the backend startup will serve the generated `TreeGuardiansExpo/dist/` build from `/`.
+
+With that setup:
+
+- `/` serves the Expo web app.
+- Expo assets under `/_expo/*` are served directly.
+- Backend endpoints like `/health` and `/db/health` still work from the same Node process.
+
+If you want the backend to rebuild the Expo web bundle again on every startup instead of relying on the deploy script, set `EXPO_AUTO_PREPARE=true`.
 
 ## How To Add A DB Endpoint
 
