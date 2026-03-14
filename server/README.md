@@ -32,7 +32,40 @@ The lock is enforced in software by `server/src/db/runtime-lock.js`, and verifie
 
 Use Plesk to run the Node server from `server/`, and let that server publish the Expo web app at the site root.
 
-1. In Plesk, configure the Node app to run from `server/` with startup file `src/main.js`.
+### Option 1: Plesk Startup Only
+
+Use this if Plesk can just start a Node app and you do not want a separate deploy script.
+
+1. In Plesk, configure the Node app to run from `server/` with startup file `app.js`.
+
+2. Set these environment variables in Plesk:
+
+```bash
+NODE_ENV=production
+START_EXPO=false
+EXPO_STATIC_ENABLED=true
+EXPO_WEB_DIST_PATH=/app/TreeGuardiansExpo/dist
+EXPO_AUTO_PREPARE=true
+PORT=<plesk-node-port>
+DB_HOST=...
+DB_PORT=3306
+DB_USER=...
+DB_PASSWORD=...
+DB_DATABASE=...
+```
+
+3. Press deploy in Plesk. On startup, the backend will:
+
+- install Expo dependencies in `TreeGuardiansExpo/` if `node_modules/` is missing
+- run `npm run export:web`
+
+Then the backend will serve the generated `TreeGuardiansExpo/dist/` build from `/`.
+
+### Option 2: Plesk Deploy Script
+
+Use this if you want Plesk to prepare the build before the Node app starts.
+
+1. In Plesk, configure the Node app to run from `server/` with startup file `app.js`.
 
 2. Set the deployment command to:
 
@@ -58,7 +91,7 @@ DB_DATABASE=...
 
 4. Press deploy in Plesk. The deploy script will:
 
-- install Expo dependencies in `TreeGuardiansExpo/` if `node_modules/` is missing
+- install Expo dependencies in `TreeGuardiansExpo/`
 - install backend dependencies in `server/`
 - run `npm run export:web`
 
