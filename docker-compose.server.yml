@@ -1,0 +1,108 @@
+services:
+  mysql:
+    image: mysql:8.0
+    env_file:
+      - ./server/.env
+    volumes:
+      - ./logs:/workspace/logs
+      - ./scripts/mysql-entrypoint.sh:/workspace/scripts/mysql-entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/workspace/scripts/mysql-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p\"$${MYSQL_ROOT_PASSWORD}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "3307:3306"
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: development
+    env_file:
+      - ./server/.env
+    environment:
+      DB_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./server:/workspace/server
+      - ./TreeGuardiansExpo:/workspace/TreeGuardiansExpo
+      - ./logs:/workspace/logs
+      - server_node_modules:/workspace/server/node_modules
+      - expo_node_modules:/workspace/TreeGuardiansExpo/node_modules
+      - expo_state:/workspace/TreeGuardiansExpo/.expo
+    ports:
+      - "4000:4000"
+      - "8081:8081"
+      - "19000:19000"
+      - "19001:19001"
+      - "19002:19002"
+      - "19006:19006"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    init: true
+    command: ["/usr/local/bin/server-dev-entrypoint.sh"]
+
+  android-emulator:
+    build:
+      context: ./TreeGuardiansExpo
+      dockerfile: Dockerfile.android
+    environment:
+      BACKEND_PROXY_TARGET: server:4000
+      BACKEND_PROXY_PORT: 4000
+      EXPO_PROXY_TARGET: server:8081
+      EXPO_PROXY_PORT: 8081
+      ANDROID_EMULATOR_USE_SYSTEM_LIBS: "1"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      QT_X11_NO_MITSHM: "1"
+    depends_on:
+      server:
+        condition: service_started
+    devices:
+      - /dev/kvm:/dev/kvm
+    device_cgroup_rules:
+      - "c 10:232 rwm"
+    shm_size: 2gb
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./logs:/workspace/logs
+    ports:
+      - "5554:5554"
+      - "5555:5555"
+      - "5900:5900"
+      - "6080:6080"
+    init: true
+
+  server-test:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: production
+    env_file:
+      - ./server/.env
+    environment:
+      NODE_ENV: test
+      START_EXPO: "false"
+      RUN_DB_TESTS: "true"
+      DB_HOST: mysql
+      DB_DATABASE: treetracker_test
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./logs:/workspace/logs
+    command: ["/bin/sh", "-lc", "npm run check > /workspace/logs/server-test.log 2>&1"]
+    profiles: ["test"]
+
+volumes:
+  server_node_modules:
+  expo_node_modules:
+  expo_state:

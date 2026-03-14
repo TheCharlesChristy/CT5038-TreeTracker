@@ -1,0 +1,105 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  lint-server:
+    name: Node Backend Lock/Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./server
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run DB lock lint
+        run: npm run lint
+
+      - name: Run backend tests
+        run: npm test
+
+  # -----------------------------
+  # JavaScript / React Native / Expo
+  # -----------------------------
+  lint-js:
+    name: JS / React Native / Expo Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./TreeGuardiansExpo
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: TreeGuardiansExpo/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Expo doctor (optional)
+        run: npx expo-doctor || true
+
+  # -----------------------------
+  # SQL Lint
+  # -----------------------------
+  lint-sql:
+    name: SQL Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install SQLFluff
+        run: pip install sqlfluff==3.4.0
+
+      - name: Run SQLFluff
+        run: sqlfluff lint . --dialect mysql
+
+  # -----------------------------
+  # PHP Lint
+  # -----------------------------
+  lint-php:
+    name: PHP Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: PHP syntax check
+        run: |
+          if [ -n "$(find . -name '*.php' -print -quit)" ]; then
+            find . -name "*.php" -print0 | xargs -0 -n1 php -l
+          else
+            echo "No PHP files found."
+          fi

@@ -153,3 +153,40 @@ users/42
 ```
 
 Using path based lookups for API endpoints forces developers to follow best practices in both API calling/handling and database design.
+
+## Node Backend And DB Middleware
+
+The repository now includes a Node backend in `server/` that follows the canonical requirements in `ServerRequirements.md`.
+
+### DB Access Rules (Hard Constraint)
+
+- All database operations must go through the database middleware endpoint surface in `server/src/db/index.js`.
+- Only `server/src/db/**` is allowed to import SQL client libraries.
+- Raw SQL usage (`.query(`) is blocked outside middleware by `server/scripts/enforce-db-lock.js`.
+
+### Endpoint Groups
+
+`users`, `userPasswords`, `admins`, `userSessions`, `trees`, `treeCreationData`, `treeData`, `guardians`, `photos`, `treePhotos`, `comments`, `commentPhotos`, `commentsTree`, `commentReplies`, `wildlifeObservations`, `diseaseObservations`, `seenObservations`, and `workflows`.
+
+### Adding New Endpoints
+
+1. Add input validation in `server/src/db/validation.js`.
+2. Add or extend a named endpoint inside `server/src/db/index.js`.
+3. Use prepared statements only; do not export raw pool/connection/query access.
+4. Use middleware transactions for multi-table operations.
+5. Add tests in `server/test/` and run backend checks.
+
+### Containerized Server Run/Test
+
+Use `docker-compose.server.yml` to run the Node backend with MySQL and to execute backend tests inside the server image.
+
+- Run the local development stack: `./scripts/start_local_server.sh`
+- Run the same stack directly with Compose: `docker compose -f docker-compose.server.yml up --build server android-emulator`
+- Run lock + unit + integration tests in container: `docker compose -f docker-compose.server.yml --profile test up --build --abort-on-container-exit --exit-code-from server-test server-test`
+
+The local development flow is intentionally one command. `./scripts/start_local_server.sh` starts MySQL, the Node server, Expo, and the Android emulator container together. The server container watches `server/src/**` and restarts automatically, Expo watches `TreeGuardiansExpo/**`, `http://localhost:4000/` proxies to the Expo dev server, and the Android emulator is available through noVNC at `http://localhost:6080/vnc.html`. Stop the whole stack with `Ctrl+C`. Runtime logs are written to `logs/mysql.log`, `logs/server.log`, `logs/android-emulator.log`, and `logs/server-test.log`.
+
+Convenience scripts are available in `scripts/`:
+
+- `./scripts/test.sh` runs containerized backend tests.
+- `./scripts/run_all_checks.sh` runs repo-wide checks used by pre-commit.

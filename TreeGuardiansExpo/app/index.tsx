@@ -38,6 +38,13 @@ export default function Index() {
           variant="secondary"
           onPress={() => router.push('/mainPage')}
         />
+        {__DEV__ && (
+          <AppButton
+            title="DB Test Bench"
+            variant="outline"
+            onPress={() => router.push('/dbTestBench')}
+          />
+        )}
       </View>
     </AppContainer>
   );

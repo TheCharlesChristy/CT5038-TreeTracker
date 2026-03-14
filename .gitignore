@@ -1,2 +1,13 @@
 .*
+!.gitignore
+!.pre-commit-config.yaml
+!.dockerignore
+!.github
+!.vscode
+!.devcontainer
+!server/.env.example
+server/.env
 node_modules
+pre-commit.log
+logs/*.log
+!logs/.gitkeep

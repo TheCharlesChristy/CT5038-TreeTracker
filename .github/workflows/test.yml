@@ -1,0 +1,18 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  test-server:
+    name: Backend Tests (lock + unit + integration)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run tests via Docker Compose
+        run: bash scripts/test.sh
