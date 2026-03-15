@@ -62,10 +62,19 @@
       borderRadius: BorderRadius.small
 
     - text:
-        color: Colours.white
-        fontWeight: 'bold'
+      color: Colours.white
+      fontWeight: 'bold'
 
 2. container:
-    - flex: 1,
-    - backgroundColor: Colours.background,
-    - padding: Spacing.medium,
+    flex: 1,
+    backgroundColor: Colours.background,
+    padding: Spacing.medium,
+
+3. Dim Overlay:
+    position: 'absolute'
+    top: 0
+    left: 0
+    right: 0
+    bottom: 0
+    backgroundColor: 'rgba(255,255,255,0.5)'
+    zIndex: 50
