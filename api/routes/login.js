@@ -6,6 +6,12 @@ const db = require("../db");
 
 const router = express.Router();
 
+function determineRole(user) {
+  if (user.is_admin) return "admin";
+  if (user.is_guardian) return "guardian";
+  return "registered_user";
+}
+
 router.post("/login", async (req, res) => {
   const { usernameOrEmail, password } = req.body;
 
@@ -15,10 +21,19 @@ router.post("/login", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT u.id, u.username, u.email, up.password_hash
+      `SELECT 
+         u.id,
+         u.username,
+         u.email,
+         up.password_hash,
+         CASE WHEN a.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_admin,
+         CASE WHEN g.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_guardian
        FROM users u
        JOIN user_passwords up ON up.user_id = u.id
-       WHERE u.username = ? OR u.email = ?`,
+       LEFT JOIN admins a ON a.user_id = u.id
+       LEFT JOIN guardians g ON g.user_id = u.id
+       WHERE u.username = ? OR u.email = ?
+       LIMIT 1`,
       [usernameOrEmail, usernameOrEmail]
     );
 
@@ -33,10 +48,13 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    const role = determineRole(user);
+
     const accessToken = jwt.sign(
       {
         userId: user.id,
         username: user.username,
+        role,
       },
       process.env.JWT_SECRET,
       {
@@ -60,6 +78,7 @@ router.post("/login", async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        role,
       },
       accessToken,
       refreshToken,

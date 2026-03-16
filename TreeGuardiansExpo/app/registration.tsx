@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -7,86 +7,118 @@ import { AppInput } from '@/components/base/AppInput';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
+import { saveItem } from '@/utilities/authStorage';
+import { API_BASE, ENDPOINTS } from '@/config/api';
+import { showAlert } from '@/utilities/showAlert'
+import { normalizePhone, isValidPhone } from '@/utilities/phone';
 
 export default function CreateAccount() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleCreateAccount = () => {
-    // Validation
+  const handleCreateAccount = async () => {
+    if (loading) return;
+
     if (!username.trim()) {
-      Alert.alert('Error', 'Please enter a username');
+      showAlert('Error', 'Please enter a username');
       return;
     }
 
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+      showAlert('Error', 'Please enter an email address');
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showAlert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    // Optional phone validation, removes any white space inbetween the numbers and keeps the trailing + if present
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!isValidPhone(normalizedPhone)) {
+      showAlert('Error', 'Please enter a valid phone number');
       return;
     }
 
     if (!password) {
-      Alert.alert('Error', 'Please enter a password');
+      showAlert('Error', 'Please enter a password');
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long');
+      showAlert('Error', 'Password must be at least 8 characters long');
       return;
     }
 
     if (!confirmPassword) {
-      Alert.alert('Error', 'Please confirm your password');
+      showAlert('Error', 'Please confirm your password');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('Error', 'Passwords do not match');
       return;
     }
 
-    // TODO: Implement account creation logic
-    // This would typically call an API endpoint or database function
-    Alert.alert(
-      'Success',
-      'Account created successfully!',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.push('/login'),
+    try {
+      setLoading(true);
+
+      const response = await fetch(API_BASE + ENDPOINTS.REGISTER, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      ]
-    );
+        body: JSON.stringify({
+          username: username.trim(),
+          email: email.trim(),
+          phone: normalizedPhone || null,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showAlert('Error', data.error || 'Failed to create account');
+        return;
+      }
+
+      await saveItem('accessToken', data.accessToken);
+      await saveItem('refreshToken', data.refreshToken);
+      await saveItem('user', JSON.stringify(data.user));
+
+      showAlert(
+        'Account Created',
+        'Your account has been created successfully.',
+        () => router.replace('/login')
+      );
+    } catch (error) {
+      console.error('Registration error:', error);
+      showAlert('Error', 'Could not connect to the server');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AppContainer scrollable>
-      {/* Top Left Home */}
       <NavigationButton onPress={() => router.push('/')}>
         Home
       </NavigationButton>
 
-      {/* Form Content */}
       <View style={styles.formContainer}>
-        <AppText
-          variant="title"
-          style={styles.title}
-        >
+        <AppText variant="title" style={styles.title}>
           Create Account
         </AppText>
 
-        <AppText
-          variant="body"
-          style={styles.subtitle}
-        >
+        <AppText variant="body" style={styles.subtitle}>
           Join TreeGuardians to help track and protect our trees
         </AppText>
 
@@ -113,6 +145,20 @@ export default function CreateAccount() {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <AppText variant="body" style={styles.label}>
+              Phone Number
+            </AppText>
+            <AppInput
+              placeholder="Enter your phone number (optional)"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -151,7 +197,7 @@ export default function CreateAccount() {
           </View>
 
           <AppButton
-            title="Create Account"
+            title={loading ? 'Creating...' : 'Create Account'}
             onPress={handleCreateAccount}
             style={styles.submitButton}
           />

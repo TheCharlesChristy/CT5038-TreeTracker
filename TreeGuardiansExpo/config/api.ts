@@ -5,4 +5,9 @@ export const ENDPOINTS = {
   DB: "db",
   GET_TREES: "get-trees",
   UPLOAD_PHOTOS: "upload-photos",
+  REGISTER: "register",
+  LOGIN: "login",
+  LOGOUT: "logout",
+  REFRESH: "refresh",
+  USER_CONTROLLER: "user-controller",
 };

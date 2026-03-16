@@ -1,5 +1,5 @@
 import { View, StyleSheet, Alert } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as Location from 'expo-location';
 import MapComponent from '@/components/base/MapComponent';
 import { router } from 'expo-router';
@@ -11,7 +11,10 @@ import { Theme } from '@/styles';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
-import { API_BASE, ENDPOINTS } from "@/config/api"
+import { API_BASE, ENDPOINTS } from '@/config/api';
+import { useFocusEffect } from 'expo-router';
+import { getItem, removeItem } from '@/utilities/authStorage';
+import { showAlert } from '@/utilities/showAlert';
 
 export default function MainPage() {
   // Plot mode toggle
@@ -32,6 +35,9 @@ export default function MainPage() {
 
   // Selected tree
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
+
+  // Logged in user?
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const plotWithDeviceLocation = async () => {
     try {
@@ -133,28 +139,65 @@ export default function MainPage() {
     }
   };
 
-const uploadTreeToServer = async (tree: TreeDetails) => {
-  try {
-    const response = await fetch(API_BASE + ENDPOINTS.ADD_TREE_DATA, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tree),
-    });
+  const loadAuthState = async () => {
+    try {
+      const token = await getItem("accessToken");
+      setIsLoggedIn(!!token);
+    } catch (error) {
+      console.error("Failed to load auth state:", error);
+      setIsLoggedIn(false);
+    }
+  };
 
-    const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.error || 'Failed');
+  useEffect(() => {
+    fetchTreesFromServer();
+    loadAuthState();
+  }, []);
 
-    const treeId = data.tree_id;
+  useFocusEffect(
+    useCallback(() => {
+      loadAuthState();
+    }, [])
+  );
 
-    if (tree.photos?.length) await uploadPhotos(treeId, tree.photos);
+  const uploadTreeToServer = async (tree: TreeDetails) => {
+    try {
+      const accessToken = await getItem("accessToken");
 
-    await fetchTreesFromServer();
-    console.log("Tree saved successfully");
-  } catch (err) {
-    console.error("Tree upload failed:", err);
-    alert("Tree could not be saved");
-  }
-};
+      if (!accessToken) {
+        Alert.alert("Sign In Required", "You must be signed in to plot a tree.");
+        router.push("/login");
+        return;
+      }
+
+      const response = await fetch(API_BASE + ENDPOINTS.ADD_TREE_DATA, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(tree),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed");
+      }
+
+      const treeId = data.tree_id;
+
+      if (tree.photos?.length) {
+        await uploadPhotos(String(treeId), tree.photos);
+      }
+
+      await fetchTreesFromServer();
+      console.log("Tree saved successfully");
+    } catch (err) {
+      console.error("Tree upload failed:", err);
+      Alert.alert("Error", "Tree could not be saved");
+    }
+  };
 
   const fetchTreesFromServer = async () => {
     try {
@@ -201,6 +244,37 @@ const uploadTreeToServer = async (tree: TreeDetails) => {
   useEffect(() => {
     fetchTreesFromServer();
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      const refreshToken = await getItem("refreshToken");
+
+      if (refreshToken) {
+        await fetch(API_BASE + ENDPOINTS.LOGOUT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            refreshToken,
+          }),
+        });
+      }
+
+      await removeItem("accessToken");
+      await removeItem("refreshToken");
+      await removeItem("user");
+
+      setIsLoggedIn(false);
+
+      showAlert("Logged Out", "You have been logged out.");
+
+      router.push("/");
+
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   return (
     <ActionSheetProvider>
@@ -297,6 +371,18 @@ const uploadTreeToServer = async (tree: TreeDetails) => {
           >
             Home
           </NavigationButton>
+
+        {isLoggedIn && (
+          <NavigationButton
+            onPress={() => {
+              handleLogout();
+              router.push('/');
+            }}
+        >
+          Logout
+        </NavigationButton>
+        )}
+
         </View>
       )}
 
@@ -338,12 +424,22 @@ const uploadTreeToServer = async (tree: TreeDetails) => {
             style={styles.middleButton}
           />
 
-          <AppButton
-            title="Plot"
-            variant="accent"
-            onPress={() => setShowDashboard(true)}
-            style={styles.sideButton}
-          />
+          {/* Change from plot to sign in if the user is not signed in */}
+          {isLoggedIn ? (
+            <AppButton
+              title="Plot"
+              variant="accent"
+              onPress={() => setShowDashboard(true)}
+              style={styles.sideButton}
+            />
+          ) : (
+            <AppButton
+              title="Sign In"
+              variant="accent"
+              onPress={() => router.push('/login')}
+              style={styles.sideButton}
+            />
+          )}
         </View>
       )}
       </View>
@@ -363,6 +459,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 15,
     left: 20,
+    marginBottom: 10,
     zIndex: 10,
   },
 

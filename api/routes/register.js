@@ -7,14 +7,30 @@ const db = require("../db");
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, phone, password } = req.body;
 
-  if (!username?.trim()) {
+  const trimmedUsername = username?.trim();
+  const trimmedEmail = email?.trim();
+  const trimmedPhone = phone?.trim() || null;
+
+  if (!trimmedUsername) {
     return res.status(400).json({ error: "Username is required" });
   }
 
-  if (!email?.trim()) {
+  if (!trimmedEmail) {
     return res.status(400).json({ error: "Email is required" });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmedEmail)) {
+    return res.status(400).json({ error: "A valid email is required" });
+  }
+
+  if (trimmedPhone) {
+    const phoneRegex = /^[0-9+\s()-]{7,20}$/;
+    if (!phoneRegex.test(trimmedPhone)) {
+      return res.status(400).json({ error: "A valid phone number is required" });
+    }
   }
 
   if (!password) {
@@ -35,7 +51,7 @@ router.post("/register", async (req, res) => {
       `SELECT id, username, email
        FROM users
        WHERE username = ? OR email = ?`,
-      [username, email]
+      [trimmedUsername, trimmedEmail]
     );
 
     if (existingUsers.length > 0) {
@@ -48,11 +64,11 @@ router.post("/register", async (req, res) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user
+    // Create user with phone
     const [userResult] = await connection.query(
-      `INSERT INTO users (username, email)
-       VALUES (?, ?)`,
-      [username, email]
+      `INSERT INTO users (username, email, phone)
+       VALUES (?, ?, ?)`,
+      [trimmedUsername, trimmedEmail, trimmedPhone]
     );
 
     const userId = userResult.insertId;
@@ -68,7 +84,7 @@ router.post("/register", async (req, res) => {
     const accessToken = jwt.sign(
       {
         userId,
-        username,
+        username: trimmedUsername,
       },
       process.env.JWT_SECRET,
       {
@@ -79,7 +95,7 @@ router.post("/register", async (req, res) => {
 
     // Create refresh/session token for DB storage
     const refreshToken = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
 
     await connection.query(
       `INSERT INTO user_sessions (user_id, session_token, expires_at)
@@ -93,8 +109,9 @@ router.post("/register", async (req, res) => {
       message: "Account created successfully",
       user: {
         id: userId,
-        username,
-        email,
+        username: trimmedUsername,
+        email: trimmedEmail,
+        phone: trimmedPhone,
       },
       accessToken,
       refreshToken,

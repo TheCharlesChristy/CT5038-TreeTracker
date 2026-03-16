@@ -34,7 +34,7 @@ export default function Index() {
         <AppButton title="Login" variant="accent" onPress={() => router.push('/login')} />
         <AppButton title="Create Account" variant="primary" onPress={() => router.push('/registration')} />
         <AppButton
-          title="Continue as Guest"
+          title="Continue to Map"
           variant="secondary"
           onPress={() => router.push('/mainPage')}
         />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -7,49 +7,70 @@ import { AppInput } from '@/components/base/AppInput';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
+import { saveItem } from '@/utilities/authStorage';
+import { API_BASE, ENDPOINTS } from '@/config/api';
+import { showAlert } from '@/utilities/showAlert'
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+  const handleLogin = async () => {
+    if (!usernameOrEmail.trim()) {
+      showAlert('Error', 'Please enter your username or email');
       return;
     }
 
     if (!password) {
-      Alert.alert('Error', 'Please enter your password');
+      showAlert('Error', 'Please enter your password');
       return;
     }
 
-    // TODO: Implement real login logic (API call, token handling, etc.)
-    Alert.alert(
-      'Success',
-      'Logged in successfully (stubbed logic).',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.push('/'),
+    try {
+      setLoading(true);
+
+      const response = await fetch(API_BASE + ENDPOINTS.LOGIN, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      ],
-    );
+        body: JSON.stringify({
+          usernameOrEmail,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showAlert('Login failed', data.error || 'Unable to log in');
+        return;
+      }
+
+      await saveItem('accessToken', data.accessToken);
+      await saveItem('refreshToken', data.refreshToken);
+      await saveItem('user', JSON.stringify(data.user));
+
+      showAlert(
+        'Success',
+        `Welcome back, ${data.user.username}!`,
+        () => router.replace('/mainPage')
+      );
+    } catch (error) {
+      console.error('Login error:', error);
+      showAlert('Error', 'Something went wrong during login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AppContainer scrollable>
-      {/* Top Left Back */}
       <NavigationButton onPress={() => router.push('/')}>
         Home
       </NavigationButton>
 
-      {/* Login Form */}
       <View style={styles.formContainer}>
         <AppText variant="title" style={styles.title}>
           Welcome Back
@@ -62,13 +83,12 @@ export default function Login() {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <AppText variant="body" style={styles.label}>
-              Email
+              Username or Email
             </AppText>
             <AppInput
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              placeholder="Enter your username or email"
+              value={usernameOrEmail}
+              onChangeText={setUsernameOrEmail}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -89,7 +109,7 @@ export default function Login() {
           </View>
 
           <AppButton
-            title="Log In"
+            title={loading ? "Logging In..." : "Log In"}
             onPress={handleLogin}
             style={styles.submitButton}
           />
