@@ -4,7 +4,7 @@ set -e  # Exit on error
 
 echo "=== Starting deployment ==="
 
-ROOT="/tree_guardians"
+ROOT="$PWD"
 SERVER_DIR="$ROOT/server"
 EXPO_DIR="$ROOT/TreeGuardiansExpo"
 
