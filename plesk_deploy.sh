@@ -4,7 +4,12 @@ set -e  # Exit on error
 
 echo "=== Starting deployment ==="
 
-ROOT="$PWD"
+# Initialize nodenv
+export NODENV_ROOT="$HOME/.nodenv"
+export PATH="$NODENV_ROOT/bin:$NODENV_ROOT/shims:$PATH"
+eval "$(nodenv init -)"
+
+ROOT="$(pwd)"
 SERVER_DIR="$ROOT/server"
 EXPO_DIR="$ROOT/TreeGuardiansExpo"
 
