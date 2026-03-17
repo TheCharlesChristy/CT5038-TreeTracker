@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     user_id bigint unsigned NOT NULL,
     session_token char(64) NOT NULL UNIQUE,
-    expires_at DATETIME NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
     CONSTRAINT fk_sessions_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS tree_creation_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     creator_user_id bigint unsigned,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_creation_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE,
     CONSTRAINT fk_creation_user FOREIGN KEY (creator_user_id)
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS photos (
     mime_type varchar(100),
     byte_size int unsigned,
     sha256 char(64),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE INDEX uq_photo_sha256 (sha256)
 ) engine = InnoDB;
 
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS tree_photos (
 CREATE TABLE IF NOT EXISTS comments (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     user_id bigint unsigned,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_comments_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE SET NULL
 ) engine = InnoDB;
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS comments_tree (
     comment_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
     content text NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (comment_id,tree_id),
     CONSTRAINT fk_comments_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE,
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS comment_replies (
     comment_id bigint unsigned NOT NULL,
     parent_comment_id bigint unsigned NOT NULL,
     content text NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (comment_id,parent_comment_id),
     CONSTRAINT fk_replies_comment FOREIGN KEY (comment_id)
     REFERENCES comments (id) ON DELETE CASCADE,

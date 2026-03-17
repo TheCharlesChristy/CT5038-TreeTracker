@@ -1,7 +1,0 @@
-.git
-node_modules
-TreeGuardiansExpo/node_modules
-.coverage
-build
-dist
-.env

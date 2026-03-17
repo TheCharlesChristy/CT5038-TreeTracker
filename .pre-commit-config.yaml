@@ -1,9 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: all-checks
-        name: Run All Checks (Docker)
-        language: system
-        entry: bash -c "docker build -f Dockerfile.precommit -t tree-tracker-checks . >/dev/null && docker run --rm -v $(pwd):/app -w /app tree-tracker-checks bash ./scripts/run_all_checks.sh; status=$?; [ -f pre-commit.log ] && cat pre-commit.log; exit $status"
-        files: .
-        pass_filenames: false

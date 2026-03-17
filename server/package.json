@@ -4,8 +4,12 @@
   "private": true,
   "type": "commonjs",
   "main": "bootstrap.js",
+  "engines": {
+    "node": "17.9.1"
+  },
   "scripts": {
-    "dev": "node --watch bootstrap.js",
+    "dev": "node bootstrap.js",
+    "dev:watch": "nodemon bootstrap.js",
     "start": "node bootstrap.js",
     "lint": "npm run db-lock:check",
     "db-lock:check": "node scripts/enforce-db-lock.js",
@@ -15,5 +19,8 @@
   },
   "dependencies": {
     "mysql2": "^3.14.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
   }
 }
