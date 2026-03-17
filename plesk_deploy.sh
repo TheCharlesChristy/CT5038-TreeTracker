@@ -1,42 +1,31 @@
 #!/bin/bash
-
-set -e  # Exit on error
-
-echo "=== Starting deployment ==="
+set -e
 
 # Initialize nodenv
 export NODENV_ROOT="$HOME/.nodenv"
 export PATH="$NODENV_ROOT/bin:$NODENV_ROOT/shims:$PATH"
 eval "$(nodenv init -)"
 
+# Explicitly select Node version
+nodenv shell 18
+
 ROOT="$(pwd)"
 SERVER_DIR="$ROOT/server"
 EXPO_DIR="$ROOT/TreeGuardiansExpo"
 
-# Ensure correct Node version (optional, if using nvm)
-# source ~/.nvm/nvm.sh
-# nvm use 18
-
-echo "=== Installing backend dependencies ==="
+echo "=== Installing backend ==="
 cd "$SERVER_DIR"
-npm install --production
+npm ci --production
 
-echo "=== Installing frontend dependencies ==="
+echo "=== Installing frontend ==="
 cd "$EXPO_DIR"
-npm install
+npm ci
 
-echo "=== Building Expo web app ==="
-# Ensure expo CLI is available
+echo "=== Building Expo ==="
 npx expo export:web
 
-# OR if you use a script:
-# npm run build
-
-echo "=== Fixing permissions (optional but often needed in Plesk) ==="
-chown -R $(whoami):psacln "$ROOT"
-
-echo "=== Restarting Node.js app ==="
-# Plesk Node restart trigger
+echo "=== Restarting app ==="
+mkdir -p "$ROOT/tmp"
 touch "$ROOT/tmp/restart.txt"
 
-echo "=== Deployment complete ==="
+echo "=== Done ==="
