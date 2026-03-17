@@ -5,7 +5,7 @@
   "type": "commonjs",
   "main": "bootstrap.js",
   "engines": {
-    "node": "17.9.1"
+    "node": "16.20.2"
   },
   "scripts": {
     "dev": "node bootstrap.js",

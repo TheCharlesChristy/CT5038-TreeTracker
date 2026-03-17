@@ -25,7 +25,6 @@ function MapWeb() {
     if (typeof window === 'undefined' || !mapRef.current) return;
 
     // Importing CSS to render the tiles
-    require('leaflet/dist/leaflet.css');
     const L = require('leaflet');
 
     // Guard against double init
