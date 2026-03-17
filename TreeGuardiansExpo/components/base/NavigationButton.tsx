@@ -12,7 +12,7 @@ interface NavigationButtonProps {
 export const NavigationButton = ({ onPress, children, color }: NavigationButtonProps) => {
   return (
     <TouchableOpacity onPress={onPress}>
-      <AppText style={[ { color: Theme.Colours.primary }, color && { color }]}> 
+      <AppText style={[ { color: Theme.Colours.primary }, ...(color ? [{ color }] : [])]}> 
         {children ?? 'Back'}
       </AppText>
     </TouchableOpacity>
