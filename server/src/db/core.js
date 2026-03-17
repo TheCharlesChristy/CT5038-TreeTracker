@@ -87,7 +87,7 @@ async function ensureMigrationsTable(executor) {
     `
       CREATE TABLE IF NOT EXISTS schema_migrations (
         version varchar(64) PRIMARY KEY,
-        applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       ) engine = InnoDB
     `
   );
