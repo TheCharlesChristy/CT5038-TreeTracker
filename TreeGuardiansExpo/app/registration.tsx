@@ -15,7 +15,7 @@ import { router } from 'expo-router';
 
 export default function CreateAccount() {
   const { width, height } = useWindowDimensions();
-  const isWideLayout = width >= 980;
+  const isWideLayout = width >= 860;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
