@@ -37,6 +37,7 @@ const CENTER = {
 };
 const MIN_ZOOM = 14; // Can't zoom out past this — keeps user inside the area
 const MAX_ZOOM = 18;
+const BOUNDS_PADDING_RATIO = 0.08;
 
 // ===============================
 // Web Version
@@ -78,18 +79,19 @@ function MapWeb({
 
     if (mapRef.current._leaflet_id) return;
 
-    const bounds = L.latLngBounds(
+    const hardBounds = L.latLngBounds(
       [BOUNDS.southWest.lat, BOUNDS.southWest.lng],
       [BOUNDS.northEast.lat, BOUNDS.northEast.lng]
     );
+    const interactionBounds = hardBounds.pad(BOUNDS_PADDING_RATIO);
 
     const map = L.map(mapRef.current, {
       center: [CENTER.lat, CENTER.lng],
       zoom: MIN_ZOOM,
       minZoom: MIN_ZOOM,
       maxZoom: MAX_ZOOM,
-      maxBounds: bounds,
-      maxBoundsViscosity: 1.0,
+      maxBounds: interactionBounds,
+      maxBoundsViscosity: 0.85,
       zoomControl: false,
     });
 
@@ -242,21 +244,22 @@ function MapMobile({
   function initMap() {
     var southWest = L.latLng(${BOUNDS.southWest.lat}, ${BOUNDS.southWest.lng});
     var northEast = L.latLng(${BOUNDS.northEast.lat}, ${BOUNDS.northEast.lng});
-    var bounds = L.latLngBounds(southWest, northEast);
+    var hardBounds = L.latLngBounds(southWest, northEast);
+    var interactionBounds = hardBounds.pad(${BOUNDS_PADDING_RATIO});
 
     var map = L.map('map', {
       center: [${CENTER.lat}, ${CENTER.lng}],
       zoom: ${MIN_ZOOM},
       minZoom: ${MIN_ZOOM},
       maxZoom: ${MAX_ZOOM},
-      maxBounds: bounds,
-      maxBoundsViscosity: 1.0,
+      maxBounds: interactionBounds,
+      maxBoundsViscosity: 0.85,
       zoomControl: false
     });
 
     L.tileLayer(
       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      { attribution: '© OpenStreetMap contributors', bounds: bounds }
+      { attribution: '© OpenStreetMap contributors' }
     ).addTo(map);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
