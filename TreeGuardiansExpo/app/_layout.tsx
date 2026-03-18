@@ -1,17 +1,16 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, Poppins_400Regular, Poppins_600SemiBold } from '@expo-google-fonts/poppins';
-import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function Layout() {
   const [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_600SemiBold,
-    Inter_400Regular,
-    Inter_600SemiBold,
+    Poppins_400Regular: require('@/assets/fonts/Poppins_400Regular.ttf'),
+    Poppins_600SemiBold: require('@/assets/fonts/Poppins_600SemiBold.ttf'),
+    Inter_400Regular: require('@/assets/fonts/Inter_400Regular.ttf'),
+    Inter_600SemiBold: require('@/assets/fonts/Inter_600SemiBold.ttf'),
   });
 
   useEffect(() => {
