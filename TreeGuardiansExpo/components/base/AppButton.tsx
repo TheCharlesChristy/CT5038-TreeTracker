@@ -10,7 +10,9 @@ interface AppButtonProps {
   onPress: () => void;
   variant?: Variant;
   style?: StyleProp<ViewStyle>;
+  buttonStyle?: StyleProp<ViewStyle>;
   textStyle?: any;
+  disabled?: boolean;
 }
 
 const textColorForVariant: Record<Variant, string> = {
@@ -23,11 +25,15 @@ const textColorForVariant: Record<Variant, string> = {
 };
 
 export const AppButton = ({
-  title, onPress, variant = 'primary', style, textStyle
+  title, onPress, variant = 'primary', style, buttonStyle, textStyle, disabled = false,
 }: AppButtonProps) => {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
+    if (disabled) {
+      return;
+    }
+
     Animated.spring(scale, {
       toValue: 0.96,
       useNativeDriver: true,
@@ -46,13 +52,14 @@ export const AppButton = ({
   };
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+    <Animated.View style={[{ transform: [{ scale }] }, style, disabled && styles.wrapperDisabled]}>
       <TouchableOpacity
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[styles.base, styles[variant]]}
-        activeOpacity={0.85}
+        style={[styles.base, styles[variant], buttonStyle, disabled && styles.disabled]}
+        activeOpacity={disabled ? 1 : 0.85}
+        disabled={disabled}
       >
         <AppText style={[styles.text, { color: textColorForVariant[variant] }, textStyle]}>
           {title}
@@ -106,6 +113,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Theme.Colours.primary,
     backgroundColor: 'transparent',
+  },
+
+  disabled: {
+    opacity: 0.62,
+  },
+
+  wrapperDisabled: {
+    opacity: 0.9,
   },
 
   text: {
