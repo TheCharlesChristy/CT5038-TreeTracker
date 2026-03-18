@@ -77,6 +77,9 @@ function MapWeb({
       { attribution: '© OpenStreetMap contributors' }
     ).addTo(map);
 
+    // Slightly mute base tiles so UI overlays and markers remain visually dominant.
+    map.getPane('tilePane').style.filter = 'saturate(0.74) contrast(0.92) brightness(0.98)';
+
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     treeLayer.current = L.layerGroup().addTo(map);
@@ -130,7 +133,7 @@ function MapWeb({
         }
       })
     });
-  }, [plottedTrees, renderTreeIcon]);
+  }, [plottedTrees, renderTreeIcon, onTreeClick]);
 
   return (
     <div
@@ -179,6 +182,10 @@ function MapMobile({
     margin: 0;
     padding: 0;
     overflow: hidden;
+  }
+
+  .leaflet-tile-pane {
+    filter: saturate(0.74) contrast(0.92) brightness(0.98);
   }
   </style>
   <link rel="stylesheet"

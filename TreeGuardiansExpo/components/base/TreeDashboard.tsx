@@ -1,262 +1,268 @@
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Image,
-  StyleSheet,
-  Dimensions,
-  TouchableOpacity,
-  ScrollView,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Image, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
 import { Tree } from '@/objects/TreeDetails';
 
-const { height } = Dimensions.get('window');
-
-type ActiveField =
-  | 'notes'
-  | 'wildlife'
-  | 'disease'
-  | 'diameter'
-  | 'height'
-  | 'circumference';
+type DetailKey = 'notes' | 'wildlife' | 'disease' | 'diameter' | 'height' | 'circumference';
 
 interface TreeDetailsDashboardProps {
   tree: Tree;
   onClose: () => void;
 }
 
-export default function TreeDetailsDashboard({
-  tree,
-  onClose,
-}: TreeDetailsDashboardProps) {
-  const { width } = useWindowDimensions();
-  const isMobile = width < 768;
+export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashboardProps) {
+  const [expanded, setExpanded] = useState(false);
 
-  const hasValue = (value: string | number | undefined | null) => {
-    if (value === undefined || value === null) return false;
-    if (typeof value === 'string') return value.trim() !== '';
+  const detailRows = useMemo(() => {
+    return [
+      { key: 'notes' as DetailKey, label: 'Notes', value: tree.notes },
+      { key: 'wildlife' as DetailKey, label: 'Wildlife', value: tree.wildlife },
+      { key: 'disease' as DetailKey, label: 'Disease', value: tree.disease },
+      {
+        key: 'diameter' as DetailKey,
+        label: 'Diameter',
+        value: tree.diameter !== undefined ? `${tree.diameter} cm` : undefined,
+      },
+      {
+        key: 'height' as DetailKey,
+        label: 'Height',
+        value: tree.height !== undefined ? `${tree.height} m` : undefined,
+      },
+      {
+        key: 'circumference' as DetailKey,
+        label: 'Circumference',
+        value: tree.circumference !== undefined ? `${tree.circumference} cm` : undefined,
+      },
+    ];
+  }, [tree]);
+
+  const availableRows = detailRows.filter((row) => {
+    if (row.value === undefined || row.value === null) {
+      return false;
+    }
+
+    if (typeof row.value === 'string') {
+      return row.value.trim().length > 0;
+    }
+
     return true;
-  };
+  });
 
-  const availableFields = useMemo(
-    () => [
-      { key: 'notes' as ActiveField, label: 'Notes', value: tree.notes },
-      { key: 'wildlife' as ActiveField, label: 'Wildlife', value: tree.wildlife },
-      { key: 'disease' as ActiveField, label: 'Disease', value: tree.disease },
-      { key: 'diameter' as ActiveField, label: 'Diameter', value: tree.diameter, unit: 'cm' },
-      { key: 'height' as ActiveField, label: 'Height', value: tree.height, unit: 'm' },
-      { key: 'circumference' as ActiveField, label: 'Circumference', value: tree.circumference, unit: 'cm' },
-    ],
-    [tree]
-  );
-
-  const [activeField, setActiveField] = useState<ActiveField>('notes');
-
-  const activeData =
-    availableFields.find((field) => field.key === activeField) ??
-    availableFields[0];
-
-  const hasDisplayValue = hasValue(activeData?.value);
-
-  const displayValue =
-    activeData && hasDisplayValue
-      ? `${activeData.value}${activeData.unit ? ` ${activeData.unit}` : ''}`
-      : 'No information provided';
+  const previewRows = expanded ? availableRows : availableRows.slice(0, 3);
 
   return (
-    <View style={styles.overlay}>
+    <View style={styles.wrapper} pointerEvents="box-none">
       <View style={styles.card}>
-        <ScrollView
-          contentContainerStyle={styles.cardContent}
-          showsVerticalScrollIndicator={true}
-        >
-          <AppText style={Theme.Typography.title}>Tree Details</AppText>
-
-          <View style={styles.selectorRow}>
-            {availableFields.map((field) => (
-              <TouchableOpacity
-                key={field.key}
-                onPress={() => setActiveField(field.key)}
-                style={[
-                  styles.selectorButton,
-                  activeField === field.key && styles.selectorActive,
-                ]}
-              >
-                <AppText style={styles.selectorText}>{field.label}</AppText>
-              </TouchableOpacity>
-            ))}
+        <View style={styles.cardHeader}>
+          <View>
+            <AppText style={styles.badge}>Tree Marker</AppText>
+            <AppText style={styles.title}>Observed Tree</AppText>
           </View>
 
-          <View style={styles.infoBox}>
-            <AppText style={Theme.Typography.subtitle}>
-              {activeData?.label ?? 'Details'}
-            </AppText>
+          <AppButton
+            title="Close"
+            variant="tertiary"
+            onPress={onClose}
+            style={styles.closeButtonWrap}
+            buttonStyle={styles.closeButton}
+          />
+        </View>
 
-            <AppText style={Theme.Typography.body}>
-              {displayValue}
-            </AppText>
+        {tree.photos && tree.photos.length > 0 ? (
+          <Image source={{ uri: tree.photos[0] }} style={styles.heroPhoto} />
+        ) : (
+          <View style={styles.noPhoto}>
+            <AppText style={styles.noPhotoIcon}>🌳</AppText>
+            <AppText style={styles.noPhotoLabel}>No photo uploaded</AppText>
           </View>
+        )}
 
-          <AppText style={[Theme.Typography.title, { marginTop: 15 }]}>
-            Photos
-          </AppText>
-
-          <View style={styles.photoGrid}>
-            {(tree.photos ?? []).length === 0 ? (
-              <View style={styles.noPhotosBox}>
-                <AppText style={Theme.Typography.body}>
-                  No Photos Uploaded
-                </AppText>
+        <ScrollView style={styles.detailArea} showsVerticalScrollIndicator={false}>
+          {previewRows.length === 0 ? (
+            <View style={styles.detailRow}>
+              <AppText style={styles.valueOnly}>No extra details available for this tree.</AppText>
+            </View>
+          ) : (
+            previewRows.map((row) => (
+              <View key={row.key} style={styles.detailRow}>
+                <AppText style={styles.label}>{row.label}</AppText>
+                <AppText style={styles.value}>{String(row.value)}</AppText>
               </View>
-            ) : (
-              (tree.photos ?? []).map((photo, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.photoBox,
-                    isMobile ? styles.photoBoxMobile : styles.photoBoxDesktop,
-                  ]}
-                >
-                  <Image source={{ uri: photo }} style={styles.image} />
-                </View>
-              ))
-            )}
-          </View>
-
-          <View style={styles.footer}>
-            <AppButton
-              title="Close"
-              variant="secondary"
-              onPress={onClose}
-              style={styles.button}
-            />
-          </View>
+            ))
+          )}
         </ScrollView>
+
+        <View style={styles.footer}>
+          {availableRows.length > 3 ? (
+            <TouchableOpacity
+              onPress={() => setExpanded((value) => !value)}
+              style={styles.expandButton}
+              activeOpacity={0.8}
+            >
+              <AppText style={styles.expandButtonText}>
+                {expanded ? 'Show less' : 'View details'}
+              </AppText>
+            </TouchableOpacity>
+          ) : (
+            <View />
+          )}
+
+          <AppButton
+            title="Done"
+            variant="primary"
+            onPress={onClose}
+            style={styles.doneButtonWrap}
+            buttonStyle={styles.doneButton}
+          />
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  wrapper: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    justifyContent: 'center',
+    bottom: 24,
+    zIndex: 240,
     alignItems: 'center',
-    zIndex: 999,
+    paddingHorizontal: 14,
   },
 
   card: {
-    width: '90%',
-    maxHeight: height * 0.9,
-    padding: 20,
-    borderRadius: Theme.Radius.medium,
-  },
-
-  cardContent: {
-    paddingBottom: 10,
-    paddingRight: 6,
-  },
-
-  selectorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginVertical: 12,
-  },
-
-  selectorButton: {
-    width: '31%',
-    marginBottom: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: Theme.Radius.small,
-    borderWidth: 1,
-    borderColor: Theme.Colours.gray,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  selectorActive: {
-    backgroundColor: Theme.Colours.accent,
-    borderColor: Theme.Colours.accent,
-  },
-
-  selectorText: {
-    textAlign: 'center',
-    flexShrink: 1,
-    fontWeight: 'bold',
-  },
-
-  infoBox: {
-    minHeight: 100,
-    borderWidth: 3,
-    borderColor: Theme.Colours.gray,
-    borderRadius: Theme.Radius.small,
-    backgroundColor: Theme.Colours.white,
-    padding: 12,
-    marginBottom: 10,
-    justifyContent: 'center',
-  },
-
-  photoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-
-  noPhotosBox: {
     width: '100%',
+    maxWidth: 460,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Theme.Colours.gray,
-    borderRadius: Theme.Radius.small,
-    paddingVertical: 25,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  photoBox: {
-    aspectRatio: 1,
-    borderRadius: Theme.Radius.small,
-    borderWidth: 2,
-    borderColor: Theme.Colours.black,
-    marginBottom: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderStyle: 'solid',
+    borderColor: '#D4E1D4',
+    backgroundColor: '#FCFEFB',
+    shadowColor: '#0F1711',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 16,
     overflow: 'hidden',
   },
 
-  photoBoxMobile: {
-    width: '48%',
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
 
-  photoBoxDesktop: {
-    width: '23%',
+  badge: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.secondary,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
 
-  image: {
+  title: {
+    ...Theme.Typography.subtitle,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+
+  closeButtonWrap: {
+    marginBottom: 0,
+  },
+
+  closeButton: {
+    marginBottom: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+
+  heroPhoto: {
     width: '100%',
-    height: '100%',
-    borderRadius: Theme.Radius.small,
+    height: 148,
+  },
+
+  noPhoto: {
+    width: '100%',
+    height: 148,
+    backgroundColor: '#EEF5EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#DDE8DD',
+  },
+
+  noPhotoIcon: {
+    fontSize: 34,
+  },
+
+  noPhotoLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginTop: 2,
+  },
+
+  detailArea: {
+    maxHeight: 160,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+  },
+
+  detailRow: {
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5ECE5',
+  },
+
+  label: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginBottom: 2,
+  },
+
+  value: {
+    ...Theme.Typography.body,
+    color: Theme.Colours.textPrimary,
+  },
+
+  valueOnly: {
+    ...Theme.Typography.body,
+    color: Theme.Colours.textMuted,
   },
 
   footer: {
-    marginTop: 20,
+    paddingHorizontal: 14,
+    paddingTop: 4,
+    paddingBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 
-  button: {
-    flex: 1,
+  expandButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+
+  expandButtonText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.primary,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  doneButtonWrap: {
+    marginBottom: 0,
+  },
+
+  doneButton: {
+    minWidth: 92,
+    marginBottom: 0,
   },
 });

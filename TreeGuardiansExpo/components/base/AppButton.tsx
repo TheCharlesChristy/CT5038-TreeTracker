@@ -3,7 +3,14 @@ import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle, Animated } from 're
 import { AppText } from './AppText';
 import { Theme } from '@/styles/theme';
 
-type Variant = 'primary' | 'secondary' | 'accent' | 'ghost' | 'outline' | 'invisible';
+type Variant =
+  | 'primary'
+  | 'secondary'
+  | 'tertiary'
+  | 'accent'
+  | 'ghost'
+  | 'outline'
+  | 'invisible';
 
 interface AppButtonProps {
   title: string;
@@ -18,6 +25,7 @@ interface AppButtonProps {
 const textColorForVariant: Record<Variant, string> = {
   primary: Theme.Colours.white,
   secondary: Theme.Colours.primary,
+  tertiary: Theme.Colours.textPrimary,
   accent: Theme.Colours.white,
   ghost: Theme.Colours.textMuted,
   outline: Theme.Colours.primary,
@@ -82,15 +90,23 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.Colours.primary,
     shadowColor: Theme.Colours.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.28,
     shadowRadius: 8,
     elevation: 6,
   },
 
   secondary: {
-    backgroundColor: 'transparent',
+    backgroundColor: Theme.Colours.white,
     borderWidth: 2,
     borderColor: Theme.Colours.primary,
+  },
+
+  tertiary: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    marginBottom: 4,
   },
 
   accent: {
@@ -112,7 +128,7 @@ const styles = StyleSheet.create({
   outline: {
     borderWidth: 1,
     borderColor: Theme.Colours.primary,
-    backgroundColor: 'transparent',
+    backgroundColor: Theme.Colours.white,
   },
 
   disabled: {
