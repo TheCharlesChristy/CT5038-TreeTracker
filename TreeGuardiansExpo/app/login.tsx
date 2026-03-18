@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -19,8 +18,7 @@ import { router } from 'expo-router';
 export default function Login() {
   const { width, height } = useWindowDimensions();
   const isMobileLayout = width < 680;
-  const isWideLayout = width >= 980;
-  const stackSocialActions = width < 420;
+  const isWideLayout = width >= 920;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -101,13 +99,6 @@ export default function Login() {
     );
   };
 
-  const handleGoogleLogin = () => {
-    Alert.alert(
-      'Google sign in',
-      'Google sign in is currently a product stub. Wire this button to Expo Auth Session or your backend OAuth flow next.',
-    );
-  };
-
   return (
     <AppContainer
       scrollable
@@ -130,11 +121,15 @@ export default function Login() {
             isWideLayout ? styles.shellWide : styles.shellStacked,
           ]}
         >
-          <View style={[styles.formColumn, isWideLayout ? styles.formColumnWide : styles.formColumnStacked]}>
+          <View
+            style={[
+              styles.formColumn,
+              isWideLayout ? styles.formColumnWide : styles.formColumnStacked,
+            ]}
+          >
             <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
               <View style={styles.topRow}>
                 <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
-                  <Feather name="arrow-left" size={14} color="#1B5E20" />
                   <AppText variant="caption" style={styles.homeLinkText}>
                     Back to home
                   </AppText>
@@ -162,14 +157,12 @@ export default function Login() {
 
               <View style={styles.reinforcementRow}>
                 <View style={styles.reinforcementPill}>
-                  <Feather name="map-pin" size={14} color="#1B5E20" />
                   <AppText variant="caption" style={styles.reinforcementText}>
                     Track trees
                   </AppText>
                 </View>
 
                 <View style={styles.reinforcementPill}>
-                  <Feather name="users" size={14} color="#1B5E20" />
                   <AppText variant="caption" style={styles.reinforcementText}>
                     Contribute to your community
                   </AppText>
@@ -209,7 +202,13 @@ export default function Login() {
                       emailFocused && styles.inputFocused,
                       emailTouched && !!emailError && styles.inputError,
                     ]}
-                    leftAdornment={<Feather name="mail" size={18} color="#466046" />}
+                    leftAdornment={(
+                      <View style={styles.inputTag}>
+                        <AppText variant="caption" style={styles.inputTagText}>
+                          @
+                        </AppText>
+                      </View>
+                    )}
                     containerStyle={styles.inputContainer}
                   />
 
@@ -267,18 +266,22 @@ export default function Login() {
                       passwordFocused && styles.inputFocused,
                       passwordTouched && !!passwordError && styles.inputError,
                     ]}
-                    leftAdornment={<Feather name="lock" size={18} color="#466046" />}
+                    leftAdornment={(
+                      <View style={styles.inputTag}>
+                        <AppText variant="caption" style={styles.inputTagText}>
+                          PW
+                        </AppText>
+                      </View>
+                    )}
                     rightAdornment={(
                       <Pressable
                         onPress={() => setShowPassword((prev) => !prev)}
                         hitSlop={8}
                         style={styles.visibilityToggle}
                       >
-                        <Feather
-                          name={showPassword ? 'eye-off' : 'eye'}
-                          size={18}
-                          color="#2E7D32"
-                        />
+                        <AppText variant="caption" style={styles.visibilityToggleText}>
+                          {showPassword ? 'Hide' : 'Show'}
+                        </AppText>
                       </Pressable>
                     )}
                     containerStyle={styles.inputContainer}
@@ -302,18 +305,15 @@ export default function Login() {
                     onPress={() => setRememberMe((prev) => !prev)}
                     style={styles.checkboxRow}
                   >
-                    <MaterialCommunityIcons
-                      name={rememberMe ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                      size={22}
-                      color={rememberMe ? '#2E7D32' : '#6E7D6E'}
-                    />
+                    <View style={[styles.checkboxBox, rememberMe && styles.checkboxBoxActive]}>
+                      {rememberMe ? <View style={styles.checkboxFill} /> : null}
+                    </View>
                     <AppText variant="caption" style={styles.checkboxLabel}>
                       Remember me
                     </AppText>
                   </Pressable>
 
                   <View style={styles.securePill}>
-                    <Feather name="shield" size={14} color="#1B5E20" />
                     <AppText variant="caption" style={styles.securePillText}>
                       Secure sign in
                     </AppText>
@@ -328,33 +328,10 @@ export default function Login() {
                   buttonStyle={styles.submitButtonInner}
                 />
 
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <AppText variant="caption" style={styles.dividerText}>
-                    or continue with
-                  </AppText>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <View style={[styles.socialRow, stackSocialActions && styles.socialRowStacked]}>
-                  <Pressable
-                    onPress={handleGoogleLogin}
-                    style={[styles.socialButton, stackSocialActions && styles.socialButtonStacked]}
-                  >
-                    <MaterialCommunityIcons name="google" size={18} color="#1B1B1B" />
-                    <AppText variant="body" style={styles.socialButtonText}>
-                      Continue with Google
-                    </AppText>
-                  </Pressable>
-                </View>
-
                 <View style={styles.trustPanel}>
-                  <View style={styles.trustHeader}>
-                    <Feather name="lock" size={15} color="#1B5E20" />
-                    <AppText variant="caption" style={styles.trustTitle}>
-                      Private by default
-                    </AppText>
-                  </View>
+                  <AppText variant="caption" style={styles.trustTitle}>
+                    Private by default
+                  </AppText>
                   <AppText variant="caption" style={styles.trustText}>
                     Your email is used for sign in and important account updates only. Tree contributions stay connected to your profile, not exposed beyond the product rules you choose.
                   </AppText>
@@ -374,10 +351,14 @@ export default function Login() {
             </View>
           </View>
 
-          <View style={[styles.previewColumn, isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked]}>
+          <View
+            style={[
+              styles.previewColumn,
+              isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked,
+            ]}
+          >
             <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile]}>
               <View style={styles.previewEyebrow}>
-                <Feather name="wind" size={16} color="#E6F4E7" />
                 <AppText variant="caption" style={styles.previewEyebrowText}>
                   Calm, local, community-first
                 </AppText>
@@ -393,8 +374,10 @@ export default function Login() {
 
               <View style={styles.previewFeatureList}>
                 <View style={styles.previewFeatureItem}>
-                  <View style={styles.previewFeatureIconWrap}>
-                    <Feather name="map" size={18} color="#16391A" />
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Map
+                    </AppText>
                   </View>
                   <View style={styles.previewFeatureCopy}>
                     <AppText variant="body" style={styles.previewFeatureTitle}>
@@ -407,8 +390,10 @@ export default function Login() {
                 </View>
 
                 <View style={styles.previewFeatureItem}>
-                  <View style={styles.previewFeatureIconWrap}>
-                    <Feather name="camera" size={18} color="#16391A" />
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Log
+                    </AppText>
                   </View>
                   <View style={styles.previewFeatureCopy}>
                     <AppText variant="body" style={styles.previewFeatureTitle}>
@@ -421,8 +406,10 @@ export default function Login() {
                 </View>
 
                 <View style={styles.previewFeatureItem}>
-                  <View style={styles.previewFeatureIconWrap}>
-                    <Feather name="heart" size={18} color="#16391A" />
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Care
+                    </AppText>
                   </View>
                   <View style={styles.previewFeatureCopy}>
                     <AppText variant="body" style={styles.previewFeatureTitle}>
@@ -499,7 +486,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 1180,
+    maxWidth: 1160,
+    gap: Theme.Spacing.large,
     zIndex: 1,
   },
   shellMobile: {
@@ -507,7 +495,8 @@ const styles = StyleSheet.create({
   },
   shellWide: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   shellStacked: {
     flexDirection: 'column',
@@ -517,13 +506,11 @@ const styles = StyleSheet.create({
   },
   formColumnWide: {
     flex: 5,
-    maxWidth: 500,
-    marginRight: Theme.Spacing.large,
+    maxWidth: 520,
   },
   formColumnStacked: {
     maxWidth: 520,
     alignSelf: 'center',
-    marginBottom: Theme.Spacing.large,
   },
   formCard: {
     backgroundColor: 'rgba(248, 252, 248, 0.97)',
@@ -548,8 +535,7 @@ const styles = StyleSheet.create({
     marginBottom: Theme.Spacing.large,
   },
   homeLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignSelf: 'flex-start',
     paddingVertical: Theme.Spacing.extraSmall + 2,
     paddingHorizontal: Theme.Spacing.small + 2,
     borderRadius: 999,
@@ -558,7 +544,6 @@ const styles = StyleSheet.create({
   homeLinkText: {
     color: '#1B5E20',
     fontWeight: '700',
-    marginLeft: 6,
   },
   brandPill: {
     flexDirection: 'row',
@@ -603,8 +588,6 @@ const styles = StyleSheet.create({
     marginBottom: Theme.Spacing.large,
   },
   reinforcementPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
     borderRadius: 999,
     backgroundColor: 'rgba(46, 125, 50, 0.08)',
     borderWidth: 1,
@@ -617,7 +600,6 @@ const styles = StyleSheet.create({
   reinforcementText: {
     color: '#1B5E20',
     fontWeight: '600',
-    marginLeft: 8,
   },
   form: {
     width: '100%',
@@ -640,15 +622,22 @@ const styles = StyleSheet.create({
     borderColor: '#A4B2A4',
     backgroundColor: '#FFFFFF',
   },
+  inputTag: {
+    minWidth: 30,
+    height: 30,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(46, 125, 50, 0.10)',
+  },
+  inputTagText: {
+    color: '#1B5E20',
+    fontWeight: '700',
+  },
   inputFocused: {
     borderColor: '#2E7D32',
     borderWidth: 2,
     backgroundColor: '#F7FFF7',
-    shadowColor: '#2E7D32',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 0,
-    elevation: 0,
   },
   inputError: {
     borderColor: '#B3261E',
@@ -665,6 +654,11 @@ const styles = StyleSheet.create({
   },
   visibilityToggle: {
     paddingLeft: Theme.Spacing.small,
+    paddingVertical: 4,
+  },
+  visibilityToggleText: {
+    color: '#2E7D32',
+    fontWeight: '700',
   },
   errorText: {
     color: '#B3261E',
@@ -686,14 +680,32 @@ const styles = StyleSheet.create({
     marginRight: Theme.Spacing.small,
     marginBottom: Theme.Spacing.small,
   },
+  checkboxBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#6E7D6E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxBoxActive: {
+    borderColor: '#2E7D32',
+    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+  },
+  checkboxFill: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: '#2E7D32',
+  },
   checkboxLabel: {
     marginLeft: 8,
     color: '#2B392B',
     fontWeight: '600',
   },
   securePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -703,7 +715,6 @@ const styles = StyleSheet.create({
   securePillText: {
     color: '#1B5E20',
     fontWeight: '700',
-    marginLeft: 6,
   },
   submitButton: {
     marginBottom: Theme.Spacing.medium,
@@ -718,48 +729,6 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Theme.Spacing.medium,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(46, 125, 50, 0.25)',
-  },
-  dividerText: {
-    color: '#506450',
-    marginHorizontal: Theme.Spacing.small,
-    textTransform: 'lowercase',
-  },
-  socialRow: {
-    flexDirection: 'row',
-    marginBottom: Theme.Spacing.medium,
-  },
-  socialRowStacked: {
-    flexDirection: 'column',
-  },
-  socialButton: {
-    flex: 1,
-    minHeight: 52,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#91A391',
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    paddingHorizontal: Theme.Spacing.medium,
-  },
-  socialButtonStacked: {
-    width: '100%',
-  },
-  socialButtonText: {
-    marginLeft: Theme.Spacing.small,
-    color: '#1F2C1F',
-    fontWeight: '600',
-  },
   trustPanel: {
     backgroundColor: 'rgba(46, 125, 50, 0.08)',
     borderRadius: 14,
@@ -767,15 +736,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(46, 125, 50, 0.22)',
     padding: Theme.Spacing.medium,
   },
-  trustHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Theme.Spacing.extraSmall,
-  },
   trustTitle: {
     color: '#1B5E20',
     fontWeight: '700',
-    marginLeft: 8,
+    marginBottom: Theme.Spacing.extraSmall,
   },
   trustText: {
     color: '#2F3A2F',
@@ -800,14 +764,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   previewColumnWide: {
-    flex: 6,
+    flex: 5,
+    maxWidth: 560,
   },
   previewColumnStacked: {
-    maxWidth: 640,
+    maxWidth: 560,
     alignSelf: 'center',
   },
   previewCard: {
-    flex: 1,
     minHeight: 640,
     borderRadius: 28,
     padding: Theme.Spacing.extraLarge,
@@ -826,8 +790,6 @@ const styles = StyleSheet.create({
     padding: Theme.Spacing.large,
   },
   previewEyebrow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     alignSelf: 'flex-start',
     borderRadius: 999,
     backgroundColor: 'rgba(230, 244, 231, 0.10)',
@@ -837,7 +799,6 @@ const styles = StyleSheet.create({
   },
   previewEyebrowText: {
     color: '#E6F4E7',
-    marginLeft: 8,
     fontWeight: '700',
   },
   previewTitle: {
@@ -867,14 +828,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: Theme.Spacing.medium,
   },
-  previewFeatureIconWrap: {
-    width: 42,
+  previewFeatureBadge: {
+    minWidth: 52,
     height: 42,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#E6F4E7',
     marginRight: Theme.Spacing.medium,
+  },
+  previewFeatureBadgeText: {
+    color: '#16391A',
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   previewFeatureCopy: {
     flex: 1,

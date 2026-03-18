@@ -10,13 +10,63 @@ import {
 } from 'react-native';
 import { Theme } from '@/styles/theme';
 
+const TEXT_STYLE_KEYS = new Set([
+  'color',
+  'fontFamily',
+  'fontSize',
+  'fontStyle',
+  'fontVariant',
+  'fontWeight',
+  'includeFontPadding',
+  'letterSpacing',
+  'lineHeight',
+  'textAlign',
+  'textAlignVertical',
+  'textDecorationColor',
+  'textDecorationLine',
+  'textDecorationStyle',
+  'textShadowColor',
+  'textShadowOffset',
+  'textShadowRadius',
+  'textTransform',
+  'writingDirection',
+]);
+
+const splitInputStyles = (style?: StyleProp<TextStyle>) => {
+  const flattenedStyle = StyleSheet.flatten(style);
+
+  if (!flattenedStyle) {
+    return {
+      textInputStyle: undefined,
+      wrapperStyle: undefined,
+    };
+  }
+
+  const textInputStyle: TextStyle = {};
+  const wrapperStyle: ViewStyle = {};
+
+  Object.entries(flattenedStyle).forEach(([key, value]) => {
+    if (TEXT_STYLE_KEYS.has(key)) {
+      (textInputStyle as Record<string, unknown>)[key] = value;
+      return;
+    }
+
+    (wrapperStyle as Record<string, unknown>)[key] = value;
+  });
+
+  return {
+    textInputStyle,
+    wrapperStyle,
+  };
+};
+
 interface AppInputProps extends TextInputProps {
   containerStyle?: StyleProp<ViewStyle>;
   inputWrapperStyle?: StyleProp<ViewStyle>;
   leftAdornment?: ReactNode;
   rightAdornment?: ReactNode;
   invalid?: boolean;
-  style?: StyleProp<TextStyle>;
+  style?: StyleProp<TextStyle | ViewStyle>;
 }
 
 export const AppInput = forwardRef<TextInput, AppInputProps>(({
@@ -30,6 +80,8 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(({
   multiline = false,
   ...props
 }, ref) => {
+  const { textInputStyle, wrapperStyle } = splitInputStyles(style);
+
   return (
     <View style={[styles.container, containerStyle]}>
       <View
@@ -38,6 +90,7 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(({
           multiline && styles.inputWrapperMultiline,
           invalid && styles.inputWrapperInvalid,
           !editable && styles.inputWrapperDisabled,
+          wrapperStyle,
           inputWrapperStyle,
         ]}
       >
@@ -53,7 +106,7 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(({
             styles.input,
             multiline && styles.inputMultiline,
             !editable && styles.inputDisabled,
-            style,
+            textInputStyle,
           ]}
         />
 

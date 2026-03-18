@@ -57,7 +57,7 @@ export default function CreateAccount() {
 
   const emailError = getEmailError(trimmedEmail);
   const passwordError = getPasswordError(password);
-  const canSubmit = !emailError && !passwordError;
+  const canSubmit = Boolean(trimmedEmail && password) && !emailError && !passwordError;
 
   const handleCreateAccount = () => {
     setEmailTouched(true);
@@ -142,8 +142,9 @@ export default function CreateAccount() {
                       setEmailFocused(false);
                       setEmailTouched(true);
                     }}
-                    style={[
-                      styles.input,
+                    invalid={emailTouched && !!emailError}
+                    inputWrapperStyle={[
+                      styles.inputWrapper,
                       emailFocused && styles.inputFocused,
                       emailTouched && !!emailError && styles.inputError,
                     ]}
@@ -194,8 +195,9 @@ export default function CreateAccount() {
                       setPasswordFocused(false);
                       setPasswordTouched(true);
                     }}
-                    style={[
-                      styles.input,
+                    invalid={passwordTouched && !!passwordError}
+                    inputWrapperStyle={[
+                      styles.inputWrapper,
                       passwordFocused && styles.inputFocused,
                       passwordTouched && !!passwordError && styles.inputError,
                     ]}
@@ -218,7 +220,9 @@ export default function CreateAccount() {
                 <AppButton
                   title="Join the Community"
                   onPress={handleCreateAccount}
-                  style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+                  disabled={!canSubmit}
+                  style={styles.submitButton}
+                  buttonStyle={styles.submitButtonInner}
                 />
 
                 <View style={styles.trustPanel}>
@@ -386,14 +390,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: Theme.Spacing.extraSmall,
   },
-  input: {
+  inputWrapper: {
     borderRadius: 12,
-    borderWidth: 1,
     borderColor: '#9AA79A',
     backgroundColor: '#FFFFFF',
-    paddingVertical: 15,
-    paddingHorizontal: 14,
-    color: '#111111',
   },
   inputFocused: {
     borderColor: '#2E7D32',
@@ -421,15 +421,16 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: Theme.Spacing.small,
     marginBottom: Theme.Spacing.medium,
+  },
+  submitButtonInner: {
     borderRadius: 12,
+    minHeight: 54,
+    justifyContent: 'center',
     shadowColor: '#1B5E20',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 7,
-  },
-  submitButtonDisabled: {
-    opacity: 0.78,
   },
   trustPanel: {
     backgroundColor: 'rgba(46, 125, 50, 0.08)',
