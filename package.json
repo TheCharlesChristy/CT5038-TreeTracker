@@ -4,9 +4,6 @@
   "private": true,
   "type": "commonjs",
   "main": "app.js",
-  "engines": {
-    "node": "16.20.2"
-  },
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
