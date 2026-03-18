@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
+
 ROOT="$(pwd)"
 SERVER_DIR="$ROOT/server"
+
+echo "16" > "$ROOT/.node-version"
 
 export NODENV_ROOT="$HOME/.nodenv"
 export PATH="$NODENV_ROOT/bin:$PATH"
