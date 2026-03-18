@@ -12,6 +12,16 @@ interface MapComponentProps {
   isPlotting?: boolean;
   plottedTrees?: Tree[];
   renderTreeIcon?: (tree: Tree) => string;
+  onPlotPointerMove?: (
+    pointer:
+      | {
+          latitude: number;
+          longitude: number;
+          screenX: number;
+          screenY: number;
+        }
+      | null
+  ) => void;
 }
 
 // Bounding box for Charlton Kings in Cheltenham
@@ -38,16 +48,27 @@ function MapWeb({
   isPlotting = false,
   plottedTrees = [],
   renderTreeIcon,
+  onPlotPointerMove,
 
 }: MapComponentProps) {
   const mapRef = useRef<any>(null);
   const onPressRef = useRef(onPress);
+  const onPlotPointerMoveRef = useRef(onPlotPointerMove);
+  const isPlottingRef = useRef(isPlotting);
   const mapInstance = useRef<any>(null);
   const treeLayer = useRef<any>(null);
 
   useEffect(() => {
     onPressRef.current = onPress;
   }, [onPress]);
+
+  useEffect(() => {
+    onPlotPointerMoveRef.current = onPlotPointerMove;
+  }, [onPlotPointerMove]);
+
+  useEffect(() => {
+    isPlottingRef.current = isPlotting;
+  }, [isPlotting]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) return;
@@ -94,6 +115,22 @@ function MapWeb({
       });
     });
 
+    map.on('mousemove', function (e: any) {
+      if (!isPlottingRef.current || !onPlotPointerMoveRef.current) return;
+
+      onPlotPointerMoveRef.current({
+        latitude: e.latlng.lat,
+        longitude: e.latlng.lng,
+        screenX: e.originalEvent.clientX,
+        screenY: e.originalEvent.clientY,
+      });
+    });
+
+    map.on('mouseout', function () {
+      if (!onPlotPointerMoveRef.current) return;
+      onPlotPointerMoveRef.current(null);
+    });
+
     setTimeout(() => map.invalidateSize(), 0);
 
     return () => map.remove();
@@ -129,9 +166,9 @@ function MapWeb({
       // adding a click listener
       marker.on('click', () => {
         if (onTreeClick) {
-          onTreeClick(tree)
+          onTreeClick(tree);
         }
-      })
+      });
     });
   }, [plottedTrees, renderTreeIcon, onTreeClick]);
 
@@ -148,9 +185,16 @@ function MapWeb({
 // ===============================
 
 function MapMobile({
- onPress, onTreeClick, isPlotting = false, plottedTrees = [], renderTreeIcon} : MapComponentProps) {
+ onPress, onTreeClick, isPlotting = false, plottedTrees = [], renderTreeIcon, onPlotPointerMove } : MapComponentProps) {
   const WebView = require('react-native-webview').default;
   const webViewRef = useRef<any>(null);
+
+  useEffect(() => {
+    // No pointer cursor on native map interaction, clear any existing web hover label state.
+    if (onPlotPointerMove) {
+      onPlotPointerMove(null);
+    }
+  }, [onPlotPointerMove]);
 
   // send tree updates to WebView. Not the most efficient of methods but for the scale of this project and not having tens of thousands of trees and users, 
   // it makes it so there is a single source of trees to update and send from especially since this mapview is not global and only to charlton kings
@@ -300,6 +344,7 @@ export default function MapComponent({
   isPlotting,
   plottedTrees,
   renderTreeIcon,
+  onPlotPointerMove,
 }: MapComponentProps) {
   return (
     <View style={style}>
@@ -310,6 +355,7 @@ export default function MapComponent({
           isPlotting={isPlotting}
           plottedTrees={plottedTrees}
           renderTreeIcon={renderTreeIcon}
+          onPlotPointerMove={onPlotPointerMove}
         />
       ) : (
         <MapMobile
@@ -318,6 +364,7 @@ export default function MapComponent({
           isPlotting={isPlotting}
           plottedTrees={plottedTrees}
           renderTreeIcon={renderTreeIcon}
+          onPlotPointerMove={onPlotPointerMove}
         />
       )}
     </View>

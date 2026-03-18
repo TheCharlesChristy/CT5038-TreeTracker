@@ -7,6 +7,7 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
@@ -32,6 +33,13 @@ type PageMode =
   | 'dashboard';
 
 type UserRole = 'user' | 'guardian' | 'admin';
+
+type PlotPointer = {
+  latitude: number;
+  longitude: number;
+  screenX: number;
+  screenY: number;
+};
 
 const CHARLTON_CENTER = {
   latitude: 51.8865,
@@ -60,6 +68,9 @@ const haversineDistanceKm = (
 };
 
 export default function MainPage() {
+  const { width: windowWidth } = useWindowDimensions();
+  const isWideLayout = windowWidth >= 1024;
+
   const [mode, setMode] = useState<PageMode>('explore');
 
   const [currentTree, setCurrentTree] = useState<TreeDetails | null>(null);
@@ -72,6 +83,7 @@ export default function MainPage() {
   const [pendingDevicePlacement, setPendingDevicePlacement] = useState(false);
 
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
+  const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
 
   // Auth is still stubbed in this project. Wire this to real user session role when available.
   const [userRole] = useState<UserRole>('user');
@@ -83,6 +95,7 @@ export default function MainPage() {
     setSelectedTree(null);
     setCurrentTree(null);
     setPendingDevicePlacement(false);
+    setPlotPointer(null);
     setMode('explore');
   };
 
@@ -312,6 +325,14 @@ export default function MainPage() {
             style={StyleSheet.absoluteFillObject}
             isPlotting={mode === 'manual-placement'}
             plottedTrees={plottedTrees}
+            onPlotPointerMove={(pointer) => {
+              if (mode !== 'manual-placement') {
+                setPlotPointer(null);
+                return;
+              }
+
+              setPlotPointer(pointer);
+            }}
             onTreeClick={(tree) => {
               if (!mapInteractive) {
                 return;
@@ -334,6 +355,7 @@ export default function MainPage() {
               uploadTreeToServer(completeTree);
 
               setCurrentTree(null);
+              setPlotPointer(null);
               setMode('explore');
             }}
             renderTreeIcon={(tree) => {
@@ -374,17 +396,47 @@ export default function MainPage() {
           </View>
 
           {mode === 'manual-placement' ? (
-            <View style={styles.manualBanner}>
-              <AppText style={styles.manualBannerTitle}>Select Location On Map</AppText>
-              <AppText style={styles.manualBannerBody}>
-                Tap a location to place the new tree marker.
+            <View style={[styles.manualPlacementPanel, isWideLayout ? styles.manualPlacementPanelWide : styles.manualPlacementPanelBottom]}>
+              <AppText style={styles.manualPlacementTitle}>Plot Tree On Map</AppText>
+              <AppText style={styles.manualPlacementBody}>
+                Move the cursor and click to pin the tree location.
               </AppText>
+
+              <View style={styles.manualPlacementCoords}>
+                <AppText style={styles.manualPlacementCoordsLabel}>Live Coordinates</AppText>
+                <AppText style={styles.manualPlacementCoordsText}>
+                  {plotPointer
+                    ? `${plotPointer.latitude.toFixed(6)}, ${plotPointer.longitude.toFixed(6)}`
+                    : 'Move cursor on map'}
+                </AppText>
+              </View>
+
               <AppButton
                 title="Cancel Placement"
                 variant="secondary"
                 onPress={closeAllOverlays}
-                style={styles.manualCancelButton}
+                style={styles.manualPlacementCancelButton}
               />
+            </View>
+          ) : null}
+
+          {mode === 'manual-placement' && plotPointer ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.cursorCoordinatePill,
+                {
+                  left: Math.min(plotPointer.screenX + 14, windowWidth - 200),
+                  top: Math.max(plotPointer.screenY - 56, 10),
+                },
+              ]}
+            >
+              <AppText style={styles.cursorCoordinateText}>
+                {plotPointer.latitude.toFixed(6)}
+              </AppText>
+              <AppText style={styles.cursorCoordinateText}>
+                {plotPointer.longitude.toFixed(6)}
+              </AppText>
             </View>
           ) : null}
 
@@ -755,11 +807,8 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
 
-  manualBanner: {
+  manualPlacementPanel: {
     position: 'absolute',
-    top: 74,
-    left: 16,
-    right: 16,
     zIndex: 210,
     borderRadius: 16,
     padding: 14,
@@ -773,22 +822,75 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
 
-  manualBannerTitle: {
+  manualPlacementPanelWide: {
+    top: 84,
+    right: 16,
+    width: 320,
+  },
+
+  manualPlacementPanelBottom: {
+    left: 16,
+    right: 16,
+    bottom: 104,
+  },
+
+  manualPlacementTitle: {
     ...Theme.Typography.subtitle,
     fontSize: 18,
     lineHeight: 24,
     color: Theme.Colours.textPrimary,
   },
 
-  manualBannerBody: {
+  manualPlacementBody: {
     ...Theme.Typography.caption,
     color: Theme.Colours.textMuted,
     marginTop: 2,
   },
 
-  manualCancelButton: {
+  manualPlacementCoords: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#D5E4D5',
+    backgroundColor: Theme.Colours.white,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+
+  manualPlacementCoordsLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+  },
+
+  manualPlacementCoordsText: {
+    ...Theme.Typography.body,
+    marginTop: 2,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  manualPlacementCancelButton: {
     marginTop: 8,
     marginBottom: 0,
+  },
+
+  cursorCoordinatePill: {
+    position: 'absolute',
+    zIndex: 260,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(15, 25, 18, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 235, 223, 0.35)',
+    minWidth: 164,
+  },
+
+  cursorCoordinateText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.white,
+    fontFamily: 'Poppins_600SemiBold',
+    lineHeight: 16,
   },
 
   searchPanelWrap: {
