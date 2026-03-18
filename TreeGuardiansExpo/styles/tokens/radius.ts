@@ -3,4 +3,5 @@ export const Radius = {
   small: 6,
   medium: 10,
   large: 16,
+  card: 20,
 };

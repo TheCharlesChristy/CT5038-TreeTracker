@@ -1,22 +1,26 @@
 export const Colours = {
-  // Dark Green
-  primary: '#1B5E20',    
-  // Brown
-  secondary: '#6D4C41',    
-  // Lime Green
-  accent: '#48b54d',     
+  // Forest green — primary CTA
+  primary: '#2E7D32',
+  // Lighter green — secondary / accents
+  secondary: '#66BB6A',
+  // Soft accent green
+  accent: '#A5D6A7',
 
-  // White
+  // Soft off-white background
+  backgroundSoft: '#F5F7F5',
+
+  // Text
+  textPrimary: '#1B1B1B',
+  textMuted: '#4A4A4A',
+  textLight: '#8A8A8A',
+
+  // UI
   white: '#FFFFFF',
-  // Black
-  black: '#1C1C1C',
-  // Gray
+  black: '#1B1B1B',
   gray: '#5F6368',
 
-  // Lighter, Darker Green
+  // Semantic
   success: '#2E7D32',
-  // Red
   error: '#C62828',
-  // Orange
   warning: '#F9A825',
 };
