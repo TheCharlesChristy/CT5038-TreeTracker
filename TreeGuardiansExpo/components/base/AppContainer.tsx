@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, ViewStyle, ScrollView, ImageBackground, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Theme } from '../../styles/theme';
+import { Theme } from '@/styles/theme';
 
 interface AppContainerProps {
   children: React.ReactNode;
