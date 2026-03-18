@@ -485,6 +485,7 @@ const styles = StyleSheet.create({
   previewColumnWide: {
     flex: 5,
     maxWidth: 560,
+    height: '100%',
   },
   previewColumnStacked: {
     maxWidth: 520,
