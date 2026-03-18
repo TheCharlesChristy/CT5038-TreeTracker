@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   shellWide: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   shellStacked: {
@@ -485,14 +485,12 @@ const styles = StyleSheet.create({
   previewColumnWide: {
     flex: 5,
     maxWidth: 560,
-    justifyContent: 'center',
   },
   previewColumnStacked: {
     maxWidth: 520,
     alignSelf: 'center',
   },
   previewCard: {
-    flex: 1,
     minHeight: 320,
     borderRadius: 22,
     borderWidth: 1,
