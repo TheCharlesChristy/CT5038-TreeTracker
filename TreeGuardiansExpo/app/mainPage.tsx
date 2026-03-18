@@ -31,6 +31,8 @@ type PageMode =
   | 'search'
   | 'dashboard';
 
+type UserRole = 'user' | 'guardian' | 'admin';
+
 const CHARLTON_CENTER = {
   latitude: 51.8865,
   longitude: -2.0475,
@@ -70,6 +72,9 @@ export default function MainPage() {
   const [pendingDevicePlacement, setPendingDevicePlacement] = useState(false);
 
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
+
+  // Auth is still stubbed in this project. Wire this to real user session role when available.
+  const [userRole] = useState<UserRole>('user');
 
   const mapInteractive = mode === 'explore' || mode === 'manual-placement' || mode === 'view-tree';
   const showDimOverlay = mode !== 'explore' && mode !== 'manual-placement';
@@ -539,45 +544,91 @@ export default function MainPage() {
                   />
                 </View>
 
-                <View style={styles.statsRow}>
-                  <View style={styles.statCard}>
-                    <AppText style={styles.statValue}>{plottedTrees.length}</AppText>
-                    <AppText style={styles.statLabel}>Total Trees</AppText>
-                  </View>
+                <AppText style={styles.dashboardSubtitle}>
+                  Select an action to continue.
+                </AppText>
 
-                  <View style={styles.statCard}>
-                    <AppText style={styles.statValue}>{healthyCount}</AppText>
-                    <AppText style={styles.statLabel}>Healthy</AppText>
-                  </View>
+                <ScrollView style={styles.dashboardList} contentContainerStyle={styles.dashboardListContent}>
+                  <AppButton
+                    title="Manage Profile"
+                    variant="primary"
+                    onPress={() => {
+                      closeAllOverlays();
+                        router.push('/(protected)/myProfile' as never);
+                    }}
+                    style={styles.dashboardActionButton}
+                  />
 
-                  <View style={styles.statCard}>
-                    <AppText style={styles.statValue}>{treesNeedingAttention}</AppText>
-                    <AppText style={styles.statLabel}>Need Attention</AppText>
-                  </View>
-                </View>
+                  <AppButton
+                    title="Local Activity"
+                    variant="secondary"
+                    onPress={() => {
+                      closeAllOverlays();
+                      router.push('/dbTestBench');
+                    }}
+                    style={styles.dashboardActionButton}
+                  />
 
-                <ScrollView style={styles.dashboardList}>
-                  {plottedTrees.map((tree) => (
-                    <TouchableOpacity
-                      key={`${tree.id ?? 'tree'}-${tree.latitude}-${tree.longitude}`}
-                      style={styles.dashboardItem}
+                  <AppButton
+                    title="View Weather Data"
+                    variant="secondary"
+                    onPress={() => {
+                      Alert.alert('Weather Data', 'Weather integration is ready to connect.');
+                    }}
+                    style={styles.dashboardActionButton}
+                  />
+
+                  {(userRole === 'guardian' || userRole === 'admin') ? (
+                    <AppButton
+                      title="My Trees"
+                      variant="secondary"
                       onPress={() => {
-                        setSelectedTree(tree);
-                        setMode('view-tree');
+                        closeAllOverlays();
+                        router.push('/(protected)/myTrees' as never);
                       }}
-                    >
-                      <View>
-                        <AppText style={styles.dashboardItemTitle}>
-                          Tree #{tree.id ?? 'Unknown'}
-                        </AppText>
-                        <AppText style={styles.dashboardItemText}>
-                          {tree.disease ? 'Needs attention' : 'Healthy'}
-                        </AppText>
-                      </View>
+                      style={styles.dashboardActionButton}
+                    />
+                  ) : null}
 
-                      <AppText style={styles.dashboardItemAction}>View</AppText>
-                    </TouchableOpacity>
-                  ))}
+                  {userRole === 'admin' ? (
+                    <>
+                      <AppButton
+                        title="Analytics"
+                        variant="secondary"
+                        onPress={() => {
+                          Alert.alert('Analytics', 'Analytics view is ready to connect.');
+                        }}
+                        style={styles.dashboardActionButton}
+                      />
+
+                      <AppButton
+                        title="Manage Users"
+                        variant="secondary"
+                        onPress={() => {
+                          closeAllOverlays();
+                          router.push('/(protected)/admin/manageUsers' as never);
+                        }}
+                        style={styles.dashboardActionButton}
+                      />
+                    </>
+                  ) : null}
+
+                  <View style={styles.dashboardStatsRow}>
+                    <View style={styles.statCardCompact}>
+                      <AppText style={styles.statValueCompact}>{plottedTrees.length}</AppText>
+                      <AppText style={styles.statLabelCompact}>Total Trees</AppText>
+                    </View>
+
+                    <View style={styles.statCardCompact}>
+                      <AppText style={styles.statValueCompact}>{healthyCount}</AppText>
+                      <AppText style={styles.statLabelCompact}>Healthy</AppText>
+                    </View>
+
+                    <View style={styles.statCardCompact}>
+                      <AppText style={styles.statValueCompact}>{treesNeedingAttention}</AppText>
+                      <AppText style={styles.statLabelCompact}>Need Attention</AppText>
+                    </View>
+                  </View>
                 </ScrollView>
               </View>
             </View>
@@ -742,9 +793,9 @@ const styles = StyleSheet.create({
 
   searchPanelWrap: {
     position: 'absolute',
-    top: 0,
+    top: 12,
     left: 0,
-    bottom: 0,
+    bottom: 104,
     zIndex: 220,
     width: '90%',
     maxWidth: 440,
@@ -766,7 +817,11 @@ const styles = StyleSheet.create({
   },
 
   dashboardWrap: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 12,
+    left: 0,
+    right: 0,
+    bottom: 104,
     zIndex: 220,
     alignItems: 'center',
     justifyContent: 'center',
@@ -775,8 +830,8 @@ const styles = StyleSheet.create({
 
   dashboardPanel: {
     width: '100%',
-    maxWidth: 860,
-    maxHeight: '88%',
+    maxWidth: 720,
+    maxHeight: '100%',
     borderRadius: 18,
     backgroundColor: '#F9FCF9',
     borderWidth: 1,
@@ -799,6 +854,12 @@ const styles = StyleSheet.create({
   panelTitle: {
     ...Theme.Typography.subtitle,
     color: Theme.Colours.textPrimary,
+  },
+
+  dashboardSubtitle: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginBottom: 12,
   },
 
   panelCloseWrap: {
@@ -943,6 +1004,41 @@ const styles = StyleSheet.create({
 
   dashboardList: {
     marginTop: 4,
+  },
+
+  dashboardListContent: {
+    paddingBottom: 10,
+  },
+
+  dashboardActionButton: {
+    marginBottom: 8,
+  },
+
+  dashboardStatsRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  statCardCompact: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: Theme.Colours.white,
+    borderWidth: 1,
+    borderColor: '#D7E4D7',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+
+  statValueCompact: {
+    ...Theme.Typography.subtitle,
+    color: Theme.Colours.primary,
+  },
+
+  statLabelCompact: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
   },
 
   dashboardItem: {

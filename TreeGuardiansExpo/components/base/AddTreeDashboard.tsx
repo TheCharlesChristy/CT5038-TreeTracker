@@ -353,9 +353,9 @@ export default function PlotDashboard({
 const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
-    top: 0,
+    top: 12,
     right: 0,
-    bottom: 0,
+    bottom: 104,
     left: 0,
     zIndex: 220,
     alignItems: 'flex-end',
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
 
   panel: {
-    height: '96%',
+    height: '100%',
     borderRadius: 16,
     backgroundColor: '#F7FAF6',
     borderWidth: 1,
