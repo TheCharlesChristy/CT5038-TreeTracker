@@ -423,6 +423,47 @@ const styles = StyleSheet.create({
     color: '#2F3A2F',
     lineHeight: 20,
   },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.Spacing.medium,
+    gap: Theme.Spacing.small,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(46, 125, 50, 0.30)',
+  },
+  dividerText: {
+    color: '#466046',
+    textTransform: 'lowercase',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: Theme.Spacing.small,
+  },
+  socialRowStacked: {
+    flexDirection: 'column',
+  },
+  socialButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#7B927B',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderRadius: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Theme.Spacing.small,
+  },
+  socialButtonStacked: {
+    width: '100%',
+  },
+  socialButtonText: {
+    color: '#1F2C1F',
+    fontSize: 15,
+    fontWeight: '500',
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
