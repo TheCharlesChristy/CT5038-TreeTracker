@@ -1,10 +1,9 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function Index() {
   return (
@@ -16,7 +15,11 @@ export default function Index() {
 
           {/* Tree Icon */}
           <View style={styles.iconContainer}>
-            <MaterialCommunityIcons name="tree" size={44} color={Theme.Colours.primary} />
+            <Image
+              source={require('@/assets/images/tree_icon.png')}
+              style={styles.brandIcon}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Title */}
@@ -112,6 +115,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Theme.Spacing.medium,
+  },
+
+  brandIcon: {
+    width: 44,
+    height: 44,
   },
 
   title: {
