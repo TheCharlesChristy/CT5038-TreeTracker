@@ -15,7 +15,8 @@ import { router } from 'expo-router';
 
 export default function CreateAccount() {
   const { width, height } = useWindowDimensions();
-  const isWideLayout = true; // You can adjust this breakpoint as needed, e.g., width >= 768
+  const isMobileLayout = width < 680;
+  const isWideLayout = width >= 920;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,23 +91,29 @@ export default function CreateAccount() {
       noPadding
       backgroundImage={require('../assets/images/CharltonKings.jpg')}
     >
-      <View style={[styles.page, { minHeight: height - Theme.Spacing.large }]}>
+      <View
+        style={[
+          styles.page,
+          isMobileLayout && styles.pageMobile,
+          { minHeight: height - Theme.Spacing.large },
+        ]}
+      >
         <View style={styles.pageTint} />
 
-        <View style={[styles.shell, isWideLayout ? styles.shellWide : styles.shellStacked]}>
+        <View style={[styles.shell, isMobileLayout && styles.shellMobile, isWideLayout ? styles.shellWide : styles.shellStacked]}>
           <View style={[styles.formColumn, isWideLayout ? styles.formColumnWide : styles.formColumnStacked]}>
-            <View style={styles.formCard}>
+            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
               <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                 <AppText variant="caption" style={styles.homeLinkText}>
                   Back to Home
                 </AppText>
               </Pressable>
 
-              <AppText variant="title" style={styles.title}>
+              <AppText variant="title" style={[styles.title, isMobileLayout && styles.titleMobile]}>
                 Join the Community
               </AppText>
 
-              <AppText variant="body" style={styles.subtitle}>
+              <AppText variant="body" style={[styles.subtitle, isMobileLayout && styles.subtitleMobile]}>
                 Discover local trees, share sightings, and help protect the canopy in your area.
               </AppText>
 
@@ -238,12 +245,12 @@ export default function CreateAccount() {
           </View>
 
           <View style={[styles.previewColumn, isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked]}>
-            <View style={styles.previewCard}>
-              <AppText variant="subtitle" style={styles.previewTitle}>
+            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile]}>
+              <AppText variant="subtitle" style={[styles.previewTitle, isMobileLayout && styles.previewTitleMobile]}>
                 Build your local tree network
               </AppText>
 
-              <AppText variant="body" style={styles.previewSubtitle}>
+              <AppText variant="body" style={[styles.previewSubtitle, isMobileLayout && styles.previewSubtitleMobile]}>
                 Start in minutes and turn everyday walks into shared community impact.
               </AppText>
 
@@ -279,6 +286,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.Spacing.large,
     paddingVertical: Theme.Spacing.extraLarge,
   },
+  pageMobile: {
+    paddingHorizontal: Theme.Spacing.medium,
+    paddingVertical: Theme.Spacing.large,
+  },
   pageTint: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15, 28, 18, 0.50)',
@@ -290,6 +301,9 @@ const styles = StyleSheet.create({
     maxWidth: 1160,
     gap: Theme.Spacing.large,
     zIndex: 1,
+  },
+  shellMobile: {
+    gap: Theme.Spacing.medium,
   },
   shellWide: {
     flexDirection: 'row',
@@ -322,6 +336,10 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 8,
   },
+  formCardMobile: {
+    borderRadius: 16,
+    padding: Theme.Spacing.large,
+  },
   homeLink: {
     alignSelf: 'flex-start',
     marginBottom: Theme.Spacing.medium,
@@ -340,10 +358,17 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     letterSpacing: 0.2,
   },
+  titleMobile: {
+    fontSize: 28,
+    lineHeight: 34,
+  },
   subtitle: {
     marginTop: Theme.Spacing.small,
     marginBottom: Theme.Spacing.large,
     color: '#2D3A2D',
+  },
+  subtitleMobile: {
+    marginBottom: Theme.Spacing.medium,
   },
   form: {
     width: '100%',
@@ -485,7 +510,6 @@ const styles = StyleSheet.create({
   previewColumnWide: {
     flex: 5,
     maxWidth: 560,
-    height: '100%',
   },
   previewColumnStacked: {
     maxWidth: 520,
@@ -505,15 +529,27 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 7,
   },
+  previewCardMobile: {
+    minHeight: 0,
+    padding: Theme.Spacing.large,
+    borderRadius: 16,
+  },
   previewTitle: {
     color: '#EFF7EE',
     marginBottom: Theme.Spacing.small,
     fontSize: 30,
     lineHeight: 36,
   },
+  previewTitleMobile: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
   previewSubtitle: {
     color: '#D7E8D7',
     marginBottom: Theme.Spacing.large,
+  },
+  previewSubtitleMobile: {
+    marginBottom: Theme.Spacing.medium,
   },
   previewList: {
     gap: Theme.Spacing.small,
