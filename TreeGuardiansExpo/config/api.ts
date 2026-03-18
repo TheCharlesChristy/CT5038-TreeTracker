@@ -10,4 +10,5 @@ export const ENDPOINTS = {
   LOGOUT: "logout",
   REFRESH: "refresh",
   USER_CONTROLLER: "user-controller",
+  VALIDATE_SESSION: "validate-session",
 };
