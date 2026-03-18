@@ -84,13 +84,6 @@ export default function CreateAccount() {
     );
   };
 
-  const handleSocialLogin = (provider: 'Google' | 'Apple') => {
-    Alert.alert(
-      `${provider} sign in`,
-      `${provider} sign in will be connected in a future update.`,
-    );
-  };
-
   return (
     <AppContainer
       scrollable
@@ -228,34 +221,6 @@ export default function CreateAccount() {
                   <AppText variant="caption" style={styles.trustText}>
                     We only use your email for account access and key updates. Your details are not shared publicly.
                   </AppText>
-                </View>
-
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <AppText variant="caption" style={styles.dividerText}>
-                    or continue with
-                  </AppText>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <View style={[styles.socialRow, !isWideLayout && styles.socialRowStacked]}>
-                  <Pressable
-                    onPress={() => handleSocialLogin('Google')}
-                    style={[styles.socialButton, !isWideLayout && styles.socialButtonStacked]}
-                  >
-                    <AppText variant="body" style={styles.socialButtonText}>
-                      Continue with Google
-                    </AppText>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => handleSocialLogin('Apple')}
-                    style={[styles.socialButton, !isWideLayout && styles.socialButtonStacked]}
-                  >
-                    <AppText variant="body" style={styles.socialButtonText}>
-                      Continue with Apple
-                    </AppText>
-                  </Pressable>
                 </View>
 
                 <View style={styles.footer}>
@@ -457,47 +422,6 @@ const styles = StyleSheet.create({
   trustText: {
     color: '#2F3A2F',
     lineHeight: 20,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Theme.Spacing.medium,
-    gap: Theme.Spacing.small,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(46, 125, 50, 0.30)',
-  },
-  dividerText: {
-    color: '#466046',
-    textTransform: 'lowercase',
-  },
-  socialRow: {
-    flexDirection: 'row',
-    gap: Theme.Spacing.small,
-  },
-  socialRowStacked: {
-    flexDirection: 'column',
-  },
-  socialButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#7B927B',
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    borderRadius: 12,
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Theme.Spacing.small,
-  },
-  socialButtonStacked: {
-    width: '100%',
-  },
-  socialButtonText: {
-    color: '#1F2C1F',
-    fontSize: 15,
-    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
