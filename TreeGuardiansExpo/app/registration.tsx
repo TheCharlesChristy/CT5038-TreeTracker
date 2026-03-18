@@ -1,171 +1,305 @@
-import { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
-import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
 
 export default function CreateAccount() {
-  const [username, setUsername] = useState('');
+  const { width, height } = useWindowDimensions();
+  const isWideLayout = width >= 980;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const trimmedEmail = useMemo(() => email.trim(), [email]);
+
+  const getEmailError = (value: string) => {
+    if (!value) {
+      return 'Email is required.';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      return 'Enter a valid email address.';
+    }
+
+    return '';
+  };
+
+  const getPasswordError = (value: string) => {
+    if (!value) {
+      return 'Password is required.';
+    }
+
+    if (value.length < 8) {
+      return 'Use at least 8 characters.';
+    }
+
+    return '';
+  };
+
+  const emailError = getEmailError(trimmedEmail);
+  const passwordError = getPasswordError(password);
+  const canSubmit = !emailError && !passwordError;
 
   const handleCreateAccount = () => {
-    // Validation
-    if (!username.trim()) {
-      Alert.alert('Error', 'Please enter a username');
+    setEmailTouched(true);
+    setPasswordTouched(true);
+
+    if (emailError) {
+      Alert.alert('Check your email', emailError);
       return;
     }
 
-    if (!email.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+    if (passwordError) {
+      Alert.alert('Check your password', passwordError);
       return;
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    if (!password) {
-      Alert.alert('Error', 'Please enter a password');
-      return;
-    }
-
-    if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long');
-      return;
-    }
-
-    if (!confirmPassword) {
-      Alert.alert('Error', 'Please confirm your password');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    // TODO: Implement account creation logic
-    // This would typically call an API endpoint or database function
     Alert.alert(
-      'Success',
-      'Account created successfully!',
+      'Welcome to TreeGuardians',
+      'Your account has been created successfully.',
       [
         {
-          text: 'OK',
+          text: 'Continue to sign in',
           onPress: () => router.push('/login'),
         },
-      ]
+      ],
+    );
+  };
+
+  const handleSocialLogin = (provider: 'Google' | 'Apple') => {
+    Alert.alert(
+      `${provider} sign in`,
+      `${provider} sign in will be connected in a future update.`,
     );
   };
 
   return (
-    <AppContainer scrollable>
-      {/* Top Left Home */}
-      <NavigationButton onPress={() => router.push('/')}>
-        Home
-      </NavigationButton>
+    <AppContainer
+      scrollable
+      noPadding
+      backgroundImage={require('../assets/images/CharltonKings.jpg')}
+    >
+      <View style={[styles.page, { minHeight: height - Theme.Spacing.large }]}>
+        <View style={styles.pageTint} />
 
-      {/* Form Content */}
-      <View style={styles.formContainer}>
-        <AppText
-          variant="title"
-          style={styles.title}
-        >
-          Create Account
-        </AppText>
+        <View style={[styles.shell, isWideLayout ? styles.shellWide : styles.shellStacked]}>
+          <View style={[styles.formColumn, isWideLayout ? styles.formColumnWide : styles.formColumnStacked]}>
+            <View style={styles.formCard}>
+              <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
+                <AppText variant="caption" style={styles.homeLinkText}>
+                  Back to Home
+                </AppText>
+              </Pressable>
 
-        <AppText
-          variant="body"
-          style={styles.subtitle}
-        >
-          Join TreeGuardians to help track and protect our trees
-        </AppText>
+              <AppText variant="title" style={styles.title}>
+                Join the Community
+              </AppText>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Username
-            </AppText>
-            <AppInput
-              placeholder="Enter your username"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+              <AppText variant="body" style={styles.subtitle}>
+                Discover local trees, share sightings, and help protect the canopy in your area.
+              </AppText>
+
+              <View style={styles.form}>
+                <View style={styles.inputGroup}>
+                  <AppText variant="caption" style={styles.label}>
+                    Email address
+                  </AppText>
+
+                  <AppInput
+                    placeholder="name@example.com"
+                    value={email}
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      if (!emailTouched) {
+                        setEmailTouched(true);
+                      }
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="emailAddress"
+                    autoComplete="email"
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => {
+                      setEmailFocused(false);
+                      setEmailTouched(true);
+                    }}
+                    style={[
+                      styles.input,
+                      emailFocused && styles.inputFocused,
+                      emailTouched && !!emailError && styles.inputError,
+                    ]}
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  {emailTouched && !!emailError && (
+                    <AppText variant="caption" style={styles.errorText}>
+                      {emailError}
+                    </AppText>
+                  )}
+
+                  {emailTouched && !emailError && (
+                    <AppText variant="caption" style={styles.successText}>
+                      Email looks good.
+                    </AppText>
+                  )}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <View style={styles.passwordHeaderRow}>
+                    <AppText variant="caption" style={styles.label}>
+                      Password
+                    </AppText>
+                    <Pressable onPress={() => setShowPassword((prev) => !prev)}>
+                      <AppText variant="caption" style={styles.toggleText}>
+                        {showPassword ? 'Hide' : 'Show'}
+                      </AppText>
+                    </Pressable>
+                  </View>
+
+                  <AppInput
+                    placeholder="At least 8 characters"
+                    value={password}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      if (!passwordTouched) {
+                        setPasswordTouched(true);
+                      }
+                    }}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="newPassword"
+                    autoComplete="password-new"
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => {
+                      setPasswordFocused(false);
+                      setPasswordTouched(true);
+                    }}
+                    style={[
+                      styles.input,
+                      passwordFocused && styles.inputFocused,
+                      passwordTouched && !!passwordError && styles.inputError,
+                    ]}
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  {passwordTouched && !!passwordError && (
+                    <AppText variant="caption" style={styles.errorText}>
+                      {passwordError}
+                    </AppText>
+                  )}
+
+                  {passwordTouched && !passwordError && (
+                    <AppText variant="caption" style={styles.successText}>
+                      Strong enough to continue.
+                    </AppText>
+                  )}
+                </View>
+
+                <AppButton
+                  title="Join the Community"
+                  onPress={handleCreateAccount}
+                  style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+                />
+
+                <View style={styles.trustPanel}>
+                  <AppText variant="caption" style={styles.trustTitle}>
+                    Why your data is safe
+                  </AppText>
+                  <AppText variant="caption" style={styles.trustText}>
+                    We only use your email for account access and key updates. Your details are not shared publicly.
+                  </AppText>
+                </View>
+
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <AppText variant="caption" style={styles.dividerText}>
+                    or continue with
+                  </AppText>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <View style={[styles.socialRow, !isWideLayout && styles.socialRowStacked]}>
+                  <Pressable
+                    onPress={() => handleSocialLogin('Google')}
+                    style={[styles.socialButton, !isWideLayout && styles.socialButtonStacked]}
+                  >
+                    <AppText variant="body" style={styles.socialButtonText}>
+                      Continue with Google
+                    </AppText>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => handleSocialLogin('Apple')}
+                    style={[styles.socialButton, !isWideLayout && styles.socialButtonStacked]}
+                  >
+                    <AppText variant="body" style={styles.socialButtonText}>
+                      Continue with Apple
+                    </AppText>
+                  </Pressable>
+                </View>
+
+                <View style={styles.footer}>
+                  <AppText variant="body" style={styles.footerText}>
+                    Already have an account?
+                  </AppText>
+                  <Pressable onPress={() => router.push('/login')}>
+                    <AppText variant="body" style={styles.footerLink}>
+                      Sign in
+                    </AppText>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Email
-            </AppText>
-            <AppInput
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <View style={[styles.previewColumn, isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked]}>
+            <View style={styles.previewCard}>
+              <AppText variant="subtitle" style={styles.previewTitle}>
+                Build your local tree network
+              </AppText>
 
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Password
-            </AppText>
-            <AppInput
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              containerStyle={styles.passwordInputContainer}
-            />
-            <AppText variant="caption" style={styles.helpText}>
-              Must be at least 8 characters
-            </AppText>
-          </View>
+              <AppText variant="body" style={styles.previewSubtitle}>
+                Start in minutes and turn everyday walks into shared community impact.
+              </AppText>
 
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Confirm Password
-            </AppText>
-            <AppInput
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+              <View style={styles.previewList}>
+                <AppText variant="body" style={styles.previewItem}>
+                  Add and monitor trees around your neighborhood
+                </AppText>
+                <AppText variant="body" style={styles.previewItem}>
+                  Explore local tree photos, stories, and biodiversity
+                </AppText>
+                <AppText variant="body" style={styles.previewItem}>
+                  Connect with guardians who care about green spaces
+                </AppText>
+              </View>
 
-          <AppButton
-            title="Create Account"
-            onPress={handleCreateAccount}
-            style={styles.submitButton}
-          />
-
-          <View style={styles.footer}>
-            <AppText variant="body" style={styles.footerText}>
-              Already have an account?{' '}
-            </AppText>
-            <AppButton
-              title="Sign In"
-              variant="outline"
-              onPress={() => router.push('/login')}
-              style={styles.linkButton}
-            />
+              <View style={styles.previewBadge}>
+                <AppText variant="caption" style={styles.previewBadgeText}>
+                  TreeGuardians members are helping communities map, protect, and restore urban nature.
+                </AppText>
+              </View>
+            </View>
           </View>
         </View>
       </View>
@@ -174,42 +308,196 @@ export default function CreateAccount() {
 }
 
 const styles = StyleSheet.create({
-  formContainer: {
+  page: {
     flex: 1,
-    justifyContent: 'center',
+    position: 'relative',
+    paddingHorizontal: Theme.Spacing.large,
     paddingVertical: Theme.Spacing.extraLarge,
   },
+  pageTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 28, 18, 0.50)',
+  },
+  shell: {
+    flex: 1,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 1160,
+    gap: Theme.Spacing.large,
+    zIndex: 1,
+  },
+  shellWide: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'center',
+  },
+  shellStacked: {
+    flexDirection: 'column',
+  },
+  formColumn: {
+    width: '100%',
+  },
+  formColumnWide: {
+    flex: 5,
+    maxWidth: 520,
+  },
+  formColumnStacked: {
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
+  formCard: {
+    backgroundColor: 'rgba(248, 252, 248, 0.97)',
+    borderRadius: 20,
+    padding: Theme.Spacing.extraLarge,
+    borderWidth: 1,
+    borderColor: 'rgba(165, 214, 167, 0.65)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  homeLink: {
+    alignSelf: 'flex-start',
+    marginBottom: Theme.Spacing.medium,
+    paddingVertical: Theme.Spacing.extraSmall,
+    paddingHorizontal: Theme.Spacing.small,
+    borderRadius: 999,
+    backgroundColor: 'rgba(46, 125, 50, 0.12)',
+  },
+  homeLinkText: {
+    color: '#1B5E20',
+    fontWeight: '600',
+  },
   title: {
-    textAlign: 'center',
-    marginBottom: Theme.Spacing.small,
-    color: Theme.Colours.primary,
+    color: '#1B5E20',
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: 0.2,
   },
   subtitle: {
-    textAlign: 'center',
-    marginBottom: Theme.Spacing.extraLarge,
-    color: Theme.Colours.gray,
+    marginTop: Theme.Spacing.small,
+    marginBottom: Theme.Spacing.large,
+    color: '#2D3A2D',
   },
   form: {
     width: '100%',
   },
   inputGroup: {
-    marginBottom: 0,
+    marginBottom: Theme.Spacing.medium,
   },
   label: {
     marginBottom: Theme.Spacing.small,
-    color: Theme.Colours.black,
+    color: '#16391A',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  inputContainer: {
+    marginBottom: Theme.Spacing.extraSmall,
+  },
+  input: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#9AA79A',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 15,
+    paddingHorizontal: 14,
+    color: '#111111',
+  },
+  inputFocused: {
+    borderColor: '#2E7D32',
+    borderWidth: 2,
+    backgroundColor: '#F7FFF7',
+  },
+  inputError: {
+    borderColor: '#B3261E',
+  },
+  passwordHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleText: {
+    color: '#2E7D32',
     fontWeight: '600',
   },
-  helpText: {
-    marginTop: Theme.Spacing.extraSmall,
-    marginBottom: Theme.Spacing.medium,
-    color: Theme.Colours.gray,
+  errorText: {
+    color: '#B3261E',
   },
-  passwordInputContainer: {
-    marginBottom: 0,
+  successText: {
+    color: '#1F7A35',
   },
   submitButton: {
-    marginTop: Theme.Spacing.large,
+    marginTop: Theme.Spacing.small,
+    marginBottom: Theme.Spacing.medium,
+    borderRadius: 12,
+    shadowColor: '#1B5E20',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 7,
+  },
+  submitButtonDisabled: {
+    opacity: 0.78,
+  },
+  trustPanel: {
+    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(46, 125, 50, 0.25)',
+    padding: Theme.Spacing.medium,
+    marginBottom: Theme.Spacing.medium,
+  },
+  trustTitle: {
+    color: '#1B5E20',
+    fontWeight: '600',
+    marginBottom: Theme.Spacing.extraSmall,
+  },
+  trustText: {
+    color: '#2F3A2F',
+    lineHeight: 20,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.Spacing.medium,
+    gap: Theme.Spacing.small,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(46, 125, 50, 0.30)',
+  },
+  dividerText: {
+    color: '#466046',
+    textTransform: 'lowercase',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: Theme.Spacing.small,
+  },
+  socialRowStacked: {
+    flexDirection: 'column',
+  },
+  socialButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#7B927B',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderRadius: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Theme.Spacing.small,
+  },
+  socialButtonStacked: {
+    width: '100%',
+  },
+  socialButtonText: {
+    color: '#1F2C1F',
+    fontSize: 15,
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
@@ -217,14 +505,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Theme.Spacing.large,
     flexWrap: 'wrap',
+    gap: Theme.Spacing.extraSmall,
   },
   footerText: {
-    color: Theme.Colours.gray,
+    color: '#2F3A2F',
   },
-  linkButton: {
-    marginLeft: Theme.Spacing.small,
-    marginBottom: 0,
-    paddingVertical: Theme.Spacing.small,
-    paddingHorizontal: Theme.Spacing.medium,
+  footerLink: {
+    color: '#1B5E20',
+    fontWeight: '700',
+  },
+  previewColumn: {
+    width: '100%',
+  },
+  previewColumnWide: {
+    flex: 5,
+    maxWidth: 560,
+    justifyContent: 'center',
+  },
+  previewColumnStacked: {
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
+  previewCard: {
+    flex: 1,
+    minHeight: 320,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(220, 235, 220, 0.45)',
+    backgroundColor: 'rgba(12, 39, 16, 0.57)',
+    padding: Theme.Spacing.extraLarge,
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 24,
+    elevation: 7,
+  },
+  previewTitle: {
+    color: '#EFF7EE',
+    marginBottom: Theme.Spacing.small,
+    fontSize: 30,
+    lineHeight: 36,
+  },
+  previewSubtitle: {
+    color: '#D7E8D7',
+    marginBottom: Theme.Spacing.large,
+  },
+  previewList: {
+    gap: Theme.Spacing.small,
+    marginBottom: Theme.Spacing.large,
+  },
+  previewItem: {
+    color: '#E8F4E8',
+    lineHeight: 24,
+  },
+  previewBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.24)',
+    borderRadius: 12,
+    padding: Theme.Spacing.medium,
+  },
+  previewBadgeText: {
+    color: '#EAF7EA',
+    lineHeight: 20,
   },
 });
