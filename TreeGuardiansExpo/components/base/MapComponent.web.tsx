@@ -9,6 +9,7 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   REGION_RING_LEAFLET,
+  TILE_MAX_NATIVE_ZOOM,
 } from './MapComponent.types';
 
 type LeafletModule = typeof import('leaflet');
@@ -110,6 +111,7 @@ export default function MapComponentWeb({
 
       Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
+        maxNativeZoom: TILE_MAX_NATIVE_ZOOM,
       }).addTo(map);
 
       const tilePane = map.getPane('tilePane');

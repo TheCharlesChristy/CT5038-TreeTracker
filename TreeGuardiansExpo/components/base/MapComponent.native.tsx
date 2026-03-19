@@ -11,6 +11,7 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   REGION_RING_LEAFLET,
+  TILE_MAX_NATIVE_ZOOM,
 } from './MapComponent.types';
 
 export default function MapComponentNative({
@@ -92,7 +93,10 @@ export default function MapComponentNative({
 
     L.tileLayer(
       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      { attribution: '© OpenStreetMap contributors' }
+      {
+        attribution: '© OpenStreetMap contributors',
+        maxNativeZoom: ${TILE_MAX_NATIVE_ZOOM}
+      }
     ).addTo(map);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
