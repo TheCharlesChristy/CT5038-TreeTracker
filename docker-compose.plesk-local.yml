@@ -1,0 +1,174 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: tree-tracker-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-treetracker_dev}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./logs:/workspace/logs
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --log-error=/workspace/logs/mysql.log
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD:-root} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  expo-web-build:
+    image: node:20-bookworm
+    container_name: tree-tracker-expo-web-build
+    restart: unless-stopped
+    working_dir: /workspace
+    environment:
+      WEB_BUILD_DEBOUNCE_SECONDS: ${WEB_BUILD_DEBOUNCE_SECONDS:-2}
+    volumes:
+      - ./:/workspace
+      - expo_node_modules:/workspace/TreeGuardiansExpo/node_modules
+      - ./logs:/workspace/logs
+    command: >
+      bash -lc "set -euo pipefail;
+      EXPO_DIR=/workspace/TreeGuardiansExpo;
+      LOG_DIR=/workspace/logs;
+      LOG_FILE=$${LOG_DIR}/expo-web-build.log;
+      DEBOUNCE_SECONDS=$${WEB_BUILD_DEBOUNCE_SECONDS:-2};
+      mkdir -p $${LOG_DIR};
+      touch $${LOG_FILE};
+      log() { printf '[%s] %s\\n' \"$$(date '+%Y-%m-%d %H:%M:%S')\" \"$$1\" | tee -a $${LOG_FILE}; };
+      compute_hash() {
+        find $${EXPO_DIR} \
+          -path $${EXPO_DIR}/node_modules -prune -o \
+          -path $${EXPO_DIR}/.expo -prune -o \
+          -path $${EXPO_DIR}/dist -prune -o \
+          -path $${EXPO_DIR}/android -prune -o \
+          -path $${EXPO_DIR}/ios -prune -o \
+          -type f \
+          \\( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.json' -o -name '*.css' \\) \
+          -print0 | sort -z | xargs -0 sha1sum | sha1sum | awk '{print $$1}';
+      };
+      run_build() {
+        log 'Installing Expo dependencies (if needed)...';
+        npm --prefix $${EXPO_DIR} install >>$${LOG_FILE} 2>&1;
+        log 'Exporting Expo web bundle to dist/...';
+        npm --prefix $${EXPO_DIR} run export:web >>$${LOG_FILE} 2>&1;
+        log 'Expo web export completed.';
+      };
+      if [ ! -d $${EXPO_DIR} ]; then log \"Expo directory not found at $${EXPO_DIR}\"; exit 1; fi;
+      LAST_HASH='';
+      while true; do
+        CURRENT_HASH=$$(compute_hash || true);
+        if [ -z \"$${CURRENT_HASH}\" ]; then
+          log 'No source files found for Expo web export watch; retrying...';
+          sleep $${DEBOUNCE_SECONDS};
+          continue;
+        fi;
+        if [ \"$${CURRENT_HASH}\" != \"$${LAST_HASH}\" ]; then
+          run_build || log 'Expo web export failed; will retry on next change.';
+          LAST_HASH=\"$${CURRENT_HASH}\";
+        fi;
+        sleep $${DEBOUNCE_SECONDS};
+      done"
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: tree-tracker-server
+    restart: unless-stopped
+    working_dir: /workspace
+    depends_on:
+      mysql:
+        condition: service_healthy
+      expo-web-build:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      PORT: ${SERVER_PORT:-4000}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      DB_DATABASE: ${MYSQL_DATABASE:-treetracker_dev}
+      DB_ALLOW_CREATE_DATABASE: "true"
+      DB_SCHEMA_PATH: /workspace/server/src/db/schema.sql
+      START_EXPO: "false"
+      EXPO_PROXY_ENABLED: "false"
+      EXPO_STATIC_ENABLED: "true"
+      EXPO_AUTO_PREPARE: "false"
+      EXPO_WEB_DIST_PATH: /workspace/TreeGuardiansExpo/dist
+      EXPO_PROJECT_PATH: /workspace/TreeGuardiansExpo
+      EXPO_DEV_SERVER_PORT: ${EXPO_DEV_SERVER_PORT:-8081}
+      EXPO_FATAL_ON_EXIT: "false"
+    ports:
+      - "${SERVER_PORT:-4000}:4000"
+    volumes:
+      - ./:/workspace
+      - server_node_modules:/workspace/server/node_modules
+      - ./logs:/workspace/logs
+    command: >
+      bash -lc "npm install --prefix /workspace/server
+      && node --watch /workspace/app.js 2>&1 | tee -a /workspace/logs/server.log"
+
+  expo:
+    image: node:20-bookworm
+    container_name: tree-tracker-expo
+    restart: unless-stopped
+    working_dir: /workspace/TreeGuardiansExpo
+    depends_on:
+      server:
+        condition: service_started
+    environment:
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      EXPO_USE_FAST_RESOLVER: "1"
+      EXPO_NO_TELEMETRY: "1"
+      CI: "1"
+    ports:
+      - "${EXPO_DEV_SERVER_PORT:-8081}:8081"
+      - "19000:19000"
+      - "19001:19001"
+      - "19002:19002"
+    volumes:
+      - ./:/workspace
+      - expo_node_modules:/workspace/TreeGuardiansExpo/node_modules
+      - ./logs:/workspace/logs
+    command: >
+      bash -lc "npm install
+      && npx expo start --port ${EXPO_DEV_SERVER_PORT:-8081} --host ${EXPO_HOST_MODE:-tunnel} --clear
+      2>&1 | tee -a /workspace/logs/expo.log"
+
+  android-emulator:
+    build:
+      context: ./TreeGuardiansExpo
+      dockerfile: Dockerfile.android
+      args:
+        EXPO_SDK_VERSION: "55"
+    container_name: tree-tracker-android-emulator
+    restart: unless-stopped
+    depends_on:
+      expo:
+        condition: service_started
+    environment:
+      EXPO_PROXY_TARGET: expo:8081
+      BACKEND_PROXY_TARGET: server:4000
+      EXPO_PROXY_PORT: 8081
+      BACKEND_PROXY_PORT: 4000
+      NOVNC_PORT: 6080
+      VNC_PORT: 5900
+      ADB_DEVICE_SERIAL: emulator-5554
+    devices:
+      - /dev/kvm:/dev/kvm
+    ports:
+      - "6080:6080"
+      - "5900:5900"
+    volumes:
+      - ./logs:/workspace/logs
+
+volumes:
+  mysql_data:
+  server_node_modules:
+  expo_node_modules:

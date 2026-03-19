@@ -226,3 +226,79 @@ Check:
 * Frontend is static; backend handles API only
 
 ---
+
+## Local Docker Stack (Plesk Emulation + Mobile Testing)
+
+This repository now includes a local Docker Compose setup that mirrors the same deployment shape as Plesk while still letting you test mobile flows.
+
+### What It Runs
+
+* `mysql`: MySQL 8 database
+* `server`: Node backend serving API + static web from `TreeGuardiansExpo/dist`
+* `expo-web-build`: watches Expo source and re-exports static web build into `dist`
+* `expo`: Expo dev server for mobile testing (Expo Go)
+* `android-emulator`: Android emulator exposed over noVNC
+
+### Files Added
+
+* `docker-compose.plesk-local.yml`
+* `server/Dockerfile`
+* `scripts/local_plesk_stack.sh`
+* `.env.docker.example`
+
+### First-Time Setup
+
+```bash
+cp .env.docker.example .env.docker
+cp server/.env.example server/.env
+```
+
+Edit values in `.env.docker` if required (for example `EXPO_HOST_MODE=lan` if your phone can directly reach your host on local network).
+
+### Start The Stack
+
+```bash
+./scripts/local_plesk_stack.sh
+```
+
+Stop with `Ctrl+C`. The script traps the signal and tears the whole stack down automatically.
+
+### Access URLs
+
+* Plesk-style backend + static web app: `http://localhost:4000/`
+* Backend health: `http://localhost:4000/health`
+* Expo dev server: `http://localhost:8081/`
+* Android emulator via browser VNC: `http://localhost:6080/vnc.html`
+
+### Live Updates / Mounted Code
+
+* Source code is bind-mounted (`./:/workspace`) in containers.
+* Backend restarts automatically on edits with `node --watch`.
+* Expo dev server reloads mobile app updates automatically.
+* Static web output is watched and rebuilt into `TreeGuardiansExpo/dist` by `expo-web-build`.
+
+### Expo Go From Physical Phone
+
+* Default mode is `EXPO_HOST_MODE=tunnel`, which is the most reliable for a physical phone.
+* Open the Expo QR/link from Expo logs and launch in Expo Go.
+* If you prefer LAN mode, set `EXPO_HOST_MODE=lan` in `.env.docker`.
+
+### Android Emulator Notes
+
+* Emulator requires `/dev/kvm` access on host.
+* Inside emulator:
+  * `localhost:4000` maps to backend
+  * `localhost:8081` maps to Expo dev server
+* Expo Go is auto-installed in emulator when APK can be resolved for configured SDK.
+
+### Logs
+
+Runtime logs are written to `logs/`:
+
+* `logs/mysql.log`
+* `logs/server.log`
+* `logs/expo.log`
+* `logs/expo-web-build.log`
+* `logs/android-emulator.log`
+
+---

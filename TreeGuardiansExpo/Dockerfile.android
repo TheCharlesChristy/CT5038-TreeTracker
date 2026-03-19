@@ -46,6 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     novnc \
     openjdk-17-jdk \
     qemu-kvm \
+    python3 \
     socat \
     unzip \
     websockify \
@@ -82,7 +83,7 @@ RUN mkdir -p /root/.android \
 # The Expo versions API returns a JSON map of sdkVersions each with an androidClientUrl.
 # node -pe expression must be a single line to avoid Dockerfile parser treating
 # continuation lines as instructions.
-ARG EXPO_SDK_VERSION=54
+ARG EXPO_SDK_VERSION=55
 RUN curl -fsSL "https://exp.host/--/api/v2/versions" -o /tmp/expo-versions.json \
     && APK_URL=$(node -pe "const d=require('/tmp/expo-versions.json'),sdk='$EXPO_SDK_VERSION';const vs=Object.keys(d.sdkVersions||{}).filter(k=>k.startsWith(sdk+'.')).sort();const v=vs[vs.length-1];(v&&d.sdkVersions[v].androidClientUrl)||''" 2>/dev/null) \
     && rm /tmp/expo-versions.json \
