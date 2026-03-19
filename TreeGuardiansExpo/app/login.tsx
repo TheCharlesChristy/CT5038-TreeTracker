@@ -79,7 +79,7 @@ export default function Login() {
     <AppContainer
       scrollable
       noPadding
-      backgroundImage={require('@/assets/images/CharltonKingsAlternative.jpg')}
+      backgroundImage={require('@/assets/images/CharltonKings.jpg')}
     >
       <View
         style={[
