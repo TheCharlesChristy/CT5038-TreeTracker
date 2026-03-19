@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle, Animated } from 'react-native';
+import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle, Animated } from 'react-native';
 import { AppText } from './AppText';
 import { Theme } from '@/styles/theme';
 
@@ -18,7 +18,7 @@ interface AppButtonProps {
   variant?: Variant;
   style?: StyleProp<ViewStyle>;
   buttonStyle?: StyleProp<ViewStyle>;
-  textStyle?: any;
+  textStyle?: StyleProp<TextStyle>;
   disabled?: boolean;
 }
 

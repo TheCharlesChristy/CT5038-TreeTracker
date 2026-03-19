@@ -7,6 +7,11 @@ import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
 import { Theme } from '@/styles/theme';
 
+type SectionProps = {
+  title: string;
+  children: React.ReactNode;
+};
+
 export default function ThemePreview() {
   return (
     <AppContainer style={styles.container} scrollable>
@@ -86,7 +91,7 @@ export default function ThemePreview() {
 
 /* ---------------- Section Component ---------------- */
 
-const Section = ({ title, children }: any) => (
+const Section = ({ title, children }: SectionProps) => (
   <View style={styles.section}>
     <AppText style={{
             ...Theme.Typography.subtitle,

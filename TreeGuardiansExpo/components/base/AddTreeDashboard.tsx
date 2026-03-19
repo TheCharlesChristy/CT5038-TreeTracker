@@ -18,7 +18,7 @@ import { useActionSheet } from '@expo/react-native-action-sheet';
 
 type NumericField = 'diameter' | 'height' | 'circumference';
 
-interface PlotDashBoardProps {
+interface PlotDashboardProps {
   onConfirm: (details: TreeDetails) => void;
   onCancel: () => void;
   onSelectManual: () => void;
@@ -32,7 +32,7 @@ export default function PlotDashboard({
   onCancel,
   onSelectManual,
   onSelectDevice,
-}: PlotDashBoardProps) {
+}: PlotDashboardProps) {
   const [notes, setNotes] = useState('');
   const [wildlife, setWildlife] = useState('');
   const [disease, setDisease] = useState('');

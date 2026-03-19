@@ -14,6 +14,7 @@ import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
+import { getEmailError, getPasswordError } from '@/lib/authValidation';
 
 export default function Login() {
   const { width, height } = useWindowDimensions();
@@ -34,31 +35,6 @@ export default function Login() {
   const passwordRef = useRef<TextInput>(null);
 
   const trimmedEmail = useMemo(() => email.trim(), [email]);
-
-  const getEmailError = (value: string) => {
-    if (!value) {
-      return 'Email is required.';
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) {
-      return 'Enter a valid email address.';
-    }
-
-    return '';
-  };
-
-  const getPasswordError = (value: string) => {
-    if (!value) {
-      return 'Password is required.';
-    }
-
-    if (value.length < 8) {
-      return 'Use at least 8 characters.';
-    }
-
-    return '';
-  };
 
   const emailError = getEmailError(trimmedEmail);
   const passwordError = getPasswordError(password);

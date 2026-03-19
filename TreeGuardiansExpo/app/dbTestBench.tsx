@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
-import { AppContainer } from '../components/base/AppContainer';
-import { AppText } from '../components/base/AppText';
-import { AppInput } from '../components/base/AppInput';
-import { AppButton } from '../components/base/AppButton';
-import { NavigationButton } from '../components/base/NavigationButton';
-import { Theme } from '../styles/theme';
+import { AppContainer } from '@/components/base/AppContainer';
+import { AppText } from '@/components/base/AppText';
+import { AppInput } from '@/components/base/AppInput';
+import { AppButton } from '@/components/base/AppButton';
+import { NavigationButton } from '@/components/base/NavigationButton';
+import { Theme } from '@/styles/theme';
 
 type EndpointsResponse = {
   flatEndpoints?: string[];
@@ -961,7 +961,9 @@ export default function DbTestBenchPage() {
     );
   }
 
-  const stickyRightColumnStyle = isTwoColumn && Platform.OS === 'web' ? (styles.rightColumnStickyWeb as object) : undefined;
+  const stickyRightColumnStyle = isTwoColumn && Platform.OS === 'web'
+    ? ({ position: 'sticky', top: 12, alignSelf: 'flex-start' } as unknown as object)
+    : undefined;
 
   return (
     <AppContainer scrollable>
@@ -1163,11 +1165,6 @@ const styles = StyleSheet.create({
   rightColumn: {
     flex: 1,
     minWidth: 0,
-  },
-  rightColumnStickyWeb: {
-    position: 'sticky' as any,
-    top: 12,
-    alignSelf: 'flex-start',
   },
   fullWidth: {
     width: '100%',

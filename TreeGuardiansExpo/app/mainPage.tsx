@@ -1,321 +1,60 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import {
   View,
   StyleSheet,
-  Alert,
   TouchableOpacity,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 import MapComponent from '@/components/base/MapComponent';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
-import { AppButton } from '@/components/base/AppButton';
 import { AppContainer } from '@/components/base/AppContainer';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { AppText } from '@/components/base/AppText';
+import { ManualPlacementPanel } from '@/components/map/ManualPlacementPanel';
+import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
+import { DashboardPanel } from '@/components/map/DashboardPanel';
+import { FloatingActionBar } from '@/components/map/FloatingActionBar';
 import { Theme } from '@/styles';
-import { Tree, TreeDetails } from '@/objects/TreeDetails';
-import { API_BASE, ENDPOINTS } from '@/config/api';
-
-type PageMode =
-  | 'explore'
-  | 'add'
-  | 'manual-placement'
-  | 'view-tree'
-  | 'search'
-  | 'dashboard';
-
-type UserRole = 'user' | 'guardian' | 'admin';
-
-type PlotPointer = {
-  latitude: number;
-  longitude: number;
-  screenX: number;
-  screenY: number;
-};
-
-const CHARLTON_CENTER = {
-  latitude: 51.8865,
-  longitude: -2.0475,
-};
-
-const haversineDistanceKm = (
-  from: { latitude: number; longitude: number },
-  to: { latitude: number; longitude: number }
-) => {
-  const toRadians = (value: number) => (value * Math.PI) / 180;
-
-  const earthRadiusKm = 6371;
-  const deltaLat = toRadians(to.latitude - from.latitude);
-  const deltaLon = toRadians(to.longitude - from.longitude);
-
-  const a =
-    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(toRadians(from.latitude)) *
-      Math.cos(toRadians(to.latitude)) *
-      Math.sin(deltaLon / 2) *
-      Math.sin(deltaLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusKm * c;
-};
+import { useTreeMapState } from '@/hooks/useTreeMapState';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
   const isWideLayout = windowWidth >= 1024;
 
-  const [mode, setMode] = useState<PageMode>('explore');
-
-  const [currentTree, setCurrentTree] = useState<TreeDetails | null>(null);
-  const [plottedTrees, setPlottedTrees] = useState<Tree[]>([]);
-  const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [distanceFilterKm, setDistanceFilterKm] = useState(2.5);
-  const [healthFilter, setHealthFilter] = useState<'all' | 'healthy' | 'attention'>('all');
-  const [pendingDevicePlacement, setPendingDevicePlacement] = useState(false);
-
-  const [isLoadingTrees, setIsLoadingTrees] = useState(false);
-  const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
-
-  // Auth is still stubbed in this project. Wire this to real user session role when available.
-  const [userRole] = useState<UserRole>('user');
-
-  const mapInteractive = mode === 'explore' || mode === 'manual-placement' || mode === 'view-tree';
-  const showDimOverlay = mode !== 'explore' && mode !== 'manual-placement';
-
-  const closeAllOverlays = () => {
-    setSelectedTree(null);
-    setCurrentTree(null);
-    setPendingDevicePlacement(false);
-    setPlotPointer(null);
-    setMode('explore');
-  };
-
-  const openMode = (nextMode: Exclude<PageMode, 'manual-placement'>) => {
-    setSelectedTree(null);
-    setCurrentTree(null);
-    setMode(nextMode);
-  };
-
-  const uploadPhotos = useCallback(async (treeId: string, photos: string[]) => {
-    if (!photos || photos.length === 0) {
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('tree_id', treeId);
-
-    for (let i = 0; i < photos.length; i += 1) {
-      let uri = photos[i];
-
-      if (uri.startsWith('blob:')) {
-        try {
-          const response = await fetch(uri);
-          const blob = await response.blob();
-          const file = new File([blob], `photo_${i}.jpg`, { type: blob.type });
-          formData.append('photos', file);
-        } catch (error) {
-          console.error('Failed to convert blob URL to file:', error);
-        }
-        continue;
-      }
-
-      if (!uri.startsWith('file://')) {
-        uri = `file://${uri}`;
-      }
-
-      formData.append('photos', {
-        uri,
-        name: `photo_${i}.jpg`,
-        type: 'image/jpeg',
-      } as any);
-    }
-
-    try {
-      const response = await fetch(API_BASE + ENDPOINTS.UPLOAD_PHOTOS, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const text = await response.text();
-
-      try {
-        const data = JSON.parse(text);
-        if (!response.ok || data.error) {
-          throw new Error(data.error || 'Upload failed');
-        }
-      } catch {
-        if (!response.ok) {
-          throw new Error('Photo upload failed');
-        }
-      }
-    } catch (error) {
-      console.error('Photo upload error:', error);
-    }
-  }, []);
-
-  const fetchTreesFromServer = useCallback(async () => {
-    try {
-      setIsLoadingTrees(true);
-
-      const response = await fetch(API_BASE + ENDPOINTS.GET_TREES);
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Server error:', data);
-        throw new Error('Failed to fetch trees');
-      }
-
-      if (!Array.isArray(data)) {
-        console.error('Unexpected tree payload:', data);
-        return;
-      }
-
-      const mappedTrees = data.map((treeItem: any) => ({
-        notes: treeItem.notes || '',
-        wildlife: treeItem.wildlife || undefined,
-        disease: treeItem.disease || undefined,
-        diameter: treeItem.diameter || undefined,
-        height: treeItem.height || undefined,
-        circumference: treeItem.circumference || undefined,
-        photos: treeItem.photos || [],
-        latitude: treeItem.latitude,
-        longitude: treeItem.longitude,
-        id: treeItem.id,
-      }));
-
-      setPlottedTrees(mappedTrees);
-    } catch (error) {
-      console.error('Tree fetch error:', error);
-    } finally {
-      setIsLoadingTrees(false);
-    }
-  }, []);
-
-  const uploadTreeToServer = useCallback(async (tree: TreeDetails) => {
-    try {
-      const response = await fetch(API_BASE + ENDPOINTS.ADD_TREE_DATA, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(tree),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to save tree');
-      }
-
-      const treeId = data.tree_id;
-
-      if (tree.photos?.length) {
-        await uploadPhotos(treeId, tree.photos);
-      }
-
-      await fetchTreesFromServer();
-    } catch (error) {
-      console.error('Tree upload failed:', error);
-      Alert.alert('Save Failed', 'Tree could not be saved. Please try again.');
-    }
-  }, [uploadPhotos, fetchTreesFromServer]);
-
-  useEffect(() => {
-    fetchTreesFromServer();
-  }, [fetchTreesFromServer]);
-
-  useEffect(() => {
-    if (!pendingDevicePlacement || !currentTree) {
-      return;
-    }
-
-    const placeTreeUsingDeviceLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-
-        if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Location permission is required to place a tree.');
-          return;
-        }
-
-        const location = await Location.getCurrentPositionAsync({});
-
-        const completeTree: Tree = {
-          ...currentTree,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        } as Tree;
-
-        await uploadTreeToServer(completeTree);
-
-        setCurrentTree(null);
-        setMode('explore');
-      } catch (error) {
-        console.warn(error);
-        Alert.alert('Location Error', 'Unable to get current location. Please try again.');
-      }
-    };
-
-    placeTreeUsingDeviceLocation();
-    setPendingDevicePlacement(false);
-  }, [pendingDevicePlacement, currentTree, uploadTreeToServer]);
-
-  const searchResults = useMemo(() => {
-    const textQuery = searchQuery.trim().toLowerCase();
-
-    return plottedTrees
-      .filter((tree) => {
-        const aggregateText = `${tree.notes || ''} ${tree.wildlife || ''} ${tree.disease || ''}`.toLowerCase();
-
-        const matchesText =
-          textQuery.length === 0 ||
-          aggregateText.includes(textQuery) ||
-          `${tree.id ?? ''}`.includes(textQuery);
-
-        const distance = haversineDistanceKm(
-          { latitude: tree.latitude, longitude: tree.longitude },
-          CHARLTON_CENTER
-        );
-        const withinDistance = distance <= distanceFilterKm;
-
-        const hasDisease = !!tree.disease && tree.disease.trim().length > 0;
-        const matchesHealth =
-          healthFilter === 'all' ||
-          (healthFilter === 'healthy' && !hasDisease) ||
-          (healthFilter === 'attention' && hasDisease);
-
-        return matchesText && withinDistance && matchesHealth;
-      })
-      .sort((a, b) => {
-        const aDistance = haversineDistanceKm(
-          { latitude: a.latitude, longitude: a.longitude },
-          CHARLTON_CENTER
-        );
-        const bDistance = haversineDistanceKm(
-          { latitude: b.latitude, longitude: b.longitude },
-          CHARLTON_CENTER
-        );
-
-        return aDistance - bDistance;
-      });
-  }, [distanceFilterKm, healthFilter, plottedTrees, searchQuery]);
-
-  const healthyCount = useMemo(
-    () => plottedTrees.filter((tree) => !(tree.disease && tree.disease.trim())).length,
-    [plottedTrees]
-  );
-
-  const treesNeedingAttention = useMemo(
-    () => plottedTrees.filter((tree) => !!tree.disease && tree.disease.trim().length > 0).length,
-    [plottedTrees]
-  );
+  const {
+    mode,
+    userRole,
+    plottedTrees,
+    selectedTree,
+    searchQuery,
+    distanceFilterKm,
+    healthFilter,
+    isLoadingTrees,
+    plotPointer,
+    showDimOverlay,
+    searchResults,
+    healthyCount,
+    treesNeedingAttention,
+    closeAllOverlays,
+    openMode,
+    setSearchQuery,
+    setDistanceFilterKm,
+    setHealthFilter,
+    handleMapPointerMove,
+    handleMapTreeClick,
+    handleMapPress,
+    handlePlotConfirm,
+    handleSelectManualPlacement,
+    handleSelectDevicePlacement,
+    handleCloseTreeDetails,
+    handleSelectSearchResultTree,
+    getDistanceFromCenterKm,
+  } = useTreeMapState();
 
   return (
     <ActionSheetProvider>
@@ -325,39 +64,9 @@ export default function MainPage() {
             style={StyleSheet.absoluteFillObject}
             isPlotting={mode === 'manual-placement'}
             plottedTrees={plottedTrees}
-            onPlotPointerMove={(pointer) => {
-              if (mode !== 'manual-placement') {
-                setPlotPointer(null);
-                return;
-              }
-
-              setPlotPointer(pointer);
-            }}
-            onTreeClick={(tree) => {
-              if (!mapInteractive) {
-                return;
-              }
-
-              setSelectedTree(tree);
-              setMode('view-tree');
-            }}
-            onPress={(coordinate) => {
-              if (mode !== 'manual-placement' || !currentTree) {
-                return;
-              }
-
-              const completeTree: Tree = {
-                ...currentTree,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-              } as Tree;
-
-              uploadTreeToServer(completeTree);
-
-              setCurrentTree(null);
-              setPlotPointer(null);
-              setMode('explore');
-            }}
+            onPlotPointerMove={handleMapPointerMove}
+            onTreeClick={handleMapTreeClick}
+            onPress={handleMapPress}
             renderTreeIcon={(tree) => {
               const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
 
@@ -396,28 +105,15 @@ export default function MainPage() {
           </View>
 
           {mode === 'manual-placement' ? (
-            <View style={[styles.manualPlacementPanel, isWideLayout ? styles.manualPlacementPanelWide : styles.manualPlacementPanelBottom]}>
-              <AppText style={styles.manualPlacementTitle}>Plot Tree On Map</AppText>
-              <AppText style={styles.manualPlacementBody}>
-                Move the cursor and click to pin the tree location.
-              </AppText>
-
-              <View style={styles.manualPlacementCoords}>
-                <AppText style={styles.manualPlacementCoordsLabel}>Live Coordinates</AppText>
-                <AppText style={styles.manualPlacementCoordsText}>
-                  {plotPointer
-                    ? `${plotPointer.latitude.toFixed(6)}, ${plotPointer.longitude.toFixed(6)}`
-                    : 'Move cursor on map'}
-                </AppText>
-              </View>
-
-              <AppButton
-                title="Cancel Placement"
-                variant="secondary"
-                onPress={closeAllOverlays}
-                style={styles.manualPlacementCancelButton}
-              />
-            </View>
+            <ManualPlacementPanel
+              isWideLayout={isWideLayout}
+              coordinateText={
+                plotPointer
+                  ? `${plotPointer.latitude.toFixed(6)}, ${plotPointer.longitude.toFixed(6)}`
+                  : 'Move cursor on map'
+              }
+              onCancel={closeAllOverlays}
+            />
           ) : null}
 
           {mode === 'manual-placement' && plotPointer ? (
@@ -442,288 +138,65 @@ export default function MainPage() {
 
           {mode === 'add' ? (
             <PlotDashboard
-              onConfirm={(details) => {
-                setCurrentTree(details);
-              }}
+              onConfirm={handlePlotConfirm}
               onCancel={closeAllOverlays}
-              onSelectManual={() => {
-                setMode('manual-placement');
-              }}
-              onSelectDevice={() => {
-                setMode('explore');
-                setPendingDevicePlacement(true);
-              }}
+              onSelectManual={handleSelectManualPlacement}
+              onSelectDevice={handleSelectDevicePlacement}
             />
           ) : null}
 
           {mode === 'view-tree' && selectedTree ? (
             <TreeDetailsDashboard
               tree={selectedTree}
-              onClose={() => {
-                setSelectedTree(null);
-                setMode('explore');
-              }}
+              onClose={handleCloseTreeDetails}
             />
           ) : null}
 
           {mode === 'search' ? (
-            <View style={styles.searchPanelWrap}>
-              <View style={styles.searchPanel}>
-                <View style={styles.panelHeaderRow}>
-                  <AppText style={styles.panelTitle}>Search Trees</AppText>
-                  <AppButton
-                    title="Close"
-                    variant="tertiary"
-                    onPress={closeAllOverlays}
-                    style={styles.panelCloseWrap}
-                    buttonStyle={styles.panelCloseButton}
-                  />
-                </View>
-
-                <TextInput
-                  placeholder="Search notes, wildlife, disease, or tree id"
-                  placeholderTextColor={Theme.Colours.textLight}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  style={styles.searchInput}
-                />
-
-                <View style={styles.filterSection}>
-                  <AppText style={styles.filterLabel}>Tree Health</AppText>
-                  <View style={styles.filterRow}>
-                    {(['all', 'healthy', 'attention'] as const).map((value) => (
-                      <TouchableOpacity
-                        key={value}
-                        onPress={() => setHealthFilter(value)}
-                        style={[
-                          styles.filterChip,
-                          healthFilter === value && styles.filterChipActive,
-                        ]}
-                      >
-                        <AppText
-                          style={[
-                            styles.filterChipText,
-                            healthFilter === value && styles.filterChipTextActive,
-                          ]}
-                        >
-                          {value === 'all'
-                            ? 'All'
-                            : value === 'healthy'
-                              ? 'Healthy'
-                              : 'Needs Attention'}
-                        </AppText>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.filterSection}>
-                  <AppText style={styles.filterLabel}>Distance ({distanceFilterKm.toFixed(1)} km)</AppText>
-                  <View style={styles.filterRow}>
-                    {[1.0, 2.5, 4.0, 6.0].map((distance) => (
-                      <TouchableOpacity
-                        key={distance}
-                        onPress={() => setDistanceFilterKm(distance)}
-                        style={[
-                          styles.filterChip,
-                          distanceFilterKm === distance && styles.filterChipActive,
-                        ]}
-                      >
-                        <AppText
-                          style={[
-                            styles.filterChipText,
-                            distanceFilterKm === distance && styles.filterChipTextActive,
-                          ]}
-                        >
-                          {distance} km
-                        </AppText>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <ScrollView style={styles.searchResultList} showsVerticalScrollIndicator={true}>
-                  {searchResults.length === 0 ? (
-                    <View style={styles.emptyStateCard}>
-                      <AppText style={styles.emptyStateTitle}>No trees match current filters</AppText>
-                      <AppText style={styles.emptyStateBody}>Try relaxing health or distance filters.</AppText>
-                    </View>
-                  ) : (
-                    searchResults.map((tree) => {
-                      const distance = haversineDistanceKm(
-                        { latitude: tree.latitude, longitude: tree.longitude },
-                        CHARLTON_CENTER
-                      );
-
-                      return (
-                        <TouchableOpacity
-                          key={`${tree.id ?? 'tree'}-${tree.latitude}-${tree.longitude}`}
-                          style={styles.searchResultCard}
-                          onPress={() => {
-                            setSelectedTree(tree);
-                            setMode('view-tree');
-                          }}
-                        >
-                          <AppText style={styles.searchResultTitle}>
-                            Tree #{tree.id ?? 'Unknown'}
-                          </AppText>
-                          <AppText style={styles.searchResultMeta}>
-                            {distance.toFixed(2)} km away
-                          </AppText>
-                          <AppText style={styles.searchResultBody}>
-                            {tree.notes || tree.wildlife || tree.disease || 'No additional notes'}
-                          </AppText>
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
-                </ScrollView>
-              </View>
-            </View>
+            <SearchTreesPanel
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              healthFilter={healthFilter}
+              onHealthFilterChange={setHealthFilter}
+              distanceFilterKm={distanceFilterKm}
+              onDistanceFilterKmChange={setDistanceFilterKm}
+              searchResults={searchResults}
+              onClose={closeAllOverlays}
+              onSelectTree={handleSelectSearchResultTree}
+              getDistanceKm={getDistanceFromCenterKm}
+            />
           ) : null}
 
           {mode === 'dashboard' ? (
-            <View style={styles.dashboardWrap}>
-              <View style={styles.dashboardPanel}>
-                <View style={styles.panelHeaderRow}>
-                  <AppText style={styles.panelTitle}>Tree Dashboard</AppText>
-                  <AppButton
-                    title="Close"
-                    variant="tertiary"
-                    onPress={closeAllOverlays}
-                    style={styles.panelCloseWrap}
-                    buttonStyle={styles.panelCloseButton}
-                  />
-                </View>
-
-                <AppText style={styles.dashboardSubtitle}>
-                  Select an action to continue.
-                </AppText>
-
-                <ScrollView style={styles.dashboardList} contentContainerStyle={styles.dashboardListContent}>
-                  <AppButton
-                    title="Manage Profile"
-                    variant="primary"
-                    onPress={() => {
-                      closeAllOverlays();
-                        router.push('/(protected)/myProfile' as never);
-                    }}
-                    style={styles.dashboardActionButton}
-                  />
-
-                  <AppButton
-                    title="Local Activity"
-                    variant="secondary"
-                    onPress={() => {
-                      closeAllOverlays();
-                      router.push('/dbTestBench');
-                    }}
-                    style={styles.dashboardActionButton}
-                  />
-
-                  <AppButton
-                    title="View Weather Data"
-                    variant="secondary"
-                    onPress={() => {
-                      Alert.alert('Weather Data', 'Weather integration is ready to connect.');
-                    }}
-                    style={styles.dashboardActionButton}
-                  />
-
-                  {(userRole === 'guardian' || userRole === 'admin') ? (
-                    <AppButton
-                      title="My Trees"
-                      variant="secondary"
-                      onPress={() => {
-                        closeAllOverlays();
-                        router.push('/(protected)/myTrees' as never);
-                      }}
-                      style={styles.dashboardActionButton}
-                    />
-                  ) : null}
-
-                  {userRole === 'admin' ? (
-                    <>
-                      <AppButton
-                        title="Analytics"
-                        variant="secondary"
-                        onPress={() => {
-                          Alert.alert('Analytics', 'Analytics view is ready to connect.');
-                        }}
-                        style={styles.dashboardActionButton}
-                      />
-
-                      <AppButton
-                        title="Manage Users"
-                        variant="secondary"
-                        onPress={() => {
-                          closeAllOverlays();
-                          router.push('/(protected)/admin/manageUsers' as never);
-                        }}
-                        style={styles.dashboardActionButton}
-                      />
-                    </>
-                  ) : null}
-
-                  <View style={styles.dashboardStatsRow}>
-                    <View style={styles.statCardCompact}>
-                      <AppText style={styles.statValueCompact}>{plottedTrees.length}</AppText>
-                      <AppText style={styles.statLabelCompact}>Total Trees</AppText>
-                    </View>
-
-                    <View style={styles.statCardCompact}>
-                      <AppText style={styles.statValueCompact}>{healthyCount}</AppText>
-                      <AppText style={styles.statLabelCompact}>Healthy</AppText>
-                    </View>
-
-                    <View style={styles.statCardCompact}>
-                      <AppText style={styles.statValueCompact}>{treesNeedingAttention}</AppText>
-                      <AppText style={styles.statLabelCompact}>Need Attention</AppText>
-                    </View>
-                  </View>
-                </ScrollView>
-              </View>
-            </View>
+            <DashboardPanel
+              userRole={userRole}
+              totalTrees={plottedTrees.length}
+              healthyCount={healthyCount}
+              treesNeedingAttention={treesNeedingAttention}
+              onClose={closeAllOverlays}
+            />
           ) : null}
 
           {mode !== 'manual-placement' ? (
-            <View style={styles.floatingActionBar}>
-              <AppButton
-                title="Search"
-                variant={mode === 'search' ? 'primary' : 'secondary'}
-                onPress={() => {
-                  if (mode === 'search') {
-                    closeAllOverlays();
-                    return;
-                  }
-                  openMode('search');
-                }}
-                style={styles.actionButtonWrap}
-                buttonStyle={styles.actionButton}
-              />
-
-              <AppButton
-                title="Add Tree +"
-                variant="primary"
-                onPress={() => openMode('add')}
-                style={styles.actionButtonWrapMain}
-                buttonStyle={styles.actionButtonMain}
-              />
-
-              <AppButton
-                title="Dashboard"
-                variant={mode === 'dashboard' ? 'primary' : 'secondary'}
-                onPress={() => {
-                  if (mode === 'dashboard') {
-                    closeAllOverlays();
-                    return;
-                  }
-                  openMode('dashboard');
-                }}
-                style={styles.actionButtonWrap}
-                buttonStyle={styles.actionButton}
-              />
-            </View>
+            <FloatingActionBar
+              searchActive={mode === 'search'}
+              dashboardActive={mode === 'dashboard'}
+              onSearchPress={() => {
+                if (mode === 'search') {
+                  closeAllOverlays();
+                  return;
+                }
+                openMode('search');
+              }}
+              onAddTreePress={() => openMode('add')}
+              onDashboardPress={() => {
+                if (mode === 'dashboard') {
+                  closeAllOverlays();
+                  return;
+                }
+                openMode('dashboard');
+              }}
+            />
           ) : null}
 
           {isLoadingTrees ? (

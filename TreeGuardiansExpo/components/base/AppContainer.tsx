@@ -1,13 +1,13 @@
 import React from 'react';
-import { StyleSheet, ViewStyle, ScrollView, ImageBackground, View } from 'react-native';
+import { StyleSheet, StyleProp, ViewStyle, ScrollView, ImageBackground, View, ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '@/styles/theme';
 
 interface AppContainerProps {
   children: React.ReactNode;
   scrollable?: boolean;
-  backgroundImage?: any;
-  style?: ViewStyle;
+  backgroundImage?: ImageSourcePropType;
+  style?: StyleProp<ViewStyle>;
   noPadding?: boolean;
 }
 
