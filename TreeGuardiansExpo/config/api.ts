@@ -39,6 +39,35 @@ function normalizeApiBase(value: string): string {
 }
 
 export function resolveApiBaseUrl(): string {
+  const windowOrigin = getWindowOrigin();
+  console.log("[resolveApiBaseUrl] windowOrigin:", windowOrigin);
+  if (windowOrigin) {
+    const isLocalhost =
+      windowOrigin.startsWith("http://localhost:") ||
+      windowOrigin.startsWith("https://localhost:") ||
+      windowOrigin.startsWith("http://127.0.0.1:") ||
+      windowOrigin.startsWith("https://127.0.0.1:");
+
+    if (!isLocalhost) {
+      return `${windowOrigin}/api`;
+    }
+
+    const envBase = process.env.EXPO_PUBLIC_API_BASE_URL;
+    console.log("[resolveApiBaseUrl] envBase:", envBase);
+    if (typeof envBase === "string" && envBase.trim()) {
+      return normalizeApiBase(envBase);
+    }
+
+    const envOrigin = process.env.EXPO_PUBLIC_API_ORIGIN;
+    console.log("[resolveApiBaseUrl] envOrigin:", envOrigin);
+    if (typeof envOrigin === "string" && envOrigin.trim()) {
+      const origin = normalizeOrigin(envOrigin);
+      return `${origin}/api`;
+    }
+
+    return `${windowOrigin}/api`;
+  }
+
   const envBase = process.env.EXPO_PUBLIC_API_BASE_URL;
   console.log("[resolveApiBaseUrl] envBase:", envBase);
   if (typeof envBase === "string" && envBase.trim()) {
@@ -50,12 +79,6 @@ export function resolveApiBaseUrl(): string {
   if (typeof envOrigin === "string" && envOrigin.trim()) {
     const origin = normalizeOrigin(envOrigin);
     return `${origin}/api`;
-  }
-
-  const windowOrigin = getWindowOrigin();
-  console.log("[resolveApiBaseUrl] windowOrigin:", windowOrigin);
-  if (windowOrigin) {
-    return `${windowOrigin}/api`;
   }
 
   return `${DEFAULT_NATIVE_API_ORIGIN}/api`;
