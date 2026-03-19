@@ -1,11 +1,12 @@
 const express = require('express');
 const db = require("../db");
+const authenticateToken = require("../middleware/auth");
 
 const router = express.Router();
 
 router.use(express.json());
 
-router.post('/add-tree-data', async (req, res) => {
+router.post('/add-tree-data', authenticateToken, async (req, res) => {
   const {
     latitude,
     longitude,
@@ -16,12 +17,12 @@ router.post('/add-tree-data', async (req, res) => {
     height,
     circumference,
   } = req.body;
-	
- const userId = 1; // temporary until authentication is added
+
+  const userId = req.user.userId;
    
   let connection; 
   try {
-	connection = await db.getConnection(); // use connection pool
+    connection = await db.getConnection();
     await connection.beginTransaction();
 
     // Insert base tree
@@ -30,13 +31,13 @@ router.post('/add-tree-data', async (req, res) => {
       [latitude, longitude]
     );
     const treeId = treeResult.insertId;
-	  
-	// Insert Tree Creation Data
-	await connection.query(
-	  `INSERT INTO tree_creation_data (tree_id, creator_user_id)
-	   VALUES (?, ?)`,
-	  [treeId, userId]
-	);
+      
+    // Insert Tree Creation Data
+    await connection.query(
+      `INSERT INTO tree_creation_data (tree_id, creator_user_id)
+       VALUES (?, ?)`,
+      [treeId, userId]
+    );
 
     // Insert tree_data
     await connection.query(
@@ -47,7 +48,8 @@ router.post('/add-tree-data', async (req, res) => {
 
     // Insert a base comment for linking observations
     const [commentResult] = await connection.query(
-      'INSERT INTO comments (user_id) VALUES (NULL)'
+      'INSERT INTO comments (user_id) VALUES (?)',
+      [userId]
     );
     const commentId = commentResult.insertId;
 
@@ -76,22 +78,27 @@ router.post('/add-tree-data', async (req, res) => {
     }
 
     await connection.commit();
-    res.json({ success: true, tree_id: treeId });
+
+    res.json({
+      success: true,
+      tree_id: treeId,
+      creator_user_id: userId
+    });
   } catch (err) {
-	 console.error("TREE INSERT ERROR:", err);
+    console.error("TREE INSERT ERROR:", err);
 
-	  if (connection) {
-		await connection.rollback();
-	  }
+    if (connection) {
+      await connection.rollback();
+    }
 
-	  res.status(500).json({
-		error: "Failed to create tree",
-		details: err.message
-	});
+    res.status(500).json({
+      error: "Failed to create tree",
+      details: err.message
+    });
   } finally {
-	if (connection) {
-	  connection.release();
-	}
+    if (connection) {
+      connection.release();
+    }
   }
 });
 

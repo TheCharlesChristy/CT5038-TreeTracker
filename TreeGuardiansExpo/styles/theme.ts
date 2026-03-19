@@ -18,7 +18,7 @@ export const Theme = {
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(255, 255, 255, 0.37)',
-    zIndex: 50,
+    zIndex: 25,
   },
 
   background: {

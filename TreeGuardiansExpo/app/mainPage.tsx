@@ -1,8 +1,8 @@
 import { View, StyleSheet, Alert } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as Location from 'expo-location';
 import MapComponent from '@/components/base/MapComponent';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppButton } from '@/components/base/AppButton';
@@ -11,11 +11,22 @@ import { Theme } from '@/styles';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
-import { API_BASE, ENDPOINTS } from "@/config/api"
+import { API_BASE, ENDPOINTS } from '@/config/api';
+import { getItem } from '@/utilities/authStorage';
+import { showAlert } from '@/utilities/showAlert';
+import RoleDashboard from '@/components/base/Dashboard';
+import { logoutUser, validateSession } from "@/utilities/authHelper";
 
 export default function MainPage() {
-  // Plot mode toggle
   type PlotMode = 'manual' | 'device' | null;
+  type UserRole = 'registered_user' | 'guardian' | 'admin'
+
+  interface LoggedInUser {
+    id: number;
+    username: string;
+    role: UserRole;
+  }
+
   const [plotMode, setPlotMode] = useState<PlotMode>(null);
 
   // For manual plotting
@@ -28,10 +39,17 @@ export default function MainPage() {
   const [plottedTrees, setPlottedTrees] = useState<Tree[]>([]);
 
   // Dashboard and insertion of plotted trees
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [showAddTreeDashboard, setShowAddTreeDashboard] = useState(false);
 
   // Selected tree
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
+
+  // User states
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<LoggedInUser | null>(null);
+
+  // User Dashboard
+  const [showRoleDashboard, setShowRoleDashboard] = useState(false);
 
   const plotWithDeviceLocation = async () => {
     try {
@@ -133,28 +151,65 @@ export default function MainPage() {
     }
   };
 
-const uploadTreeToServer = async (tree: TreeDetails) => {
-  try {
-    const response = await fetch(API_BASE + ENDPOINTS.ADD_TREE_DATA, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tree),
-    });
+  // =================================================
+  // Authentication
 
-    const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.error || 'Failed');
+  const checkSession = async () => {
+    const auth = await validateSession();
 
-    const treeId = data.tree_id;
+    setIsLoggedIn(auth.isLoggedIn);
+    setUser(auth.user);
+  };
 
-    if (tree.photos?.length) await uploadPhotos(treeId, tree.photos);
+  useEffect(() => {
+    fetchTreesFromServer();
+    checkSession();
+  }, []);
 
-    await fetchTreesFromServer();
-    console.log("Tree saved successfully");
-  } catch (err) {
-    console.error("Tree upload failed:", err);
-    alert("Tree could not be saved");
-  }
-};
+  useFocusEffect(
+    useCallback(() => {
+      checkSession();
+    }, [])
+  );
+
+  const uploadTreeToServer = async (tree: TreeDetails) => {
+    try {
+      const accessToken = await getItem("accessToken");
+
+      if (!accessToken) {
+        Alert.alert("Sign In Required", "You must be signed in to plot a tree.");
+        router.push("/login");
+        return;
+      }
+
+      const response = await fetch(API_BASE + ENDPOINTS.ADD_TREE_DATA, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(tree),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed");
+      }
+
+      const treeId = data.tree_id;
+
+      if (tree.photos?.length) {
+        await uploadPhotos(String(treeId), tree.photos);
+      }
+
+      await fetchTreesFromServer();
+      console.log("Tree saved successfully");
+    } catch (err) {
+      console.error("Tree upload failed:", err);
+      Alert.alert("Error", "Tree could not be saved");
+    }
+  };
 
   const fetchTreesFromServer = async () => {
     try {
@@ -198,9 +253,19 @@ const uploadTreeToServer = async (tree: TreeDetails) => {
     }
   };
 
-  useEffect(() => {
-    fetchTreesFromServer();
-  }, []);
+  const handleLogout = async () => {
+    const success = await logoutUser();
+
+    setIsLoggedIn(false);
+    setUser(null);
+    setShowRoleDashboard(false);
+
+    if (success) {
+      showAlert("Logged Out", "You have been logged out.");
+    }
+
+    router.push("/");
+  };
 
   return (
     <ActionSheetProvider>
@@ -246,7 +311,7 @@ const uploadTreeToServer = async (tree: TreeDetails) => {
       />
 
       {/* Adding background dim when a dashboard is open */}
-      {(showDashboard || selectedTree !== null) && (
+      {(showAddTreeDashboard || selectedTree !== null || showRoleDashboard) && (
         <View
         style={Theme.dimOverlay}
         pointerEvents="auto"
@@ -261,27 +326,27 @@ const uploadTreeToServer = async (tree: TreeDetails) => {
         />
       )}
       
-      {showDashboard && (
+      {showAddTreeDashboard && (
       <PlotDashboard
         onConfirm={(details) => {
           setCurrentTree(details);
-          setShowDashboard(false);
+          setShowAddTreeDashboard(false);
         }}
         
         onCancel={() => {
-          setShowDashboard(false);
+          setShowAddTreeDashboard(false);
           setIsPlotting(false);
         }}
 
         onSelectManual={() => {
           setPlotMode('manual');
           setIsPlotting(true);
-          setShowDashboard(false);
+          setShowAddTreeDashboard(false);
         }}
 
         onSelectDevice={() => {
           setPlotMode('device');
-          setShowDashboard(false);
+          setShowAddTreeDashboard(false);
         }}
       />
       )}
@@ -321,29 +386,71 @@ const uploadTreeToServer = async (tree: TreeDetails) => {
         </View>
       )}
 
+      {/* Role dashboard */}
+        {showRoleDashboard && (
+          <RoleDashboard
+            role={user?.role}
+            onClose={() => setShowRoleDashboard(false)}
+            onLogout={handleLogout}
+          />
+      )}
+
       {/* Bottom Buttons (hidden in plot mode) */}
       {!isPlotting && (
         <View style={styles.bottomBar}>
-          <AppButton
-            title="Search"
-            variant="accent"
-            onPress={() => router.push('/')}
-            style={styles.sideButton}
-          />
+        
+        {/* Change from plot to sign in if the user is not signed in */}
+        {isLoggedIn ? (
+          <>
+            <AppButton
+              title="Search"
+              variant="accent"
+              onPress={() => router.push('/')}
+              style={styles.sideButton}
+            />
 
-          <AppButton
-            title="Dashboard"
-            variant="primary"
-            onPress={() => router.push('/')}
-            style={styles.middleButton}
-          />
+            <AppButton
+              title="Dashboard"
+              variant="primary"
+              onPress={() => {                
+                setShowRoleDashboard(true);
+              }}
+              style={styles.middleButton}
+            />
 
-          <AppButton
-            title="Plot"
-            variant="accent"
-            onPress={() => setShowDashboard(true)}
-            style={styles.sideButton}
-          />
+            <AppButton
+              title="Plot"
+              variant="accent"
+              onPress={() => setShowAddTreeDashboard(true)}
+              style={styles.sideButton}
+            />
+          </>
+          ) : (
+            <>
+              {/* Placeholder button without function */}
+              <AppButton
+                title=""
+                variant="accent"
+                onPress={() => {}}
+                style={styles.sideButton}
+              />
+
+              <AppButton
+                title="Sign In"
+                variant="primary"
+                onPress={() => router.push('/login')}
+                style={styles.middleButton}
+              />
+
+              {/* Placeholder button without function */}
+              <AppButton
+                title=""
+                variant="accent"
+                onPress={() => {}}
+                style={styles.sideButton}
+              />
+            </>
+          )}
         </View>
       )}
       </View>
@@ -363,6 +470,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 15,
     left: 20,
+    marginBottom: 10,
     zIndex: 10,
   },
 
