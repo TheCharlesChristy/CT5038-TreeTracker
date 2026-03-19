@@ -227,78 +227,60 @@ Check:
 
 ---
 
-## Local Docker Stack (Plesk Emulation + Mobile Testing)
+## Local Stack (Redesigned)
 
-This repository now includes a local Docker Compose setup that mirrors the same deployment shape as Plesk while still letting you test mobile flows.
+The local Docker stack has been reorganized to keep Docker assets centralized and make running the full environment one command.
 
-### What It Runs
+### Docker Layout
 
-* `mysql`: MySQL 8 database
-* `server`: Node backend serving API + static web from `TreeGuardiansExpo/dist`
-* `expo-web-build`: watches Expo source and re-exports static web build into `dist`
-* `expo`: Expo dev server for mobile testing (Expo Go)
-* `android-emulator`: Android emulator exposed over noVNC
-
-### Files Added
-
-* `docker-compose.plesk-local.yml`
-* `server/Dockerfile`
-* `scripts/local_plesk_stack.sh`
-* `.env.docker.example`
-
-### First-Time Setup
-
-```bash
-cp .env.docker.example .env.docker
-cp server/.env.example server/.env
+```
+docker/
+├── compose.local.yml
+├── images/
+│   ├── server.Dockerfile
+│   ├── expo.Dockerfile
+│   └── android-emulator.Dockerfile
+└── scripts/
+  ├── watch-expo-web.sh
+  └── android-emulator-entrypoint.sh
 ```
 
-Edit values in `.env.docker` if required (for example `EXPO_HOST_MODE=lan` if your phone can directly reach your host on local network).
-
-### Start The Stack
+### One Command To Run
 
 ```bash
 ./scripts/local_plesk_stack.sh
 ```
 
-Stop with `Ctrl+C`. The script traps the signal and tears the whole stack down automatically.
+Quiet mode (mostly Expo output in terminal):
 
-### Access URLs
+```bash
+./scripts/local_plesk_stack.sh -q
+```
 
-* Plesk-style backend + static web app: `http://localhost:4000/`
-* Backend health: `http://localhost:4000/health`
-* Expo dev server: `http://localhost:8081/`
-* Android emulator via browser VNC: `http://localhost:6080/vnc.html`
+Stop with `Ctrl+C`.
 
-### Live Updates / Mounted Code
+### What You See In Terminal
 
-* Source code is bind-mounted (`./:/workspace`) in containers.
-* Backend restarts automatically on edits with `node --watch`.
-* Expo dev server reloads mobile app updates automatically.
-* Static web output is watched and rebuilt into `TreeGuardiansExpo/dist` by `expo-web-build`.
+The launcher always prints stable local URLs at startup:
 
-### Expo Go From Physical Phone
+* `http://localhost:4000/` (backend + static web)
+* `http://localhost:8081/` (Expo dev server)
+* `http://localhost:6080/vnc.html` (Android emulator noVNC)
 
-* Default mode is `EXPO_HOST_MODE=tunnel`, which is the most reliable for a physical phone.
-* Open the Expo QR/link from Expo logs and launch in Expo Go.
-* If you prefer LAN mode, set `EXPO_HOST_MODE=lan` in `.env.docker`.
+`expo` is always attached in quiet mode so Expo QR/tunnel lines remain visible in terminal.
 
-### Android Emulator Notes
+### Logging
 
-* Emulator requires `/dev/kvm` access on host.
-* Inside emulator:
-  * `localhost:4000` maps to backend
-  * `localhost:8081` maps to Expo dev server
-* Expo Go is auto-installed in emulator when APK can be resolved for configured SDK.
-
-### Logs
-
-Runtime logs are written to `logs/`:
+Full logs are always streamed into per-service files in `logs/`:
 
 * `logs/mysql.log`
 * `logs/server.log`
-* `logs/expo.log`
 * `logs/expo-web-build.log`
+* `logs/expo.log`
 * `logs/android-emulator.log`
 
----
+### Expo/Emulator Notes
+
+* Expo tunnel mode is preconfigured with `@expo/ngrok` installed in the Expo image.
+* Android emulator image resolves Expo Go APK for SDK `54`.
+* If a container fails to boot, stack exits (no restart loop).

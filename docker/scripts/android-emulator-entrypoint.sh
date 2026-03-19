@@ -103,7 +103,6 @@ open_expo_in_emulator() {
     launch_url="exp://127.0.0.1:${launch_port}"
   fi
 
-  # Install Expo Go if it is not already present on the emulator.
   if [ -f /opt/expo-go.apk ]; then
     if ! adb -s "$ADB_DEVICE_SERIAL" shell pm list packages 2>/dev/null | grep -q "host.exp.exponent"; then
       echo "Installing Expo Go on emulator..."
