@@ -81,7 +81,7 @@ export const CENTER = {
 };
 
 export const MIN_ZOOM = 14;
-export const MAX_ZOOM = 20;
+export const MAX_ZOOM = 19;
 export const TILE_MAX_NATIVE_ZOOM = 19;
 export const BOUNDS_PADDING_RATIO = 0.08;
 
