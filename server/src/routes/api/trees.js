@@ -10,6 +10,14 @@ function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos) 
     diameter: dataRow ? dataRow.trunk_diameter : null,
     height: dataRow ? dataRow.tree_height : null,
     circumference: dataRow ? dataRow.trunk_circumference : null,
+    avoidedRunoff: dataRow ? dataRow.avoided_runoff : null,
+    carbonDioxideStored: dataRow ? dataRow.carbon_dioxide_stored : null,
+    carbonDioxideRemoved: dataRow ? dataRow.carbon_dioxide_removed : null,
+    waterIntercepted: dataRow ? dataRow.water_intercepted : null,
+    airQualityImprovement: dataRow ? dataRow.air_quality_improvement : null,
+    leafArea: dataRow ? dataRow.leaf_area : null,
+    evapotranspiration: dataRow ? dataRow.evapotranspiration : null,
+    health: dataRow ? dataRow.health : null,
     notes: seenRows[0] ? seenRows[0].observation_notes : null,
     wildlife: wildlifeRows[0] ? wildlifeRows[0].wildlife : null,
     disease: diseaseRows[0] ? diseaseRows[0].disease : null,
@@ -139,7 +147,15 @@ function createTreesRoute({ db }) {
       longitude: tree.longitude,
       trunk_diameter: dataRow ? dataRow.trunk_diameter : null,
       tree_height: dataRow ? dataRow.tree_height : null,
-      circumference: dataRow ? dataRow.trunk_circumference : null
+      circumference: dataRow ? dataRow.trunk_circumference : null,
+      avoided_runoff: dataRow ? dataRow.avoided_runoff : null,
+      carbon_dioxide_stored: dataRow ? dataRow.carbon_dioxide_stored : null,
+      carbon_dioxide_removed: dataRow ? dataRow.carbon_dioxide_removed : null,
+      water_intercepted: dataRow ? dataRow.water_intercepted : null,
+      air_quality_improvement: dataRow ? dataRow.air_quality_improvement : null,
+      leaf_area: dataRow ? dataRow.leaf_area : null,
+      evapotranspiration: dataRow ? dataRow.evapotranspiration : null,
+      health: dataRow ? dataRow.health : null
     });
   };
 

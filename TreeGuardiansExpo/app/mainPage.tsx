@@ -6,25 +6,32 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 import MapComponent from '@/components/base/MapComponent';
-import { AppButton } from '@/components/base/AppButton';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { AppContainer } from '@/components/base/AppContainer';
-import { NavigationButton } from '@/components/base/NavigationButton';
 import { AppText } from '@/components/base/AppText';
 import { StatusMessageBox } from '@/components/base/StatusMessageBox';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
 import { DashboardPanel } from '@/components/map/DashboardPanel';
 import { FloatingActionBar } from '@/components/map/FloatingActionBar';
+import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
+import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
+import { getCurrentUser } from '@/utilities/authHelper';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
+  const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    getCurrentUser().then((user) => setLoggedInUsername(user?.username ?? null));
+  }, []);
 
   const {
     mode,
@@ -62,6 +69,11 @@ export default function MainPage() {
     getDistanceFromCenterKm,
   } = useTreeMapState();
 
+  const renderTreeIcon = useCallback((tree: Tree, { zoom }: { zoom: number }) => {
+    const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
+    return <TreeMarkerIcon selected={selected} zoomLevel={zoom} />;
+  }, [selectedTree?.id]);
+
   return (
     <ActionSheetProvider>
       <AppContainer noPadding>
@@ -73,26 +85,7 @@ export default function MainPage() {
             onPlotPointerMove={handleMapPointerMove}
             onTreeClick={handleMapTreeClick}
             onPress={handleMapPress}
-            renderTreeIcon={(tree) => {
-              const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
-
-              return `
-                <div style="
-                  width: 34px;
-                  height: 34px;
-                  border-radius: 12px;
-                  background: ${selected ? '#194C22' : Theme.Colours.primary};
-                  border: 2px solid ${selected ? '#F2F8F2' : '#DDE9DD'};
-                  box-shadow: 0 8px 16px rgba(12, 20, 14, 0.33);
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  font-size: ${selected ? '24px' : '21px'};
-                  transform: ${selected ? 'scale(1.07)' : 'scale(1)'};
-                  transition: transform 160ms ease;
-                ">🌳</div>
-              `;
-            }}
+            renderTreeIcon={renderTreeIcon}
           />
 
           {showDimOverlay ? (
@@ -101,15 +94,22 @@ export default function MainPage() {
 
           <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} />
 
-          <View style={styles.topLeft}>
-            <NavigationButton
-              onPress={() => {
-                closeAllOverlays();
-                router.push('/');
-              }}
-            >
-              Home
-            </NavigationButton>
+          <TouchableOpacity
+            style={styles.homeButton}
+            activeOpacity={0.8}
+            onPress={() => {
+              closeAllOverlays();
+              router.push('/');
+            }}
+          >
+            <MaterialCommunityIcons name="home-outline" size={20} color="#fff" />
+            <AppText style={styles.homeButtonText}>Home</AppText>
+          </TouchableOpacity>
+
+          <View style={styles.loggedInPill}>
+            <AppText style={styles.loggedInText}>
+              {loggedInUsername ? `Logged in as ${loggedInUsername}` : 'Browsing as Guest'}
+            </AppText>
           </View>
 
           {mode === 'add' && isSelectingManualLocation && plotPointer ? (
@@ -132,7 +132,7 @@ export default function MainPage() {
             </View>
           ) : null}
 
-          {mode === 'add' ? (
+          {mode === 'add' && loggedInUsername !== null ? (
             <PlotDashboard
               onConfirmAdd={handleConfirmTreeAdd}
               onCancel={closeAllOverlays}
@@ -167,7 +167,7 @@ export default function MainPage() {
             />
           ) : null}
 
-          {mode === 'dashboard' ? (
+          {mode === 'dashboard' && loggedInUsername !== null ? (
             <DashboardPanel
               userRole={userRole}
               totalTrees={plottedTrees.length}
@@ -181,6 +181,7 @@ export default function MainPage() {
             searchActive={mode === 'search'}
             addActive={mode === 'add'}
             dashboardActive={mode === 'dashboard'}
+            isGuest={loggedInUsername === null}
             onSearchPress={() => {
               if (mode === 'search') {
                 closeAllOverlays();
@@ -215,15 +216,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  topLeft: {
+  homeButton: {
     position: 'absolute',
     top: 16,
     left: 16,
     zIndex: 180,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(249, 252, 249, 0.92)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: 'rgba(18, 72, 32, 0.68)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+    borderTopColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#0D1610',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  homeButtonText: {
+    fontSize: 13,
+    color: '#fff',
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  loggedInPill: {
+    position: 'absolute',
+    top: 20,
+    alignSelf: 'center',
+    zIndex: 180,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+
+  loggedInText: {
+    ...Theme.Typography.caption,
+    color: '#000',
+    fontFamily: 'Poppins_600SemiBold',
   },
 
   dimOverlay: {

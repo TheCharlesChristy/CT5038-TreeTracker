@@ -3,47 +3,13 @@ import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { getSessionUser } from '@/lib/session';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
-import { BOUNDS, MapCoordinate, PlotPointer } from '@/components/base/MapComponent.types';
+import { BOUNDS, CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds } from '@/components/base/MapComponent.types';
+import { haversineDistanceKm } from '@/utilities/geo';
 import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
 export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
 
 export type HealthFilter = 'all' | 'healthy' | 'attention';
-
-const CHARLTON_CENTER = {
-  latitude: 51.8865,
-  longitude: -2.0475,
-};
-
-const haversineDistanceKm = (
-  from: { latitude: number; longitude: number },
-  to: { latitude: number; longitude: number }
-) => {
-  const toRadians = (value: number) => (value * Math.PI) / 180;
-
-  const earthRadiusKm = 6371;
-  const deltaLat = toRadians(to.latitude - from.latitude);
-  const deltaLon = toRadians(to.longitude - from.longitude);
-
-  const a =
-    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(toRadians(from.latitude)) *
-      Math.cos(toRadians(to.latitude)) *
-      Math.sin(deltaLon / 2) *
-      Math.sin(deltaLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusKm * c;
-};
-
-const isCoordinateWithinBounds = (coordinate: MapCoordinate): boolean => {
-  return (
-    coordinate.latitude >= BOUNDS.southWest.lat &&
-    coordinate.latitude <= BOUNDS.northEast.lat &&
-    coordinate.longitude >= BOUNDS.southWest.lng &&
-    coordinate.longitude <= BOUNDS.northEast.lng
-  );
-};
 
 export function useTreeMapState() {
   const [mode, setMode] = useState<PageMode>('explore');

@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { Tree } from '@/objects/TreeDetails';
+import { getTreeMarkerIconHtml } from '@/components/map/TreeMarkerIcon';
 import {
   BOUNDS,
   BOUNDS_PADDING_RATIO,
@@ -25,6 +26,25 @@ export default function MapComponentNative({
   const webViewRef = useRef<WebView | null>(null);
   const maskOuterRingJson = JSON.stringify(MASK_OUTER_RING_LEAFLET);
   const regionRingJson = JSON.stringify(REGION_RING_LEAFLET);
+  const [isWebViewReady, setIsWebViewReady] = useState(false);
+  const [currentZoom, setCurrentZoom] = useState(MIN_ZOOM);
+
+  const buildIconHtml = useCallback((tree: Tree) => {
+    if (!renderTreeIcon) {
+      return getTreeMarkerIconHtml({ zoomLevel: currentZoom });
+    }
+
+    const renderedIcon = renderTreeIcon(tree, { zoom: currentZoom });
+    const props =
+      renderedIcon && typeof renderedIcon === 'object' && 'props' in renderedIcon
+        ? (renderedIcon.props as { selected?: boolean; zoomLevel?: number })
+        : undefined;
+
+    return getTreeMarkerIconHtml({
+      selected: Boolean(props?.selected),
+      zoomLevel: typeof props?.zoomLevel === 'number' ? props.zoomLevel : currentZoom,
+    });
+  }, [currentZoom, renderTreeIcon]);
 
   useEffect(() => {
     if (onPlotPointerMove) {
@@ -32,14 +52,14 @@ export default function MapComponentNative({
     }
   }, [onPlotPointerMove]);
 
-  useEffect(() => {
-    if (!webViewRef.current) {
+  const syncTreesToMap = useCallback(() => {
+    if (!webViewRef.current || !isWebViewReady) {
       return;
     }
 
     const treesToSend = plottedTrees.map((tree) => ({
       ...tree,
-      iconHtml: renderTreeIcon ? renderTreeIcon(tree) : '🌳',
+      iconHtml: buildIconHtml(tree),
     }));
 
     webViewRef.current.postMessage(
@@ -48,7 +68,11 @@ export default function MapComponentNative({
         plottedTrees: treesToSend,
       })
     );
-  }, [plottedTrees, renderTreeIcon]);
+  }, [buildIconHtml, isWebViewReady, plottedTrees]);
+
+  useEffect(() => {
+    syncTreesToMap();
+  }, [syncTreesToMap]);
 
   const leafletHTML = `
   <!DOCTYPE html>
@@ -76,6 +100,11 @@ export default function MapComponentNative({
 
   <script>
   function initMap() {
+    if (window.__treeTrackerMapInitialized) {
+      return;
+    }
+    window.__treeTrackerMapInitialized = true;
+
     var southWest = L.latLng(${BOUNDS.southWest.lat}, ${BOUNDS.southWest.lng});
     var northEast = L.latLng(${BOUNDS.northEast.lat}, ${BOUNDS.northEast.lng});
     var hardBounds = L.latLngBounds(southWest, northEast);
@@ -131,6 +160,13 @@ export default function MapComponentNative({
       }));
     });
 
+    map.on('zoomend', function() {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'zoomChange',
+        zoom: map.getZoom()
+      }));
+    });
+
     function handleMessage(event) {
       const data = JSON.parse(event.data);
 
@@ -155,6 +191,11 @@ export default function MapComponentNative({
 
     document.addEventListener('message', handleMessage);
     window.addEventListener('message', handleMessage);
+
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: 'mapReady',
+      zoom: map.getZoom()
+    }));
   }
 
   window.onload = initMap;
@@ -195,10 +236,18 @@ export default function MapComponentNative({
               type?: string;
               latitude?: number;
               longitude?: number;
+              zoom?: number;
               tree?: Tree;
             };
 
-            if (
+            if (typedData.type === 'mapReady') {
+              setIsWebViewReady(true);
+              if (typeof typedData.zoom === 'number') {
+                setCurrentZoom(typedData.zoom);
+              }
+            } else if (typedData.type === 'zoomChange' && typeof typedData.zoom === 'number') {
+              setCurrentZoom(typedData.zoom);
+            } else if (
               typedData.type === 'mapPress' &&
               onPress &&
               typeof typedData.latitude === 'number' &&
@@ -208,6 +257,10 @@ export default function MapComponentNative({
             } else if (typedData.type === 'treeClick' && onTreeClick && typedData.tree) {
               onTreeClick(typedData.tree);
             }
+          }}
+          onLoadStart={() => {
+            setIsWebViewReady(false);
+            setCurrentZoom(MIN_ZOOM);
           }}
         />
       )}

@@ -1,4 +1,5 @@
 import { StyleProp, ViewStyle } from 'react-native';
+import { ReactElement } from 'react';
 import { Tree } from '@/objects/TreeDetails';
 import regionBoundsGeoJson from '@/assets/data/charlton_kings_region_bounds.json';
 
@@ -14,13 +15,17 @@ export type PlotPointer = {
   screenY: number;
 };
 
+export type MapRenderContext = {
+  zoom: number;
+};
+
 export interface MapComponentProps {
   style?: StyleProp<ViewStyle>;
   onPress?: (coordinate: MapCoordinate) => void;
   onTreeClick?: (tree: Tree) => void;
   isPlotting?: boolean;
   plottedTrees?: Tree[];
-  renderTreeIcon?: (tree: Tree) => string;
+  renderTreeIcon?: (tree: Tree, context: MapRenderContext) => ReactElement;
   onPlotPointerMove?: (pointer: PlotPointer | null) => void;
 }
 
@@ -111,3 +116,17 @@ export const MASK_OUTER_RING_LEAFLET: [number, number][] = closeLatLngRing([
   [90, 180],
   [-90, 180],
 ]);
+
+export const CHARLTON_CENTER = {
+  latitude: 51.8865,
+  longitude: -2.0475,
+};
+
+export const isCoordinateWithinBounds = (coordinate: MapCoordinate): boolean => {
+  return (
+    coordinate.latitude >= BOUNDS.southWest.lat &&
+    coordinate.latitude <= BOUNDS.northEast.lat &&
+    coordinate.longitude >= BOUNDS.southWest.lng &&
+    coordinate.longitude <= BOUNDS.northEast.lng
+  );
+};

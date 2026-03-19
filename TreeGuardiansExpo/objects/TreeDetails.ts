@@ -6,7 +6,15 @@ export type TreeDetails = {
     notes?: string, // "seen" obervations or additional notes
     diameter?: number,
     height?: number,
-    circumference?: number
+    circumference?: number,
+    avoidedRunoff?: number,
+    carbonDioxideStored?: number,
+    carbonDioxideRemoved?: number,
+    waterIntercepted?: number,
+    airQualityImprovement?: number,
+    leafArea?: number,
+    evapotranspiration?: number,
+    health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible'
 }
 
 // when the tree is successfully placed

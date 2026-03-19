@@ -8,6 +8,14 @@ type ServerTreeItem = {
   diameter?: number;
   height?: number;
   circumference?: number;
+  avoidedRunoff?: number;
+  carbonDioxideStored?: number;
+  carbonDioxideRemoved?: number;
+  waterIntercepted?: number;
+  airQualityImprovement?: number;
+  leafArea?: number;
+  evapotranspiration?: number;
+  health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
   photos?: string[];
   latitude?: number;
   longitude?: number;
@@ -44,27 +52,38 @@ const safeParseJson = (rawBody: string): unknown => {
   }
 };
 
+const isNumericValue = (value: unknown): boolean =>
+  typeof value === 'number' || (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value)));
+
 const isServerTreeItem = (
   value: unknown
-): value is ServerTreeItem & { latitude: number; longitude: number } => {
+): value is ServerTreeItem & { latitude: number | string; longitude: number | string } => {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
   const item = value as Record<string, unknown>;
-  return typeof item.latitude === 'number' && typeof item.longitude === 'number';
+  return isNumericValue(item.latitude) && isNumericValue(item.longitude);
 };
 
-const normalizeTree = (treeItem: ServerTreeItem & { latitude: number; longitude: number }): Tree => ({
-  notes: treeItem.notes || '',
-  wildlife: treeItem.wildlife || undefined,
-  disease: treeItem.disease || undefined,
-  diameter: treeItem.diameter || undefined,
-  height: treeItem.height || undefined,
-  circumference: treeItem.circumference || undefined,
+const normalizeTree = (treeItem: ServerTreeItem & { latitude: number | string; longitude: number | string }): Tree => ({
+  notes: treeItem.notes ?? '',
+  wildlife: treeItem.wildlife ?? undefined,
+  disease: treeItem.disease ?? undefined,
+  diameter: treeItem.diameter ?? undefined,
+  height: treeItem.height ?? undefined,
+  circumference: treeItem.circumference ?? undefined,
+  avoidedRunoff: treeItem.avoidedRunoff ?? undefined,
+  carbonDioxideStored: treeItem.carbonDioxideStored ?? undefined,
+  carbonDioxideRemoved: treeItem.carbonDioxideRemoved ?? undefined,
+  waterIntercepted: treeItem.waterIntercepted ?? undefined,
+  airQualityImprovement: treeItem.airQualityImprovement ?? undefined,
+  leafArea: treeItem.leafArea ?? undefined,
+  evapotranspiration: treeItem.evapotranspiration ?? undefined,
+  health: treeItem.health ?? undefined,
   photos: Array.isArray(treeItem.photos) ? treeItem.photos : [],
-  latitude: treeItem.latitude,
-  longitude: treeItem.longitude,
+  latitude: Number(treeItem.latitude),
+  longitude: Number(treeItem.longitude),
   id: treeItem.id,
 });
 

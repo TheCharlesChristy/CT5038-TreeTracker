@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Tree } from '@/objects/TreeDetails';
+import { getTreeMarkerIconHtml } from '@/components/map/TreeMarkerIcon';
 import {
   BOUNDS,
   BOUNDS_PADDING_RATIO,
@@ -59,6 +60,8 @@ export default function MapComponentWeb({
   const leafletRef = useRef<LeafletModule | null>(null);
   const mapInstance = useRef<LeafletMapInstance | null>(null);
   const treeLayer = useRef<LeafletLayerGroupInstance | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const [currentZoom, setCurrentZoom] = useState(MIN_ZOOM);
 
   useEffect(() => {
     onPressRef.current = onPress;
@@ -71,6 +74,50 @@ export default function MapComponentWeb({
   useEffect(() => {
     isPlottingRef.current = isPlotting;
   }, [isPlotting]);
+
+  const buildIconHtml = useCallback((tree: Tree) => {
+    if (!renderTreeIcon) {
+      return getTreeMarkerIconHtml({ zoomLevel: currentZoom });
+    }
+
+    const renderedIcon = renderTreeIcon(tree, { zoom: currentZoom });
+    const props =
+      renderedIcon && typeof renderedIcon === 'object' && 'props' in renderedIcon
+        ? (renderedIcon.props as { selected?: boolean; zoomLevel?: number })
+        : undefined;
+
+    return getTreeMarkerIconHtml({
+      selected: Boolean(props?.selected),
+      zoomLevel: typeof props?.zoomLevel === 'number' ? props.zoomLevel : currentZoom,
+    });
+  }, [currentZoom, renderTreeIcon]);
+
+  const syncTreeMarkers = useCallback(() => {
+    if (!treeLayer.current || !leafletRef.current) {
+      return;
+    }
+
+    const Leaflet = leafletRef.current;
+
+    treeLayer.current.clearLayers();
+
+    plottedTrees.forEach((tree: Tree) => {
+      const html = buildIconHtml(tree);
+      const icon = Leaflet.divIcon({
+        html,
+        className: '',
+        iconSize: [50, 50],
+        iconAnchor: [25, 25],
+      });
+
+      const marker = Leaflet.marker([tree.latitude, tree.longitude], { icon }).addTo(treeLayer.current!);
+      marker.on('click', () => {
+        if (onTreeClick) {
+          onTreeClick(tree);
+        }
+      });
+    });
+  }, [buildIconHtml, onTreeClick, plottedTrees]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) {
@@ -140,6 +187,8 @@ export default function MapComponentWeb({
 
       treeLayer.current = Leaflet.layerGroup().addTo(map);
       mapInstance.current = map;
+      setCurrentZoom(map.getZoom());
+      setIsMapReady(true);
 
       map.on('click', (event: unknown) => {
         if (!onPressRef.current) {
@@ -182,6 +231,10 @@ export default function MapComponentWeb({
         onPlotPointerMoveRef.current(null);
       });
 
+      map.on('zoomend', () => {
+        setCurrentZoom(map.getZoom());
+      });
+
       setTimeout(() => map.invalidateSize(), 0);
     };
 
@@ -189,6 +242,8 @@ export default function MapComponentWeb({
 
     return () => {
       isDisposed = true;
+      setIsMapReady(false);
+      setCurrentZoom(MIN_ZOOM);
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
@@ -208,31 +263,12 @@ export default function MapComponentWeb({
   }, [isPlotting]);
 
   useEffect(() => {
-    if (!treeLayer.current || !leafletRef.current) {
+    if (!isMapReady) {
       return;
     }
 
-    const Leaflet = leafletRef.current;
-
-    treeLayer.current.clearLayers();
-
-    plottedTrees.forEach((tree: Tree) => {
-      const html = renderTreeIcon ? renderTreeIcon(tree) : '🌳';
-      const icon = Leaflet.divIcon({
-        html,
-        className: '',
-        iconSize: [50, 50],
-        iconAnchor: [25, 25],
-      });
-
-      const marker = Leaflet.marker([tree.latitude, tree.longitude], { icon }).addTo(treeLayer.current!);
-      marker.on('click', () => {
-        if (onTreeClick) {
-          onTreeClick(tree);
-        }
-      });
-    });
-  }, [plottedTrees, renderTreeIcon, onTreeClick]);
+    syncTreeMarkers();
+  }, [isMapReady, syncTreeMarkers]);
 
   return <div ref={mapRef} style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0 }} />;
 }
