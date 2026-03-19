@@ -4,6 +4,7 @@ import {
   BOUNDS,
   BOUNDS_PADDING_RATIO,
   CENTER,
+  MASK_OUTER_RING_LEAFLET,
   MapComponentProps,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -118,34 +119,14 @@ export default function MapComponentWeb({
 
       Leaflet.control.zoom({ position: 'topright' }).addTo(map);
 
-      const maskLayer = Leaflet.polygon([], {
+      Leaflet.polygon([MASK_OUTER_RING_LEAFLET, REGION_RING_LEAFLET], {
         stroke: false,
         fillColor: '#9ca3af',
         fillOpacity: 0.45,
         fillRule: 'evenodd',
+        noClip: true,
         interactive: false,
       }).addTo(map);
-
-      const updateMaskToViewport = () => {
-        const viewportBounds = map.getBounds();
-        const south = viewportBounds.getSouth();
-        const west = viewportBounds.getWest();
-        const north = viewportBounds.getNorth();
-        const east = viewportBounds.getEast();
-
-        const viewportRing: [number, number][] = [
-          [south, west],
-          [north, west],
-          [north, east],
-          [south, east],
-          [south, west],
-        ];
-
-        maskLayer.setLatLngs([viewportRing, REGION_RING_LEAFLET]);
-      };
-
-      updateMaskToViewport();
-      map.on('move zoom resize', updateMaskToViewport);
 
       Leaflet.polygon(REGION_RING_LEAFLET, {
         color: '#4b5563',

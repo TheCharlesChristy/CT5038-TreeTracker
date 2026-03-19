@@ -6,6 +6,7 @@ import {
   BOUNDS,
   BOUNDS_PADDING_RATIO,
   CENTER,
+  MASK_OUTER_RING_LEAFLET,
   MapComponentProps,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -21,6 +22,7 @@ export default function MapComponentNative({
   onPlotPointerMove,
 }: MapComponentProps) {
   const webViewRef = useRef<WebView | null>(null);
+  const maskOuterRingJson = JSON.stringify(MASK_OUTER_RING_LEAFLET);
   const regionRingJson = JSON.stringify(REGION_RING_LEAFLET);
 
   useEffect(() => {
@@ -95,36 +97,17 @@ export default function MapComponentNative({
 
     L.control.zoom({ position: 'topright' }).addTo(map);
 
+    var maskOuterRing = ${maskOuterRingJson};
     var regionRing = ${regionRingJson};
 
-    var maskLayer = L.polygon([], {
+    L.polygon([maskOuterRing, regionRing], {
       stroke: false,
       fillColor: '#9ca3af',
       fillOpacity: 0.45,
       fillRule: 'evenodd',
+      noClip: true,
       interactive: false
     }).addTo(map);
-
-    function updateMaskToViewport() {
-      var viewportBounds = map.getBounds();
-      var south = viewportBounds.getSouth();
-      var west = viewportBounds.getWest();
-      var north = viewportBounds.getNorth();
-      var east = viewportBounds.getEast();
-
-      var viewportRing = [
-        [south, west],
-        [north, west],
-        [north, east],
-        [south, east],
-        [south, west]
-      ];
-
-      maskLayer.setLatLngs([viewportRing, regionRing]);
-    }
-
-    updateMaskToViewport();
-    map.on('move zoom resize', updateMaskToViewport);
 
     L.polygon(regionRing, {
       color: '#4b5563',

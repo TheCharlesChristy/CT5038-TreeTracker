@@ -103,3 +103,10 @@ export const BOUNDS_SQUARE_RING_LEAFLET: [number, number][] = closeLatLngRing([
   [BOUNDS.northEast.lat, BOUNDS.northEast.lng],
   [BOUNDS.southWest.lat, BOUNDS.northEast.lng],
 ]);
+
+export const MASK_OUTER_RING_LEAFLET: [number, number][] = closeLatLngRing([
+  [-90, -180],
+  [90, -180],
+  [90, 180],
+  [-90, 180],
+]);
