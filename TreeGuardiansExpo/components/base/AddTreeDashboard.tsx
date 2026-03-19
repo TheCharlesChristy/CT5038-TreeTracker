@@ -13,25 +13,35 @@ import { AppButton } from './AppButton';
 import { AppInput } from './AppInput';
 import { AppText } from './AppText';
 import { TreeDetails } from '@/objects/TreeDetails';
+import type { MapCoordinate } from './MapComponent.types';
 import * as ImagePicker from 'expo-image-picker';
 import { useActionSheet } from '@expo/react-native-action-sheet';
+import { ErrorMessageBox } from './ErrorMessageBox';
 
 type NumericField = 'diameter' | 'height' | 'circumference';
 
 interface PlotDashboardProps {
-  onConfirm: (details: TreeDetails) => void;
+  onConfirmAdd: (details: TreeDetails) => void;
   onCancel: () => void;
-  onSelectManual: () => void;
-  onSelectDevice: () => void;
+  onSelectManual: (details: TreeDetails) => void;
+  onSelectDevice: (details: TreeDetails) => void;
+  selectedLocation: MapCoordinate | null;
+  isSelectingOnMap: boolean;
+  locationError?: string | null;
+  isSubmitting?: boolean;
 }
 
 const MAX_PHOTOS = 5;
 
 export default function PlotDashboard({
-  onConfirm,
+  onConfirmAdd,
   onCancel,
   onSelectManual,
   onSelectDevice,
+  selectedLocation,
+  isSelectingOnMap,
+  locationError,
+  isSubmitting = false,
 }: PlotDashboardProps) {
   const [notes, setNotes] = useState('');
   const [wildlife, setWildlife] = useState('');
@@ -78,8 +88,8 @@ export default function PlotDashboard({
     return Object.values(nextErrors).every((value) => value === '');
   };
 
-  const submitDetails = () => {
-    onConfirm({
+  const buildTreeDetails = (): TreeDetails => {
+    return {
       notes: notes.trim() || undefined,
       wildlife: wildlife.trim() || undefined,
       disease: disease.trim() || undefined,
@@ -87,8 +97,16 @@ export default function PlotDashboard({
       height: height.trim() ? Number(height) : undefined,
       circumference: circumference.trim() ? Number(circumference) : undefined,
       photos,
-    });
+    };
   };
+
+  const locationSummary = useMemo(() => {
+    if (!selectedLocation) {
+      return 'No location selected yet.';
+    }
+
+    return `${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}`;
+  }, [selectedLocation]);
 
   const chooseImageSource = (slotIndex: number) => {
     const isWeb = Platform.OS === 'web';
@@ -189,7 +207,7 @@ export default function PlotDashboard({
             <View>
               <AppText style={styles.eyebrow}>Add Tree</AppText>
               <AppText style={styles.title}>Tree Details</AppText>
-              <AppText style={styles.subtitle}>Complete details, then choose how to pin the tree.</AppText>
+              <AppText style={styles.subtitle}>Complete details, pick a location, then confirm to submit.</AppText>
             </View>
 
             <AppButton
@@ -274,6 +292,43 @@ export default function PlotDashboard({
           </View>
 
           <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>Location</AppText>
+            <AppText style={styles.locationText}>{locationSummary}</AppText>
+            {isSelectingOnMap ? (
+              <AppText style={styles.locationHint}>Click on the map to store a location.</AppText>
+            ) : null}
+            <ErrorMessageBox message={locationError || ''} visible={Boolean(locationError)} />
+
+            <View style={styles.locationActionRow}>
+              <AppButton
+                title="Use My Location"
+                variant="outline"
+                onPress={() => {
+                  if (!validate()) {
+                    return;
+                  }
+
+                  onSelectDevice(buildTreeDetails());
+                }}
+                style={styles.locationButton}
+              />
+
+              <AppButton
+                title="Select On Map"
+                variant="primary"
+                onPress={() => {
+                  if (!validate()) {
+                    return;
+                  }
+
+                  onSelectManual(buildTreeDetails());
+                }}
+                style={styles.locationButton}
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
             <AppText style={styles.sectionTitle}>Photos</AppText>
             <AppText style={styles.photoHint}>Upload up to 5 photos</AppText>
 
@@ -319,27 +374,15 @@ export default function PlotDashboard({
             />
 
             <AppButton
-              title="Use My Location"
-              variant="outline"
-              onPress={() => {
-                if (!validate()) {
-                  return;
-                }
-                submitDetails();
-                onSelectDevice();
-              }}
-              style={[styles.footerButton, isMobile && styles.footerButtonMobile]}
-            />
-
-            <AppButton
-              title="Select On Map"
+              title={isSubmitting ? 'Submitting...' : 'Confirm Add Tree'}
               variant="primary"
+              disabled={isSubmitting}
               onPress={() => {
                 if (!validate()) {
                   return;
                 }
-                submitDetails();
-                onSelectManual();
+
+                onConfirmAdd(buildTreeDetails());
               }}
               style={[styles.footerButton, isMobile && styles.footerButtonMobile]}
             />
@@ -469,6 +512,28 @@ const styles = StyleSheet.create({
     ...Theme.Typography.caption,
     color: Theme.Colours.textMuted,
     marginBottom: 8,
+  },
+
+  locationText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+  },
+
+  locationHint: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.secondary,
+    marginTop: 6,
+  },
+
+  locationActionRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  locationButton: {
+    flex: 1,
+    marginBottom: 0,
   },
 
   uploadDropZone: {

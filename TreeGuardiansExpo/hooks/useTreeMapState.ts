@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { getSessionUser } from '@/lib/session';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
-import { PlotPointer } from '@/components/base/MapComponent.types';
+import { BOUNDS, MapCoordinate, PlotPointer } from '@/components/base/MapComponent.types';
+import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
-export type PageMode =
-  | 'explore'
-  | 'add'
-  | 'manual-placement'
-  | 'view-tree'
-  | 'search'
-  | 'dashboard';
+export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
 
 export type HealthFilter = 'all' | 'healthy' | 'attention';
 
@@ -42,39 +36,63 @@ const haversineDistanceKm = (
   return earthRadiusKm * c;
 };
 
+const isCoordinateWithinBounds = (coordinate: MapCoordinate): boolean => {
+  return (
+    coordinate.latitude >= BOUNDS.southWest.lat &&
+    coordinate.latitude <= BOUNDS.northEast.lat &&
+    coordinate.longitude >= BOUNDS.southWest.lng &&
+    coordinate.longitude <= BOUNDS.northEast.lng
+  );
+};
+
 export function useTreeMapState() {
   const [mode, setMode] = useState<PageMode>('explore');
 
-  const [currentTree, setCurrentTree] = useState<TreeDetails | null>(null);
   const [plottedTrees, setPlottedTrees] = useState<Tree[]>([]);
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
+
+  const [draftTreeDetails, setDraftTreeDetails] = useState<TreeDetails | null>(null);
+  const [selectedDraftLocation, setSelectedDraftLocation] = useState<MapCoordinate | null>(null);
+  const [isSelectingManualLocation, setIsSelectingManualLocation] = useState(false);
+  const [addValidationError, setAddValidationError] = useState<string | null>(null);
+  const [isSubmittingTree, setIsSubmittingTree] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceFilterKm, setDistanceFilterKm] = useState(2.5);
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all');
-  const [pendingDevicePlacement, setPendingDevicePlacement] = useState(false);
 
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
   const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
 
   const userRole = getSessionUser().role;
 
-  const mapInteractive = mode === 'explore' || mode === 'manual-placement' || mode === 'view-tree';
-  const showDimOverlay = mode !== 'explore' && mode !== 'manual-placement';
+  const showDimOverlay = mode !== 'explore' && mode !== 'add';
+
+  const clearAddDraft = useCallback(() => {
+    setDraftTreeDetails(null);
+    setSelectedDraftLocation(null);
+    setIsSelectingManualLocation(false);
+    setAddValidationError(null);
+    setPlotPointer(null);
+    setIsSubmittingTree(false);
+  }, []);
 
   const closeAllOverlays = useCallback(() => {
     setSelectedTree(null);
-    setCurrentTree(null);
-    setPendingDevicePlacement(false);
-    setPlotPointer(null);
+    clearAddDraft();
     setMode('explore');
-  }, []);
+  }, [clearAddDraft]);
 
-  const openMode = useCallback((nextMode: Exclude<PageMode, 'manual-placement'>) => {
+  const openMode = useCallback((nextMode: PageMode) => {
     setSelectedTree(null);
-    setCurrentTree(null);
+
+    if (nextMode !== 'add' || mode !== 'add') {
+      clearAddDraft();
+    }
+
     setMode(nextMode);
-  }, []);
+  }, [clearAddDraft, mode]);
 
   const fetchTreesFromServer = useCallback(async () => {
     try {
@@ -88,55 +106,9 @@ export function useTreeMapState() {
     }
   }, []);
 
-  const uploadTreeToServer = useCallback(async (tree: TreeDetails) => {
-    try {
-      await addTreeData(tree);
-      await fetchTreesFromServer();
-    } catch (error) {
-      console.error('Tree upload failed:', error);
-      Alert.alert('Save Failed', 'Tree could not be saved. Please try again.');
-    }
-  }, [fetchTreesFromServer]);
-
   useEffect(() => {
     fetchTreesFromServer();
   }, [fetchTreesFromServer]);
-
-  useEffect(() => {
-    if (!pendingDevicePlacement || !currentTree) {
-      return;
-    }
-
-    const placeTreeUsingDeviceLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-
-        if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Location permission is required to place a tree.');
-          return;
-        }
-
-        const location = await Location.getCurrentPositionAsync({});
-
-        const completeTree: Tree = {
-          ...currentTree,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-
-        await uploadTreeToServer(completeTree);
-
-        setCurrentTree(null);
-        setMode('explore');
-      } catch (error) {
-        console.warn(error);
-        Alert.alert('Location Error', 'Unable to get current location. Please try again.');
-      }
-    };
-
-    placeTreeUsingDeviceLocation();
-    setPendingDevicePlacement(false);
-  }, [pendingDevicePlacement, currentTree, uploadTreeToServer]);
 
   const searchResults = useMemo(() => {
     const textQuery = searchQuery.trim().toLowerCase();
@@ -195,54 +167,122 @@ export function useTreeMapState() {
     );
   }, []);
 
+  const clearAddValidationError = useCallback(() => {
+    setAddValidationError(null);
+  }, []);
+
+  const clearStatusMessage = useCallback(() => {
+    setStatusMessage(null);
+  }, []);
+
   const handleMapPointerMove = useCallback((pointer: PlotPointer | null) => {
-    if (mode !== 'manual-placement') {
+    if (mode !== 'add' || !isSelectingManualLocation) {
       setPlotPointer(null);
       return;
     }
 
     setPlotPointer(pointer);
-  }, [mode]);
+  }, [mode, isSelectingManualLocation]);
 
   const handleMapTreeClick = useCallback((tree: Tree) => {
-    if (!mapInteractive) {
+    if (mode === 'add') {
       return;
     }
 
     setSelectedTree(tree);
     setMode('view-tree');
-  }, [mapInteractive]);
+  }, [mode]);
 
-  const handleMapPress = useCallback((coordinate: { latitude: number; longitude: number }) => {
-    if (mode !== 'manual-placement' || !currentTree) {
+  const handleMapPress = useCallback((coordinate: MapCoordinate) => {
+    if (mode !== 'add' || !isSelectingManualLocation) {
+      return;
+    }
+
+    setSelectedDraftLocation(coordinate);
+    setIsSelectingManualLocation(false);
+    setAddValidationError(null);
+    setPlotPointer(null);
+  }, [mode, isSelectingManualLocation]);
+
+  const handleSelectManualPlacement = useCallback((details: TreeDetails) => {
+    setDraftTreeDetails(details);
+    setIsSelectingManualLocation(true);
+    setAddValidationError(null);
+    setMode('add');
+  }, []);
+
+  const handleSelectDevicePlacement = useCallback(async (details: TreeDetails) => {
+    setDraftTreeDetails(details);
+    setIsSelectingManualLocation(false);
+    setAddValidationError(null);
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        setAddValidationError('Location permission is required to fetch your device coordinates.');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setSelectedDraftLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown location error.';
+      setAddValidationError(`Unable to get current location: ${message}`);
+    }
+  }, []);
+
+  const handleConfirmTreeAdd = useCallback(async (details: TreeDetails) => {
+    setDraftTreeDetails(details);
+    setAddValidationError(null);
+
+    if (!selectedDraftLocation) {
+      setAddValidationError('Select a location first using "Use My Location" or "Select On Map".');
+      return;
+    }
+
+    if (!isCoordinateWithinBounds(selectedDraftLocation)) {
+      setAddValidationError(
+        'Selected location is outside the supported map bounds (Charlton Kings). Please choose a point inside the map area.'
+      );
       return;
     }
 
     const completeTree: Tree = {
-      ...currentTree,
-      latitude: coordinate.latitude,
-      longitude: coordinate.longitude,
+      ...details,
+      latitude: selectedDraftLocation.latitude,
+      longitude: selectedDraftLocation.longitude,
     };
 
-    uploadTreeToServer(completeTree);
+    try {
+      setIsSubmittingTree(true);
+      await addTreeData(completeTree);
+      await fetchTreesFromServer();
 
-    setCurrentTree(null);
-    setPlotPointer(null);
-    setMode('explore');
-  }, [mode, currentTree, uploadTreeToServer]);
+      setStatusMessage({
+        variant: 'success',
+        title: 'Tree Added Successfully',
+        message: `Tree was added at ${selectedDraftLocation.latitude.toFixed(6)}, ${selectedDraftLocation.longitude.toFixed(6)}.`,
+        createdAt: Date.now(),
+      });
 
-  const handlePlotConfirm = useCallback((details: TreeDetails) => {
-    setCurrentTree(details);
-  }, []);
-
-  const handleSelectManualPlacement = useCallback(() => {
-    setMode('manual-placement');
-  }, []);
-
-  const handleSelectDevicePlacement = useCallback(() => {
-    setMode('explore');
-    setPendingDevicePlacement(true);
-  }, []);
+      clearAddDraft();
+      setMode('explore');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatusMessage({
+        variant: 'error',
+        title: 'Tree Add Failed',
+        message,
+        createdAt: Date.now(),
+      });
+    } finally {
+      setIsSubmittingTree(false);
+    }
+  }, [selectedDraftLocation, fetchTreesFromServer, clearAddDraft]);
 
   const handleCloseTreeDetails = useCallback(() => {
     setSelectedTree(null);
@@ -264,11 +304,16 @@ export function useTreeMapState() {
     healthFilter,
     isLoadingTrees,
     plotPointer,
-    mapInteractive,
     showDimOverlay,
     searchResults,
     healthyCount,
     treesNeedingAttention,
+    draftTreeDetails,
+    selectedDraftLocation,
+    isSelectingManualLocation,
+    addValidationError,
+    isSubmittingTree,
+    statusMessage,
     closeAllOverlays,
     openMode,
     setSearchQuery,
@@ -277,11 +322,13 @@ export function useTreeMapState() {
     handleMapPointerMove,
     handleMapTreeClick,
     handleMapPress,
-    handlePlotConfirm,
     handleSelectManualPlacement,
     handleSelectDevicePlacement,
+    handleConfirmTreeAdd,
     handleCloseTreeDetails,
     handleSelectSearchResultTree,
+    clearAddValidationError,
+    clearStatusMessage,
     getDistanceFromCenterKm,
   };
 }

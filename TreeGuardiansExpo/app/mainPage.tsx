@@ -15,16 +15,15 @@ import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { AppContainer } from '@/components/base/AppContainer';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { AppText } from '@/components/base/AppText';
-import { ManualPlacementPanel } from '@/components/map/ManualPlacementPanel';
+import { StatusMessageBox } from '@/components/base/StatusMessageBox';
 import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
 import { DashboardPanel } from '@/components/map/DashboardPanel';
 import { FloatingActionBar } from '@/components/map/FloatingActionBar';
 import { Theme } from '@/styles';
-import { useTreeMapState } from '@/hooks/useTreeMapState';
+import { useTreeMapState } from '../hooks/useTreeMapState';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
-  const isWideLayout = windowWidth >= 1024;
 
   const {
     mode,
@@ -40,6 +39,11 @@ export default function MainPage() {
     searchResults,
     healthyCount,
     treesNeedingAttention,
+    selectedDraftLocation,
+    isSelectingManualLocation,
+    addValidationError,
+    isSubmittingTree,
+    statusMessage,
     closeAllOverlays,
     openMode,
     setSearchQuery,
@@ -48,11 +52,12 @@ export default function MainPage() {
     handleMapPointerMove,
     handleMapTreeClick,
     handleMapPress,
-    handlePlotConfirm,
     handleSelectManualPlacement,
     handleSelectDevicePlacement,
+    handleConfirmTreeAdd,
     handleCloseTreeDetails,
     handleSelectSearchResultTree,
+    clearStatusMessage,
     getDistanceFromCenterKm,
   } = useTreeMapState();
 
@@ -62,7 +67,7 @@ export default function MainPage() {
         <View style={styles.page}>
           <MapComponent
             style={StyleSheet.absoluteFillObject}
-            isPlotting={mode === 'manual-placement'}
+            isPlotting={mode === 'add' && isSelectingManualLocation}
             plottedTrees={plottedTrees}
             onPlotPointerMove={handleMapPointerMove}
             onTreeClick={handleMapTreeClick}
@@ -93,6 +98,8 @@ export default function MainPage() {
             <TouchableOpacity style={styles.dimOverlay} onPress={closeAllOverlays} activeOpacity={1} />
           ) : null}
 
+          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} />
+
           <View style={styles.topLeft}>
             <NavigationButton
               onPress={() => {
@@ -104,19 +111,7 @@ export default function MainPage() {
             </NavigationButton>
           </View>
 
-          {mode === 'manual-placement' ? (
-            <ManualPlacementPanel
-              isWideLayout={isWideLayout}
-              coordinateText={
-                plotPointer
-                  ? `${plotPointer.latitude.toFixed(6)}, ${plotPointer.longitude.toFixed(6)}`
-                  : 'Move cursor on map'
-              }
-              onCancel={closeAllOverlays}
-            />
-          ) : null}
-
-          {mode === 'manual-placement' && plotPointer ? (
+          {mode === 'add' && isSelectingManualLocation && plotPointer ? (
             <View
               pointerEvents="none"
               style={[
@@ -138,10 +133,14 @@ export default function MainPage() {
 
           {mode === 'add' ? (
             <PlotDashboard
-              onConfirm={handlePlotConfirm}
+              onConfirmAdd={handleConfirmTreeAdd}
               onCancel={closeAllOverlays}
               onSelectManual={handleSelectManualPlacement}
               onSelectDevice={handleSelectDevicePlacement}
+              selectedLocation={selectedDraftLocation}
+              isSelectingOnMap={isSelectingManualLocation}
+              locationError={addValidationError}
+              isSubmitting={isSubmittingTree}
             />
           ) : null}
 
@@ -177,7 +176,7 @@ export default function MainPage() {
             />
           ) : null}
 
-          {mode !== 'manual-placement' ? (
+          {mode !== 'add' ? (
             <FloatingActionBar
               searchActive={mode === 'search'}
               dashboardActive={mode === 'dashboard'}

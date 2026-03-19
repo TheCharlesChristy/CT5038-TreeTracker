@@ -26,6 +26,24 @@ type UploadedPhotoFile = {
   type: string;
 };
 
+const formatApiError = (prefix: string, response: Response, rawBody: string, explicitError?: string): string => {
+  const errorMessage = explicitError || 'No explicit error field returned.';
+  const responseBody = rawBody.trim().length > 0 ? rawBody : '<empty body>';
+  return `${prefix}\nStatus: ${response.status} ${response.statusText}\nError: ${errorMessage}\nResponse Body: ${responseBody}`;
+};
+
+const safeParseJson = (rawBody: string): unknown => {
+  if (!rawBody.trim()) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    return undefined;
+  }
+};
+
 const isServerTreeItem = (
   value: unknown
 ): value is ServerTreeItem & { latitude: number; longitude: number } => {
@@ -52,10 +70,11 @@ const normalizeTree = (treeItem: ServerTreeItem & { latitude: number; longitude:
 
 export async function fetchTrees(): Promise<Tree[]> {
   const response = await fetch(buildApiUrl(ENDPOINTS.GET_TREES));
-  const data: unknown = await response.json();
+  const rawBody = await response.text();
+  const data: unknown = safeParseJson(rawBody) ?? [];
 
   if (!response.ok) {
-    throw new Error('Failed to fetch trees');
+    throw new Error(formatApiError('Failed to fetch trees.', response, rawBody));
   }
 
   if (!Array.isArray(data)) {
@@ -106,11 +125,11 @@ async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
   try {
     const payload = JSON.parse(text) as { error?: string };
     if (!response.ok || payload.error) {
-      throw new Error(payload.error || 'Photo upload failed');
+      throw new Error(formatApiError('Photo upload failed.', response, text, payload.error));
     }
   } catch {
     if (!response.ok) {
-      throw new Error('Photo upload failed');
+      throw new Error(formatApiError('Photo upload failed.', response, text));
     }
   }
 }
@@ -122,10 +141,12 @@ export async function addTreeData(tree: TreeDetails): Promise<void> {
     body: JSON.stringify(tree),
   });
 
-  const data = (await response.json()) as AddTreeResponse;
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody);
+  const data = (parsed && typeof parsed === 'object' ? (parsed as AddTreeResponse) : {}) as AddTreeResponse;
 
   if (!response.ok || !data.success || !data.tree_id) {
-    throw new Error(data.error || 'Failed to save tree');
+    throw new Error(formatApiError('Failed to save tree.', response, rawBody, data.error));
   }
 
   if (tree.photos?.length) {
