@@ -40,17 +40,20 @@ function normalizeApiBase(value: string): string {
 
 export function resolveApiBaseUrl(): string {
   const envBase = process.env.EXPO_PUBLIC_API_BASE_URL;
+  console.log("[resolveApiBaseUrl] envBase:", envBase);
   if (typeof envBase === "string" && envBase.trim()) {
     return normalizeApiBase(envBase);
   }
 
   const envOrigin = process.env.EXPO_PUBLIC_API_ORIGIN;
+  console.log("[resolveApiBaseUrl] envOrigin:", envOrigin);
   if (typeof envOrigin === "string" && envOrigin.trim()) {
     const origin = normalizeOrigin(envOrigin);
     return `${origin}/api`;
   }
 
   const windowOrigin = getWindowOrigin();
+  console.log("[resolveApiBaseUrl] windowOrigin:", windowOrigin);
   if (windowOrigin) {
     return `${windowOrigin}/api`;
   }
