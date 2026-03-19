@@ -13,6 +13,10 @@ import { AppInput } from '@/components/base/AppInput';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
 import { getEmailError, getPasswordError } from '@/lib/authValidation';
+import { saveItem } from '@/utilities/authStorage';
+import { API_BASE, ENDPOINTS } from '@/config/api';
+import { showAlert } from '@/utilities/showAlert'
+import { normalizePhone, isValidPhone } from '@/utilities/phone';
 
 export default function CreateAccount() {
   const { width, height } = useWindowDimensions();
@@ -20,6 +24,7 @@ export default function CreateAccount() {
   const isWideLayout = width >= 920;
 
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -34,8 +39,9 @@ export default function CreateAccount() {
   const emailError = getEmailError(trimmedEmail);
   const passwordError = getPasswordError(password);
   const canSubmit = Boolean(trimmedEmail && password) && !emailError && !passwordError;
+  const [loading, setLoading] = useState(false);
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
     setEmailTouched(true);
     setPasswordTouched(true);
 
@@ -49,16 +55,44 @@ export default function CreateAccount() {
       return;
     }
 
-    Alert.alert(
-      'Welcome to TreeGuardians',
-      'Your account has been created successfully.',
-      [
-        {
-          text: 'Continue to sign in',
-          onPress: () => router.push('/login'),
+    try {
+      setLoading(true);
+
+      const response = await fetch(API_BASE + ENDPOINTS.REGISTER, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      ],
-    );
+        body: JSON.stringify({
+          username: username.trim(),
+          email: email.trim(),
+          phone: normalizedPhone || null,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showAlert('Error', data.error || 'Failed to create account');
+        return;
+      }
+
+      await saveItem('accessToken', data.accessToken);
+      await saveItem('refreshToken', data.refreshToken);
+      await saveItem('user', JSON.stringify(data.user));
+
+      showAlert(
+        'Account Created',
+        'Your account has been created successfully.',
+        () => router.replace('/login')
+      );
+    } catch (error) {
+      console.error('Registration error:', error);
+      showAlert('Error', 'Could not connect to the server');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

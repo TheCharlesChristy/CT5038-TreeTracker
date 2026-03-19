@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,10 +6,11 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 import MapComponent from '@/components/base/MapComponent';
+import { AppButton } from '@/components/base/AppButton';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { AppContainer } from '@/components/base/AppContainer';

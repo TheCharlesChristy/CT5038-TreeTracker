@@ -15,6 +15,9 @@ import { AppInput } from '@/components/base/AppInput';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
 import { getEmailError, getPasswordError } from '@/lib/authValidation';
+import { saveItem } from '@/utilities/authStorage';
+import { API_BASE, ENDPOINTS } from '@/config/api';
+import { showAlert } from '@/utilities/showAlert'
 
 export default function Login() {
   const { width, height } = useWindowDimensions();
@@ -22,7 +25,9 @@ export default function Login() {
   const isWideLayout = width >= 920;
 
   const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -40,7 +45,7 @@ export default function Login() {
   const passwordError = getPasswordError(password);
   const canSubmit = Boolean(trimmedEmail && password) && !emailError && !passwordError;
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setEmailTouched(true);
     setPasswordTouched(true);
 
@@ -54,18 +59,42 @@ export default function Login() {
       return;
     }
 
-    Alert.alert(
-      'Welcome back',
-      rememberMe
-        ? 'Signed in successfully. Your device preference will be remembered when auth is connected.'
-        : 'Signed in successfully. Auth is still stubbed, but the flow is ready for backend wiring.',
-      [
-        {
-          text: 'Continue',
-          onPress: () => router.push('/mainPage'),
+    try {
+      setLoading(true);
+
+      const response = await fetch(API_BASE + ENDPOINTS.LOGIN, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      ],
-    );
+        body: JSON.stringify({
+          usernameOrEmail,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showAlert('Login failed', data.error || 'Unable to log in');
+        return;
+      }
+
+      await saveItem('accessToken', data.accessToken);
+      await saveItem('refreshToken', data.refreshToken);
+      await saveItem('user', JSON.stringify(data.user));
+
+      showAlert(
+        'Success',
+        `Welcome back, ${data.user.username}!`,
+        () => router.replace('/mainPage')
+      );
+    } catch (error) {
+      console.error('Login error:', error);
+      showAlert('Error', 'Something went wrong during login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -130,20 +159,6 @@ export default function Login() {
               <AppText variant="body" style={[styles.subtitle, isMobileLayout && styles.subtitleMobile]}>
                 Continue exploring your local trees and the people protecting them.
               </AppText>
-
-              <View style={styles.reinforcementRow}>
-                <View style={styles.reinforcementPill}>
-                  <AppText variant="caption" style={styles.reinforcementText}>
-                    Track trees
-                  </AppText>
-                </View>
-
-                <View style={styles.reinforcementPill}>
-                  <AppText variant="caption" style={styles.reinforcementText}>
-                    Contribute to your community
-                  </AppText>
-                </View>
-              </View>
 
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
