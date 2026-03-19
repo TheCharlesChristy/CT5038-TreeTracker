@@ -65,7 +65,7 @@ export default function CreateAccount() {
     <AppContainer
       scrollable
       noPadding
-      backgroundImage={require('../assets/images/CharltonKings.jpg')}
+      backgroundImage={require('../assets/images/CharltonKingsAlternative.jpg')}
     >
       <View
         style={[

@@ -1,6 +1,11 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const express = require("express");
+const { createHealthRouter } = require("./routes/health");
+const { createDbTestBenchRouter } = require("./routes/db-testbench");
+const { createApiRouter } = require("./routes/api");
+const { DEFAULT_UPLOADS_DIR } = require("./routes/api/uploads");
 
 const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
 const MIME_TYPES = {
@@ -29,160 +34,13 @@ function applyCorsHeaders(res) {
   res.setHeader("access-control-max-age", "86400");
 }
 
-function listDbEndpoints(db) {
-  const endpointMap = {};
-
-  for (const [groupName, value] of Object.entries(db)) {
-    if (["init", "close", "health", "transaction", "errors"].includes(groupName)) {
-      continue;
-    }
-    if (!value || typeof value !== "object") {
-      continue;
-    }
-
-    const methods = {};
-    for (const [methodName, candidate] of Object.entries(value)) {
-      if (typeof candidate === "function") {
-        methods[methodName] = `${groupName}.${methodName}`;
-        continue;
-      }
-
-      if (candidate && typeof candidate === "object") {
-        const nestedMethods = Object.keys(candidate).filter((name) => typeof candidate[name] === "function");
-        if (nestedMethods.length > 0) {
-          methods[methodName] = nestedMethods.reduce((acc, nestedMethod) => {
-            acc[nestedMethod] = `${groupName}.${methodName}.${nestedMethod}`;
-            return acc;
-          }, {});
-        }
-      }
-    }
-
-    if (Object.keys(methods).length > 0) {
-      endpointMap[groupName] = methods;
-    }
-  }
-
-  return endpointMap;
-}
-
-function flattenEndpointMap(endpointMap) {
-  const flat = [];
-
-  for (const value of Object.values(endpointMap)) {
-    for (const method of Object.values(value)) {
-      if (typeof method === "string") {
-        flat.push(method);
-        continue;
-      }
-      for (const nested of Object.values(method)) {
-        flat.push(nested);
-      }
-    }
-  }
-
-  return flat.sort();
-}
-
-function resolveDbEndpoint(db, endpointPath) {
-  const parts = String(endpointPath || "")
-    .split(".")
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  if (parts.length < 2 || parts.length > 3) {
-    return null;
-  }
-
-  let owner = db;
-  let candidate = db[parts[0]];
-  for (let index = 1; index < parts.length; index += 1) {
-    if (!candidate || typeof candidate !== "object") {
-      return null;
-    }
-    owner = candidate;
-    candidate = candidate[parts[index]];
-  }
-
-  if (typeof candidate !== "function") {
-    return null;
-  }
-
-  return candidate.bind(owner);
-}
-
-function payloadTooLargeError() {
-  const error = new Error(`Request body exceeds ${MAX_JSON_BODY_BYTES} bytes`);
-  error.name = "PayloadTooLargeError";
-  return error;
-}
-
-async function parseJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    let size = 0;
-    let settled = false;
-
-    const finishWithError = (error) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      reject(error);
-    };
-
-    const contentLengthHeader = Number(req.headers["content-length"]);
-    if (Number.isFinite(contentLengthHeader) && contentLengthHeader > MAX_JSON_BODY_BYTES) {
-      finishWithError(payloadTooLargeError());
-      req.resume();
-      return;
-    }
-
-    req.on("data", (chunk) => {
-      if (settled) {
-        return;
-      }
-
-      size += chunk.length;
-      if (size > MAX_JSON_BODY_BYTES) {
-        finishWithError(payloadTooLargeError());
-        req.resume();
-        return;
-      }
-
-      chunks.push(chunk);
-    });
-
-    req.on("end", () => {
-      if (settled) {
-        return;
-      }
-
-      const raw = Buffer.concat(chunks).toString("utf-8");
-      if (!raw) {
-        settled = true;
-        resolve({});
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(raw);
-        settled = true;
-        resolve(parsed);
-      } catch (error) {
-        const parseError = new Error("Invalid JSON body");
-        parseError.name = "ValidationError";
-        finishWithError(parseError);
-      }
-    });
-
-    req.on("error", (error) => {
-      finishWithError(error);
-    });
-  });
-}
-
 function sendJson(res, status, payload) {
+  if (typeof res.status === "function") {
+    applyCorsHeaders(res);
+    res.status(status).json(payload);
+    return;
+  }
+
   applyCorsHeaders(res);
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(payload));
@@ -261,20 +119,11 @@ function toErrorStatus(error) {
   if (code === "ForbiddenError") return 403;
   if (code === "NotFoundError") return 404;
   if (code === "ConflictError") return 409;
+
+  if (error?.type === "entity.too.large") return 413;
+  if (error instanceof SyntaxError && error?.status === 400 && "body" in error) return 400;
+
   return 500;
-}
-
-function contentTypeIsJson(value) {
-  return String(value || "")
-    .toLowerCase()
-    .split(";")[0]
-    .trim() === "application/json";
-}
-
-function createAuthError(name, message) {
-  const error = new Error(message);
-  error.name = name;
-  return error;
 }
 
 function sendProxyError(res, error) {
@@ -365,28 +214,6 @@ function proxyUpgradeRequest(req, socket, head, target) {
   proxyReq.end();
 }
 
-function authorizeTestBench(req, token) {
-  if (!token) {
-    throw createAuthError("InternalError", "Testbench is enabled but no token is configured");
-  }
-
-  const authHeader = String(req.headers.authorization || "");
-  const bearerPrefix = "bearer ";
-  const bearerToken = authHeader.toLowerCase().startsWith(bearerPrefix)
-    ? authHeader.slice(bearerPrefix.length).trim()
-    : null;
-  const headerToken = req.headers["x-testbench-token"];
-  const providedToken = bearerToken || (typeof headerToken === "string" ? headerToken : null);
-
-  if (!providedToken) {
-    throw createAuthError("AuthError", "Missing testbench authorization token");
-  }
-
-  if (providedToken !== token) {
-    throw createAuthError("ForbiddenError", "Invalid testbench authorization token");
-  }
-}
-
 function createHttpServer({
   port,
   db,
@@ -404,104 +231,74 @@ function createHttpServer({
     );
   }
 
-  const endpointMap = listDbEndpoints(db);
-  const flatEndpoints = flattenEndpointMap(endpointMap);
   const staticRoot = expoStaticEnabled && expoWebDistPath ? path.resolve(expoWebDistPath) : null;
+  const app = express();
 
-  const server = http.createServer(async (req, res) => {
+  app.use((req, res, next) => {
+    applyCorsHeaders(res);
     if (req.method === "OPTIONS") {
-      applyCorsHeaders(res);
-      res.writeHead(204);
-      res.end();
+      res.status(204).end();
       return;
     }
+    next();
+  });
 
-    try {
-      let url;
+  app.use(express.json({ limit: MAX_JSON_BODY_BYTES }));
+  app.use(express.urlencoded({ extended: true, limit: MAX_JSON_BODY_BYTES }));
+  app.use("/uploads", express.static(DEFAULT_UPLOADS_DIR));
+
+  app.use(createHealthRouter({ db }));
+
+  if (dbTestBenchEnabled) {
+    app.use("/db/testbench", createDbTestBenchRouter({ db, token: dbTestBenchToken }));
+  }
+
+  app.use(
+    "/api",
+    createApiRouter({
+      db,
+      uploadsDir: DEFAULT_UPLOADS_DIR,
+      uploadPublicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || null
+    })
+  );
+
+  app.use((req, res, next) => {
+    if (expoProxyEnabled && expoProxyTarget) {
+      proxyHttpRequest(req, res, expoProxyTarget);
+      return;
+    }
+    next();
+  });
+
+  app.use((req, res) => {
+    if (staticRoot && (req.method === "GET" || req.method === "HEAD")) {
+      let pathname = "/";
       try {
-        url = new URL(req.url || "/", "http://localhost");
+        pathname = new URL(req.url || "/", "http://localhost").pathname;
       } catch {
         sendJson(res, 400, { error: "Bad request", code: "BadRequestError" });
         return;
       }
-      if (req.method === "GET" && url.pathname === "/health") {
-        sendJson(res, 200, { status: "ok" });
+
+      const staticFilePath = resolveStaticRoute(staticRoot, pathname);
+      if (staticFilePath) {
+        sendStaticFile(req, res, staticFilePath);
         return;
       }
-
-      if (req.method === "GET" && url.pathname === "/db/health") {
-        const health = await db.health();
-        sendJson(res, health.ready ? 200 : 503, health);
-        return;
-      }
-
-      if (dbTestBenchEnabled && req.method === "GET" && url.pathname === "/db/testbench/endpoints") {
-        authorizeTestBench(req, dbTestBenchToken);
-        sendJson(res, 200, {
-          endpoints: endpointMap,
-          flatEndpoints
-        });
-        return;
-      }
-
-      if (dbTestBenchEnabled && req.method === "POST" && url.pathname === "/db/testbench/invoke") {
-        authorizeTestBench(req, dbTestBenchToken);
-
-        if (!contentTypeIsJson(req.headers["content-type"])) {
-          req.resume();
-          const unsupported = new Error("Content-Type must be application/json");
-          unsupported.name = "UnsupportedMediaTypeError";
-          throw unsupported;
-        }
-
-        const body = await parseJsonBody(req);
-        if (!body || typeof body !== "object" || Array.isArray(body) || !body.endpoint) {
-          const payloadError = new Error("Request body must include endpoint");
-          payloadError.name = "ValidationError";
-          throw payloadError;
-        }
-
-        if (!flatEndpoints.includes(body.endpoint)) {
-          sendJson(res, 404, { error: "Unknown endpoint", code: "NotFoundError" });
-          return;
-        }
-        const fn = resolveDbEndpoint(db, body.endpoint);
-        if (!fn) {
-          sendJson(res, 404, { error: "Unknown endpoint", code: "NotFoundError" });
-          return;
-        }
-
-        const args = Array.isArray(body.args) ? body.args : [];
-        const result = await fn(...args);
-        sendJson(res, 200, {
-          endpoint: body.endpoint,
-          result
-        });
-        return;
-      }
-
-      if (expoProxyEnabled && expoProxyTarget) {
-        proxyHttpRequest(req, res, expoProxyTarget);
-        return;
-      }
-
-      if (staticRoot && (req.method === "GET" || req.method === "HEAD")) {
-        const staticFilePath = resolveStaticRoute(staticRoot, url.pathname);
-        if (staticFilePath) {
-          sendStaticFile(req, res, staticFilePath);
-          return;
-        }
-      }
-
-      sendJson(res, 404, { error: "Not found" });
-    } catch (error) {
-      const status = toErrorStatus(error);
-      sendJson(res, status, {
-        error: error?.message || "Internal server error",
-        code: error?.name || error?.code || "InternalError"
-      });
     }
+
+    sendJson(res, 404, { error: "Not found" });
   });
+
+  app.use((error, _req, res, _next) => {
+    const status = toErrorStatus(error);
+    sendJson(res, status, {
+      error: error?.message || "Internal server error",
+      code: error?.name || error?.code || "InternalError"
+    });
+  });
+
+  const server = http.createServer(app);
 
   if (expoProxyEnabled && expoProxyTarget) {
     server.on("upgrade", (req, socket, head) => {

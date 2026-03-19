@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 
 export default function Index() {
   return (
-    <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
+    <AppContainer backgroundImage={require('@/assets/images/CharltonKingsAlternative.jpg')}>
       <View style={styles.screen}>
 
         {/* Branded Card */}

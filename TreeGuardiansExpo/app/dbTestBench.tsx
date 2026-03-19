@@ -7,6 +7,7 @@ import { AppInput } from '@/components/base/AppInput';
 import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
+import { API_ORIGIN } from '@/config/api';
 
 type EndpointsResponse = {
   flatEndpoints?: string[];
@@ -40,7 +41,7 @@ type EndpointSchema = {
   fields: FormField[];
 };
 
-const DEFAULT_BASE_URL = 'http://localhost:4000';
+const DEFAULT_BASE_URL = API_ORIGIN;
 
 const field = (
   id: string,
@@ -993,7 +994,7 @@ export default function DbTestBenchPage() {
             onChangeText={setBaseUrl}
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="http://localhost:4000"
+            placeholder={API_ORIGIN}
           />
           <AppInput
             value={token}

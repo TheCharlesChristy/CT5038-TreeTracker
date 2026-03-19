@@ -1,4 +1,4 @@
-import { API_BASE, ENDPOINTS } from '@/config/api';
+import { buildApiUrl, ENDPOINTS } from '@/config/api';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 
 type ServerTreeItem = {
@@ -51,7 +51,7 @@ const normalizeTree = (treeItem: ServerTreeItem & { latitude: number; longitude:
 });
 
 export async function fetchTrees(): Promise<Tree[]> {
-  const response = await fetch(API_BASE + ENDPOINTS.GET_TREES);
+  const response = await fetch(buildApiUrl(ENDPOINTS.GET_TREES));
   const data: unknown = await response.json();
 
   if (!response.ok) {
@@ -71,7 +71,6 @@ async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
   }
 
   const formData = new FormData();
-  formData.append('tree_id', treeId);
 
   for (let i = 0; i < photos.length; i += 1) {
     let uri = photos[i];
@@ -97,7 +96,7 @@ async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
     formData.append('photos', mobilePhoto as unknown as Blob);
   }
 
-  const response = await fetch(API_BASE + ENDPOINTS.UPLOAD_PHOTOS, {
+  const response = await fetch(buildApiUrl(`trees/${treeId}/photos`), {
     method: 'POST',
     body: formData,
   });
@@ -117,7 +116,7 @@ async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
 }
 
 export async function addTreeData(tree: TreeDetails): Promise<void> {
-  const response = await fetch(API_BASE + ENDPOINTS.ADD_TREE_DATA, {
+  const response = await fetch(buildApiUrl(ENDPOINTS.ADD_TREE_DATA), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(tree),

@@ -242,3 +242,232 @@ test("unmatched GET routes serve the exported Expo web build when enabled", asyn
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 });
+
+test("legacy /api routes expose old frontend-compatible endpoints", async () => {
+  const callLog = {
+    treesCreate: 0,
+    creationDataCreate: 0,
+    treeDataCreate: 0,
+    commentsCreate: 0,
+    seenCreate: 0,
+    wildlifeCreate: 0,
+    diseaseCreate: 0
+  };
+
+  const db = {
+    health: async () => ({ ready: true }),
+    transaction: async (fn) => fn({ __tx: true }),
+    trees: {
+      create: async () => {
+        callLog.treesCreate += 1;
+        return { id: 77 };
+      },
+      list: async () => [{ id: 77, latitude: 51.9, longitude: -2.1 }],
+      getById: async (id) => (id === 77 ? { id: 77, latitude: 51.9, longitude: -2.1 } : null)
+    },
+    treeCreationData: {
+      create: async () => {
+        callLog.creationDataCreate += 1;
+        return { id: 1 };
+      }
+    },
+    treeData: {
+      create: async () => {
+        callLog.treeDataCreate += 1;
+        return { id: 1 };
+      },
+      getByTreeId: async () => ({ trunk_diameter: 15, tree_height: 10, trunk_circumference: 30 })
+    },
+    comments: {
+      create: async () => {
+        callLog.commentsCreate += 1;
+        return { id: 900 };
+      }
+    },
+    seenObservations: {
+      create: async () => {
+        callLog.seenCreate += 1;
+        return { comment_id: 900 };
+      },
+      listByTreeId: async () => [{ observation_notes: "healthy" }]
+    },
+    wildlifeObservations: {
+      create: async () => {
+        callLog.wildlifeCreate += 1;
+        return { comment_id: 900 };
+      },
+      listByTreeId: async () => [{ wildlife: "bird" }]
+    },
+    diseaseObservations: {
+      create: async () => {
+        callLog.diseaseCreate += 1;
+        return { comment_id: 900 };
+      },
+      listByTreeId: async () => [{ disease: "none" }]
+    },
+    treePhotos: {
+      add: async () => ({ added: true }),
+      listPhotoIdsByTree: async () => [5]
+    },
+    photos: {
+      create: async () => ({ id: 5 }),
+      getById: async () => ({ id: 5, image_url: "https://example.com/photo.jpg" })
+    },
+    users: {
+      existsByUsername: async () => false,
+      existsByEmail: async () => false,
+      create: async () => ({ id: 2, username: "user", email: "user@example.com" }),
+      getByUsername: async () => null,
+      getByEmail: async () => null,
+      getById: async () => null
+    },
+    userPasswords: {
+      setForUser: async () => ({ userId: 2 }),
+      getHashByUserId: async () => null
+    },
+    userSessions: {
+      create: async () => ({ id: 1 })
+    }
+  };
+
+  const httpServer = createHttpServer({ port: 0, db });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+
+  try {
+    const apiRoot = await sendRequest({ port, path: "/api" });
+    assert.equal(apiRoot.status, 200);
+    assert.equal(apiRoot.body.message, "Tree API working");
+
+    const addTree = await sendRequest({
+      port,
+      method: "POST",
+      path: "/api/add-tree-data",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        latitude: 51.9,
+        longitude: -2.1,
+        notes: "healthy",
+        wildlife: "bird",
+        disease: "none",
+        diameter: 15,
+        height: 10,
+        circumference: 30
+      })
+    });
+    assert.equal(addTree.status, 200);
+    assert.equal(addTree.body.success, true);
+    assert.equal(addTree.body.tree_id, 77);
+    assert.equal(callLog.treesCreate, 1);
+    assert.equal(callLog.creationDataCreate, 1);
+    assert.equal(callLog.treeDataCreate, 1);
+    assert.equal(callLog.commentsCreate, 1);
+    assert.equal(callLog.seenCreate, 1);
+    assert.equal(callLog.wildlifeCreate, 1);
+    assert.equal(callLog.diseaseCreate, 1);
+
+    const trees = await sendRequest({ port, path: "/api/get-trees" });
+    assert.equal(trees.status, 200);
+    assert.equal(Array.isArray(trees.body), true);
+    assert.equal(trees.body[0].id, 77);
+    assert.deepEqual(trees.body[0].photos, ["https://example.com/photo.jpg"]);
+
+    const details = await sendRequest({ port, path: "/api/get-tree-details?tree_id=77" });
+    assert.equal(details.status, 200);
+    assert.equal(details.body.id, 77);
+    assert.equal(details.body.trunk_diameter, 15);
+  } finally {
+    await httpServer.stop();
+  }
+});
+
+test("legacy auth routes register login and return /api/me", async () => {
+  const previousSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = "unit-test-secret";
+
+  const users = [];
+  const passwordByUserId = new Map();
+  let nextUserId = 1;
+
+  const db = {
+    health: async () => ({ ready: true }),
+    transaction: async (fn) => fn({ __tx: true }),
+    trees: { list: async () => [], getById: async () => null, create: async () => ({ id: 1 }) },
+    treeCreationData: { create: async () => ({ id: 1 }) },
+    treeData: { create: async () => ({ id: 1 }), getByTreeId: async () => null },
+    comments: { create: async () => ({ id: 1 }) },
+    seenObservations: { create: async () => ({ id: 1 }), listByTreeId: async () => [] },
+    wildlifeObservations: { create: async () => ({ id: 1 }), listByTreeId: async () => [] },
+    diseaseObservations: { create: async () => ({ id: 1 }), listByTreeId: async () => [] },
+    treePhotos: { add: async () => ({ added: true }), listPhotoIdsByTree: async () => [] },
+    photos: { create: async () => ({ id: 1 }), getById: async () => null },
+    users: {
+      existsByUsername: async (username) => users.some((user) => user.username === username),
+      existsByEmail: async (email) => users.some((user) => user.email === email),
+      create: async ({ username, email }) => {
+        const user = { id: nextUserId++, username, email };
+        users.push(user);
+        return user;
+      },
+      getByUsername: async (username) => users.find((user) => user.username === username) || null,
+      getByEmail: async (email) => users.find((user) => user.email === email) || null,
+      getById: async (id) => users.find((user) => user.id === id) || null
+    },
+    userPasswords: {
+      setForUser: async (userId, hash) => {
+        passwordByUserId.set(userId, hash);
+        return { userId };
+      },
+      getHashByUserId: async (userId) => passwordByUserId.get(userId) || null
+    },
+    userSessions: {
+      create: async () => ({ id: 1 })
+    }
+  };
+
+  const httpServer = createHttpServer({ port: 0, db });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+
+  try {
+    const register = await sendRequest({
+      port,
+      method: "POST",
+      path: "/api/register",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "charles", email: "charles@example.com", password: "password123" })
+    });
+    assert.equal(register.status, 201);
+    assert.equal(register.body.user.username, "charles");
+    assert.equal(typeof register.body.accessToken, "string");
+
+    const login = await sendRequest({
+      port,
+      method: "POST",
+      path: "/api/login",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ usernameOrEmail: "charles", password: "password123" })
+    });
+    assert.equal(login.status, 200);
+    assert.equal(login.body.user.email, "charles@example.com");
+    assert.equal(typeof login.body.accessToken, "string");
+
+    const me = await sendRequest({
+      port,
+      method: "GET",
+      path: "/api/me",
+      headers: { authorization: `Bearer ${login.body.accessToken}` }
+    });
+    assert.equal(me.status, 200);
+    assert.equal(me.body.username, "charles");
+  } finally {
+    await httpServer.stop();
+    if (previousSecret === undefined) {
+      delete process.env.JWT_SECRET;
+    } else {
+      process.env.JWT_SECRET = previousSecret;
+    }
+  }
+});

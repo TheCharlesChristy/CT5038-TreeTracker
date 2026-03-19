@@ -26,6 +26,11 @@ function createAccountEndpoints(ctx) {
       return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE username = ?", [username]);
     },
 
+    async getByEmail(email, tx) {
+      ensureRequiredString("email", email, 255);
+      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE email = ?", [email]);
+    },
+
     async list(params = {}, tx) {
       const { limit, offset } = normalizeListParams(params);
       return run(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users ORDER BY id DESC LIMIT ? OFFSET ?", [
@@ -68,6 +73,12 @@ function createAccountEndpoints(ctx) {
     async existsByUsername(username, tx) {
       ensureRequiredString("username", username, 100);
       const row = await selectOne(runtimeExecutor(tx), "SELECT 1 AS ok FROM users WHERE username = ?", [username]);
+      return Boolean(row);
+    },
+
+    async existsByEmail(email, tx) {
+      ensureRequiredString("email", email, 255);
+      const row = await selectOne(runtimeExecutor(tx), "SELECT 1 AS ok FROM users WHERE email = ?", [email]);
       return Boolean(row);
     }
   };
