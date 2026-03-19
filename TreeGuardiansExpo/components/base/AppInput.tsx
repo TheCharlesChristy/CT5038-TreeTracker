@@ -127,11 +127,16 @@ const styles = StyleSheet.create({
     minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Theme.Colours.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#9AA79A',
+    borderColor: 'rgba(255, 255, 255, 0.52)',
     paddingHorizontal: Theme.Spacing.medium,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
   },
 
   inputWrapperMultiline: {
@@ -144,7 +149,7 @@ const styles = StyleSheet.create({
   },
 
   inputWrapperDisabled: {
-    backgroundColor: '#EFF3EF',
+    backgroundColor: 'rgba(239, 243, 239, 0.9)',
     borderColor: '#C7D1C7',
   },
 
@@ -160,7 +165,7 @@ const styles = StyleSheet.create({
     ...Theme.Typography.body,
     color: Theme.Colours.black,
     outlineStyle: 'none',
-  } as TextStyle,  
+  } as TextStyle,
 
   inputMultiline: {
     minHeight: 120,

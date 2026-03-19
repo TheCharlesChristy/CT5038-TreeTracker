@@ -9,11 +9,7 @@ export default function Index() {
   return (
     <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <View style={styles.screen}>
-
-        {/* Branded Card */}
         <View style={styles.card}>
-
-          {/* Tree Icon */}
           <View style={styles.iconContainer}>
             <Image
               source={require('@/assets/images/tree_icon.png')}
@@ -22,20 +18,16 @@ export default function Index() {
             />
           </View>
 
-          {/* Title */}
           <AppText variant="title" style={styles.title}>
-          TreeGuardians
+            TreeGuardians
           </AppText>
 
-          {/* Tagline */}
           <AppText variant="tagline" style={styles.tagline}>
             Discover and share trees in your community
           </AppText>
 
-          {/* Divider */}
           <View style={styles.divider} />
 
-          {/* Primary CTA */}
           <AppButton
             title="Create Account"
             variant="primary"
@@ -43,7 +35,6 @@ export default function Index() {
             onPress={() => router.push('/registration')}
           />
 
-          {/* Secondary CTA */}
           <AppButton
             title="Login"
             variant="secondary"
@@ -51,7 +42,6 @@ export default function Index() {
             onPress={() => router.push('/login')}
           />
 
-          {/* Tertiary — ghost */}
           <AppButton
             title="Continue as Guest"
             variant="ghost"
@@ -59,7 +49,6 @@ export default function Index() {
             onPress={() => router.push('/mainPage')}
           />
 
-          {/* Dev-only utilities */}
           {__DEV__ && (
             <>
               <View style={styles.devDivider} />
@@ -77,7 +66,6 @@ export default function Index() {
               />
             </>
           )}
-
         </View>
       </View>
     </AppContainer>
@@ -95,23 +83,27 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: 'rgba(255,255,255,0.93)',
+    backgroundColor: 'rgba(255, 255, 255, 0.78)',
     borderRadius: Theme.Radius.card,
     paddingVertical: Theme.Spacing.extraLarge,
     paddingHorizontal: Theme.Spacing.large,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.34)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    elevation: 8,
   },
 
   iconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Theme.Colours.accent + '55',
+    backgroundColor: 'rgba(165, 214, 167, 0.28)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Theme.Spacing.medium,
@@ -137,7 +129,7 @@ const styles = StyleSheet.create({
   divider: {
     width: '100%',
     height: 1,
-    backgroundColor: Theme.Colours.accent + '88',
+    backgroundColor: 'rgba(165, 214, 167, 0.55)',
     marginBottom: Theme.Spacing.large,
   },
 
@@ -148,7 +140,7 @@ const styles = StyleSheet.create({
   devDivider: {
     width: '100%',
     height: 1,
-    backgroundColor: Theme.Colours.gray + '44',
+    backgroundColor: Theme.Colours.gray + '33',
     marginTop: Theme.Spacing.small,
     marginBottom: Theme.Spacing.medium,
   },

@@ -55,7 +55,7 @@ export default function Login() {
     return () => {
       if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
-  }, [status?.createdAt]);
+  }, [status]);
 
   const handleLogin = async () => {
     setCredentialTouched(true);
@@ -144,8 +144,6 @@ export default function Login() {
           { minHeight: height - Theme.Spacing.large },
         ]}
       >
-        <View style={styles.pageTint} />
-
         <StatusMessageBox
           status={status}
           redirectDuration={3}
@@ -315,7 +313,7 @@ export default function Login() {
                 <AppButton
                   title="Log In"
                   onPress={handleLogin}
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || loading}
                   style={styles.submitButton}
                   buttonStyle={styles.submitButtonInner}
                 />
@@ -499,10 +497,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.Spacing.medium,
     paddingVertical: Theme.Spacing.large,
   },
-  pageTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 28, 18, 0.48)',
-  },
   shell: {
     flex: 1,
     alignSelf: 'center',
@@ -534,16 +528,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   formCard: {
-    backgroundColor: 'rgba(248, 252, 248, 0.97)',
+    backgroundColor: 'rgba(248, 252, 248, 0.76)',
     borderRadius: 24,
     padding: Theme.Spacing.extraLarge,
     borderWidth: 1,
-    borderColor: 'rgba(165, 214, 167, 0.70)',
+    borderColor: 'rgba(255, 255, 255, 0.44)',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 28,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    elevation: 6,
   },
   formCardMobile: {
     borderRadius: 18,
@@ -560,7 +554,7 @@ const styles = StyleSheet.create({
     paddingVertical: Theme.Spacing.extraSmall + 2,
     paddingHorizontal: Theme.Spacing.small + 2,
     borderRadius: 999,
-    backgroundColor: 'rgba(46, 125, 50, 0.12)',
+    backgroundColor: 'rgba(46, 125, 50, 0.10)',
   },
   homeLinkText: {
     color: '#1B5E20',
@@ -584,25 +578,6 @@ const styles = StyleSheet.create({
   subtitleMobile: {
     marginBottom: Theme.Spacing.small,
   },
-  reinforcementRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: Theme.Spacing.large,
-  },
-  reinforcementPill: {
-    borderRadius: 999,
-    backgroundColor: 'rgba(46, 125, 50, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(46, 125, 50, 0.16)',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginRight: Theme.Spacing.small,
-    marginBottom: Theme.Spacing.small,
-  },
-  reinforcementText: {
-    color: '#1B5E20',
-    fontWeight: '600',
-  },
   form: {
     width: '100%',
   },
@@ -621,17 +596,17 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     borderRadius: 14,
-    borderColor: '#A4B2A4',
-    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(255, 255, 255, 0.52)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
   inputFocused: {
     borderColor: '#2E7D32',
     borderWidth: 2,
-    backgroundColor: '#F7FFF7',
+    backgroundColor: 'rgba(247, 255, 247, 0.96)',
   },
   inputError: {
     borderColor: '#B3261E',
-    backgroundColor: '#FFF8F7',
+    backgroundColor: 'rgba(255, 248, 247, 0.94)',
   },
   passwordHeaderRow: {
     flexDirection: 'row',
@@ -652,9 +627,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#B3261E',
-  },
-  successText: {
-    color: '#1F7A35',
   },
   optionsRow: {
     flexDirection: 'row',
@@ -678,7 +650,7 @@ const styles = StyleSheet.create({
     borderColor: '#6E7D6E',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
   },
   checkboxBoxActive: {
     borderColor: '#2E7D32',
@@ -714,16 +686,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     shadowColor: '#1B5E20',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 4,
   },
   trustPanel: {
-    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(46, 125, 50, 0.22)',
+    borderColor: 'rgba(255, 255, 255, 0.26)',
     padding: Theme.Spacing.medium,
   },
   trustTitle: {
@@ -765,14 +737,14 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: Theme.Spacing.extraLarge,
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(9, 22, 12, 0.58)',
+    backgroundColor: 'rgba(9, 22, 12, 0.34)',
     borderWidth: 1,
-    borderColor: 'rgba(230, 244, 231, 0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.22,
-    shadowRadius: 30,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 5,
   },
   previewCardMobile: {
     minHeight: 520,
@@ -786,7 +758,7 @@ const styles = StyleSheet.create({
   previewEyebrow: {
     alignSelf: 'flex-start',
     borderRadius: 999,
-    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginBottom: Theme.Spacing.large,
@@ -828,7 +800,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E6F4E7',
+    backgroundColor: 'rgba(240, 248, 240, 0.84)',
     marginRight: Theme.Spacing.medium,
   },
   previewFeatureBadgeText: {
@@ -850,7 +822,7 @@ const styles = StyleSheet.create({
   },
   activityCard: {
     borderRadius: 18,
-    backgroundColor: 'rgba(230, 244, 231, 0.08)',
+    backgroundColor: 'rgba(230, 244, 231, 0.10)',
     borderWidth: 1,
     borderColor: 'rgba(230, 244, 231, 0.14)',
     padding: Theme.Spacing.medium,
@@ -907,9 +879,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 18,
     padding: Theme.Spacing.medium,
-    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(230, 244, 231, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
   },
   previewStatLabel: {
     color: 'rgba(230, 244, 231, 0.72)',

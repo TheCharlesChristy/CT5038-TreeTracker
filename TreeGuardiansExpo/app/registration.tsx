@@ -57,7 +57,7 @@ export default function CreateAccount() {
     return () => {
       if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
-  }, [status?.createdAt]);
+  }, [status]);
 
   const handleCreateAccount = async () => {
     setUsernameTouched(true);
@@ -144,8 +144,6 @@ export default function CreateAccount() {
           { minHeight: height - Theme.Spacing.large },
         ]}
       >
-        <View style={styles.pageTint} />
-
         <StatusMessageBox
           status={status}
           redirectDuration={3}
@@ -311,7 +309,7 @@ export default function CreateAccount() {
                 <AppButton
                   title="Join the Community"
                   onPress={handleCreateAccount}
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || loading}
                   style={styles.submitButton}
                   buttonStyle={styles.submitButtonInner}
                 />
@@ -449,10 +447,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.Spacing.medium,
     paddingVertical: Theme.Spacing.large,
   },
-  pageTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 28, 18, 0.50)',
-  },
   shell: {
     flex: 1,
     alignSelf: 'center',
@@ -484,16 +478,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   formCard: {
-    backgroundColor: 'rgba(248, 252, 248, 0.97)',
+    backgroundColor: 'rgba(248, 252, 248, 0.76)',
     borderRadius: 20,
     padding: Theme.Spacing.extraLarge,
     borderWidth: 1,
-    borderColor: 'rgba(165, 214, 167, 0.65)',
+    borderColor: 'rgba(255, 255, 255, 0.44)',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    elevation: 6,
   },
   formCardMobile: {
     borderRadius: 16,
@@ -505,7 +499,7 @@ const styles = StyleSheet.create({
     paddingVertical: Theme.Spacing.extraSmall,
     paddingHorizontal: Theme.Spacing.small,
     borderRadius: 999,
-    backgroundColor: 'rgba(46, 125, 50, 0.12)',
+    backgroundColor: 'rgba(46, 125, 50, 0.10)',
   },
   homeLinkText: {
     color: '#1B5E20',
@@ -547,16 +541,17 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     borderRadius: 12,
-    borderColor: '#9AA79A',
-    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(255, 255, 255, 0.52)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
   inputFocused: {
     borderColor: '#2E7D32',
     borderWidth: 2,
-    backgroundColor: '#F7FFF7',
+    backgroundColor: 'rgba(247, 255, 247, 0.96)',
   },
   inputError: {
     borderColor: '#B3261E',
+    backgroundColor: 'rgba(255, 248, 247, 0.94)',
   },
   visibilityToggle: {
     paddingLeft: Theme.Spacing.small,
@@ -569,9 +564,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#B3261E',
   },
-  successText: {
-    color: '#1F7A35',
-  },
   submitButton: {
     marginTop: Theme.Spacing.small,
     marginBottom: Theme.Spacing.medium,
@@ -581,16 +573,16 @@ const styles = StyleSheet.create({
     minHeight: 54,
     justifyContent: 'center',
     shadowColor: '#1B5E20',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 7,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 4,
   },
   trustPanel: {
-    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(46, 125, 50, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.26)',
     padding: Theme.Spacing.medium,
     marginBottom: Theme.Spacing.medium,
   },
@@ -612,7 +604,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(46, 125, 50, 0.30)',
+    backgroundColor: 'rgba(46, 125, 50, 0.24)',
   },
   dividerText: {
     color: '#466046',
@@ -628,13 +620,18 @@ const styles = StyleSheet.create({
   socialButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#7B927B',
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderColor: 'rgba(123, 146, 123, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.86)',
     borderRadius: 12,
     minHeight: 48,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Theme.Spacing.small,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   socialButtonStacked: {
     width: '100%',
@@ -673,15 +670,15 @@ const styles = StyleSheet.create({
   previewCard: {
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(220, 235, 220, 0.45)',
-    backgroundColor: 'rgba(12, 39, 16, 0.57)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: 'rgba(12, 39, 16, 0.34)',
     padding: Theme.Spacing.extraLarge,
     justifyContent: 'space-between',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 24,
-    elevation: 7,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 5,
   },
   previewCardMobile: {
     minHeight: 0,
@@ -720,7 +717,7 @@ const styles = StyleSheet.create({
   previewEyebrow: {
     alignSelf: 'flex-start',
     borderRadius: 999,
-    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginBottom: Theme.Spacing.large,
@@ -739,7 +736,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E6F4E7',
+    backgroundColor: 'rgba(240, 248, 240, 0.84)',
     marginRight: Theme.Spacing.medium,
   },
   previewFeatureBadgeText: {
@@ -773,9 +770,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 18,
     padding: Theme.Spacing.medium,
-    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(230, 244, 231, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
   },
   previewStatLabel: {
     color: 'rgba(230, 244, 231, 0.72)',
@@ -787,7 +784,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   previewBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.24)',
     borderRadius: 12,

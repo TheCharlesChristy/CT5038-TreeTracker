@@ -87,18 +87,23 @@ const styles = StyleSheet.create({
   },
 
   primary: {
-    backgroundColor: Theme.Colours.primary,
+    backgroundColor: 'rgba(46, 125, 50, 0.86)',
     shadowColor: Theme.Colours.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 4,
   },
 
   secondary: {
-    backgroundColor: Theme.Colours.white,
-    borderWidth: 2,
-    borderColor: Theme.Colours.primary,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.46)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 2,
   },
 
   tertiary: {
@@ -110,16 +115,16 @@ const styles = StyleSheet.create({
   },
 
   accent: {
-    backgroundColor: Theme.Colours.secondary,
+    backgroundColor: 'rgba(102, 187, 106, 0.86)',
     shadowColor: Theme.Colours.secondary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 3,
   },
 
   ghost: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     marginBottom: 4,
   },
 
@@ -127,8 +132,13 @@ const styles = StyleSheet.create({
 
   outline: {
     borderWidth: 1,
-    borderColor: Theme.Colours.primary,
-    backgroundColor: Theme.Colours.white,
+    borderColor: 'rgba(255, 255, 255, 0.46)',
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 2,
   },
 
   disabled: {

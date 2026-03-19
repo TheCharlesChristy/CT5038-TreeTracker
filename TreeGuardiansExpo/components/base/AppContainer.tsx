@@ -17,7 +17,6 @@ export const AppContainer = ({
   backgroundImage,
   style,
   noPadding,
-
 }: AppContainerProps) => {
   const content = scrollable ? (
     <ScrollView
@@ -30,16 +29,14 @@ export const AppContainer = ({
     <View style={styles.inner}>{children}</View>
   );
 
-  // If background image exists
   if (backgroundImage) {
     return (
       <ImageBackground
         source={backgroundImage}
         style={styles.background}
         resizeMode="cover"
-        blurRadius={4} // Optional blur
+        blurRadius={4}
       >
-        { /* Optional overlay for readability */ }
         <View style={styles.overlay}>
           <SafeAreaView style={[styles.containerTransparent, style]}>
             {content}
@@ -49,9 +46,7 @@ export const AppContainer = ({
     );
   }
 
-  // Default container (no background image)
   return (
-    // Setting background image overrides no padding setting it true (effectively)
     <SafeAreaView style={[styles.container, !noPadding && { padding: Theme.Spacing.medium }, style]}>
       {content}
     </SafeAreaView>
@@ -67,7 +62,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.38)',
   },
 
   container: {
