@@ -188,5 +188,5 @@ export default function MapComponentWeb({
     });
   }, [plottedTrees, renderTreeIcon, onTreeClick]);
 
-  return <div ref={mapRef} style={{ height: '100%', width: '100%' }} />;
+  return <div ref={mapRef} style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0 }} />;
 }
