@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS tree_data (
     trunk_circumference decimal(10,2) NULL, -- in cm
     trunk_diameter decimal(10,2) NULL, -- in cm
     tree_height decimal(10,2) NULL, -- in m
+    health ENUM('excellent', 'good', 'ok', 'bad', 'terrible') NULL,
     CONSTRAINT fk_data_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;

@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { Tree } from '@/objects/TreeDetails';
 import {
+  BOUNDS_SQUARE_RING_LEAFLET,
   BOUNDS,
   BOUNDS_PADDING_RATIO,
   CENTER,
   MapComponentProps,
   MAX_ZOOM,
   MIN_ZOOM,
+  REGION_RING_LEAFLET,
 } from './MapComponent.types';
 
 type LeafletModule = typeof import('leaflet');
@@ -116,6 +118,22 @@ export default function MapComponentWeb({
       }
 
       Leaflet.control.zoom({ position: 'topright' }).addTo(map);
+
+      Leaflet.polygon([BOUNDS_SQUARE_RING_LEAFLET, REGION_RING_LEAFLET], {
+        stroke: false,
+        fillColor: '#9ca3af',
+        fillOpacity: 0.45,
+        fillRule: 'evenodd',
+        interactive: false,
+      }).addTo(map);
+
+      Leaflet.polygon(REGION_RING_LEAFLET, {
+        color: '#4b5563',
+        weight: 2,
+        opacity: 0.75,
+        fill: false,
+        interactive: false,
+      }).addTo(map);
 
       treeLayer.current = Leaflet.layerGroup().addTo(map);
       mapInstance.current = map;

@@ -1,5 +1,6 @@
 import { StyleProp, ViewStyle } from 'react-native';
 import { Tree } from '@/objects/TreeDetails';
+import regionBoundsGeoJson from '@/assets/data/charlton_kings_region_bounds.json';
 
 export type MapCoordinate = {
   latitude: number;
@@ -23,9 +24,55 @@ export interface MapComponentProps {
   onPlotPointerMove?: (pointer: PlotPointer | null) => void;
 }
 
+type GeoJsonPolygon = {
+  type: 'Polygon';
+  coordinates: number[][][];
+};
+
+const regionPolygon = regionBoundsGeoJson as GeoJsonPolygon;
+const regionOuterRing = regionPolygon.coordinates[0] ?? [];
+
+const regionRingLatLng = regionOuterRing
+  .filter((coordinate) => Array.isArray(coordinate) && coordinate.length >= 2)
+  .map(([lng, lat]) => ({ lat, lng }));
+
+const getBoundsFromRing = (ring: { lat: number; lng: number }[]) => {
+  const fallback = {
+    minLat: 51.868,
+    maxLat: 51.905,
+    minLng: -2.075,
+    maxLng: -2.02,
+  };
+
+  if (ring.length === 0) {
+    return fallback;
+  }
+
+  let minLat = Number.POSITIVE_INFINITY;
+  let maxLat = Number.NEGATIVE_INFINITY;
+  let minLng = Number.POSITIVE_INFINITY;
+  let maxLng = Number.NEGATIVE_INFINITY;
+
+  ring.forEach((point) => {
+    minLat = Math.min(minLat, point.lat);
+    maxLat = Math.max(maxLat, point.lat);
+    minLng = Math.min(minLng, point.lng);
+    maxLng = Math.max(maxLng, point.lng);
+  });
+
+  return { minLat, maxLat, minLng, maxLng };
+};
+
+const bounds = getBoundsFromRing(regionRingLatLng);
+const latSpan = bounds.maxLat - bounds.minLat;
+const lngSpan = bounds.maxLng - bounds.minLng;
+const squareSide = Math.max(latSpan, lngSpan);
+const latPad = (squareSide - latSpan) / 2;
+const lngPad = (squareSide - lngSpan) / 2;
+
 export const BOUNDS = {
-  southWest: { lat: 51.868, lng: -2.075 },
-  northEast: { lat: 51.905, lng: -2.020 },
+  southWest: { lat: bounds.minLat - latPad, lng: bounds.minLng - lngPad },
+  northEast: { lat: bounds.maxLat + latPad, lng: bounds.maxLng + lngPad },
 };
 
 export const CENTER = {
@@ -36,3 +83,23 @@ export const CENTER = {
 export const MIN_ZOOM = 14;
 export const MAX_ZOOM = 18;
 export const BOUNDS_PADDING_RATIO = 0.08;
+
+const closeLatLngRing = (ring: [number, number][]): [number, number][] => {
+  if (ring.length === 0) {
+    return ring;
+  }
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  return first[0] === last[0] && first[1] === last[1] ? ring : [...ring, first];
+};
+
+export const REGION_RING_LEAFLET: [number, number][] = closeLatLngRing(
+  regionRingLatLng.map(({ lat, lng }) => [lat, lng] as [number, number])
+);
+
+export const BOUNDS_SQUARE_RING_LEAFLET: [number, number][] = closeLatLngRing([
+  [BOUNDS.southWest.lat, BOUNDS.southWest.lng],
+  [BOUNDS.northEast.lat, BOUNDS.southWest.lng],
+  [BOUNDS.northEast.lat, BOUNDS.northEast.lng],
+  [BOUNDS.southWest.lat, BOUNDS.northEast.lng],
+]);
