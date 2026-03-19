@@ -126,6 +126,121 @@ function toErrorStatus(error) {
   return 500;
 }
 
+function shouldReturnVerboseErrors() {
+  if (process.env.HTTP_VERBOSE_ERRORS === "1") {
+    return true;
+  }
+
+  if (process.env.HTTP_VERBOSE_ERRORS === "0") {
+    return false;
+  }
+
+  return process.env.NODE_ENV !== "production";
+}
+
+function redactSensitive(key, value) {
+  if (typeof key === "string") {
+    const lowered = key.toLowerCase();
+    if (
+      lowered.includes("password") ||
+      lowered.includes("token") ||
+      lowered.includes("secret") ||
+      lowered === "authorization"
+    ) {
+      return "[REDACTED]";
+    }
+  }
+
+  return value;
+}
+
+function sanitizeForJson(value, maxLength = 8000) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  try {
+    const serialized = JSON.stringify(value, redactSensitive);
+    if (serialized.length <= maxLength) {
+      return JSON.parse(serialized);
+    }
+
+    const truncated = `${serialized.slice(0, maxLength)}... [truncated ${serialized.length - maxLength} chars]`;
+    return truncated;
+  } catch {
+    return "[unserializable payload]";
+  }
+}
+
+function serializeErrorCauseChain(error, maxDepth = 5) {
+  const chain = [];
+  let current = error;
+  let depth = 0;
+
+  while (current && depth < maxDepth) {
+    chain.push({
+      name: current.name || null,
+      code: current.code || null,
+      errno: current.errno || null,
+      message: current.message || null,
+      sqlState: current.sqlState || null,
+      sqlMessage: current.sqlMessage || null,
+      sql: current.sql || null,
+      stack: typeof current.stack === "string" ? current.stack : null
+    });
+
+    current = current.cause;
+    depth += 1;
+  }
+
+  return chain;
+}
+
+function buildErrorPayload(error, req, status) {
+  let message = error?.message || "Internal server error";
+  if (
+    status === 413 &&
+    (error?.name === "PayloadTooLargeError" || error?.type === "entity.too.large")
+  ) {
+    message = `Request body exceeds ${Math.floor(MAX_JSON_BODY_BYTES / (1024 * 1024))}MB limit`;
+  }
+
+  const payload = {
+    error: message,
+    code: error?.name || error?.code || "InternalError"
+  };
+
+  if (!shouldReturnVerboseErrors()) {
+    return payload;
+  }
+
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const causeChain = serializeErrorCauseChain(error);
+
+  payload.debug = {
+    requestId,
+    status,
+    method: req?.method || null,
+    path: req?.originalUrl || req?.url || null,
+    params: sanitizeForJson(req?.params),
+    query: sanitizeForJson(req?.query),
+    body: sanitizeForJson(req?.body),
+    causeChain
+  };
+
+  console.error("[http-error]", {
+    requestId,
+    status,
+    method: req?.method || null,
+    path: req?.originalUrl || req?.url || null,
+    code: payload.code,
+    message: payload.error,
+    causeChain
+  });
+
+  return payload;
+}
+
 function sendProxyError(res, error) {
   if (res.headersSent) {
     res.end();
@@ -290,12 +405,9 @@ function createHttpServer({
     sendJson(res, 404, { error: "Not found" });
   });
 
-  app.use((error, _req, res, _next) => {
+  app.use((error, req, res, _next) => {
     const status = toErrorStatus(error);
-    sendJson(res, status, {
-      error: error?.message || "Internal server error",
-      code: error?.name || error?.code || "InternalError"
-    });
+    sendJson(res, status, buildErrorPayload(error, req, status));
   });
 
   const server = http.createServer(app);

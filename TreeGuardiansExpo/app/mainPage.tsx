@@ -176,27 +176,26 @@ export default function MainPage() {
             />
           ) : null}
 
-          {mode !== 'add' ? (
-            <FloatingActionBar
-              searchActive={mode === 'search'}
-              dashboardActive={mode === 'dashboard'}
-              onSearchPress={() => {
-                if (mode === 'search') {
-                  closeAllOverlays();
-                  return;
-                }
-                openMode('search');
-              }}
-              onAddTreePress={() => openMode('add')}
-              onDashboardPress={() => {
-                if (mode === 'dashboard') {
-                  closeAllOverlays();
-                  return;
-                }
-                openMode('dashboard');
-              }}
-            />
-          ) : null}
+          <FloatingActionBar
+            searchActive={mode === 'search'}
+            addActive={mode === 'add'}
+            dashboardActive={mode === 'dashboard'}
+            onSearchPress={() => {
+              if (mode === 'search') {
+                closeAllOverlays();
+                return;
+              }
+              openMode('search');
+            }}
+            onAddTreePress={() => openMode('add')}
+            onDashboardPress={() => {
+              if (mode === 'dashboard') {
+                closeAllOverlays();
+                return;
+              }
+              openMode('dashboard');
+            }}
+          />
 
           {isLoadingTrees ? (
             <View style={styles.loadingPill}>

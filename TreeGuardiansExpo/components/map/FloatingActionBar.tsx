@@ -3,6 +3,7 @@ import { AppButton } from '@/components/base/AppButton';
 
 type FloatingActionBarProps = {
   searchActive: boolean;
+  addActive: boolean;
   dashboardActive: boolean;
   onSearchPress: () => void;
   onAddTreePress: () => void;
@@ -11,6 +12,7 @@ type FloatingActionBarProps = {
 
 export function FloatingActionBar({
   searchActive,
+  addActive,
   dashboardActive,
   onSearchPress,
   onAddTreePress,
@@ -28,7 +30,7 @@ export function FloatingActionBar({
 
       <AppButton
         title="Add Tree +"
-        variant="primary"
+        variant={addActive ? 'primary' : 'secondary'}
         onPress={onAddTreePress}
         style={styles.actionButtonWrapMain}
         buttonStyle={styles.actionButtonMain}
