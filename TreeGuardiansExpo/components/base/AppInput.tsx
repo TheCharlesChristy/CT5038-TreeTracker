@@ -159,7 +159,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.Spacing.small,
     ...Theme.Typography.body,
     color: Theme.Colours.black,
-  },
+    outlineStyle: 'none',
+  } as TextStyle,  
 
   inputMultiline: {
     minHeight: 120,

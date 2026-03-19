@@ -1,7 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  Image,
   Pressable,
   StyleSheet,
   TextInput,
@@ -14,69 +12,92 @@ import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
-import { getEmailError, getPasswordError } from '@/lib/authValidation';
+import { getPasswordError } from '@/lib/authValidation';
 import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
-import { showAlert } from '@/utilities/showAlert'
+import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 
 export default function Login() {
   const { width, height } = useWindowDimensions();
   const isMobileLayout = width < 680;
   const isWideLayout = width >= 920;
 
-  const [email, setEmail] = useState('');
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [status, setStatus] = useState<StatusMessage | null>(null);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [emailTouched, setEmailTouched] = useState(false);
+  const [credentialTouched, setCredentialTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
-  const [emailFocused, setEmailFocused] = useState(false);
+  const [credentialFocused, setCredentialFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [formCardHeight, setFormCardHeight] = useState<number | undefined>(undefined);
 
   const passwordRef = useRef<TextInput>(null);
 
-  const trimmedEmail = useMemo(() => email.trim(), [email]);
+  const trimmedCredential = useMemo(() => usernameOrEmail.trim(), [usernameOrEmail]);
 
-  const emailError = getEmailError(trimmedEmail);
+  const credentialError = trimmedCredential ? '' : 'Username or email is required.';
   const passwordError = getPasswordError(password);
-  const canSubmit = Boolean(trimmedEmail && password) && !emailError && !passwordError;
+  const canSubmit = Boolean(trimmedCredential && password) && !credentialError && !passwordError;
+
+  useEffect(() => {
+    if (status?.variant === 'success') {
+      redirectTimer.current = setTimeout(() => {
+        setStatus(null);
+        router.replace('/mainPage');
+      }, 3000);
+    }
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, [status?.createdAt]);
 
   const handleLogin = async () => {
-    setEmailTouched(true);
+    setCredentialTouched(true);
     setPasswordTouched(true);
 
-    if (emailError) {
-      Alert.alert('Check your email', emailError);
+    if (credentialError) {
+      setStatus({ title: 'Check your credentials', message: credentialError, variant: 'error', createdAt: Date.now() });
       return;
     }
 
     if (passwordError) {
-      Alert.alert('Check your password', passwordError);
+      setStatus({ title: 'Check your password', message: passwordError, variant: 'error', createdAt: Date.now() });
       return;
     }
 
     try {
       setLoading(true);
+      setStatus(null);
 
-      const response = await fetch(API_BASE + ENDPOINTS.LOGIN, {
+      const response = await fetch(API_BASE + ENDPOINTS.AUTH_LOGIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          usernameOrEmail,
+          usernameOrEmail: trimmedCredential,
           password,
         }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setStatus({ title: 'Server Error', message: `${response.status} ${response.statusText}: ${text}`, variant: 'error', createdAt: Date.now() });
+        return;
+      }
 
       if (!response.ok) {
-        showAlert('Login failed', data.error || 'Unable to log in');
+        const detail = `${response.status} ${response.statusText}: ${data.error || JSON.stringify(data)}`;
+        setStatus({ title: 'Login Failed', message: detail, variant: 'error', createdAt: Date.now() });
         return;
       }
 
@@ -84,24 +105,30 @@ export default function Login() {
       await saveItem('refreshToken', data.refreshToken);
       await saveItem('user', JSON.stringify(data.user));
 
-      showAlert(
-        'Success',
-        `Welcome back, ${data.user.username}!`,
-        () => router.replace('/mainPage')
-      );
+      setStatus({
+        title: 'Welcome back!',
+        message: `Signed in as ${data.user.username}.`,
+        variant: 'success',
+        createdAt: Date.now(),
+      });
     } catch (error) {
+      const message = error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
       console.error('Login error:', error);
-      showAlert('Error', 'Something went wrong during login');
+      setStatus({ title: 'Connection Error', message: `Network or client error \u2014 ${message}`, variant: 'error', createdAt: Date.now() });
     } finally {
       setLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
-      'Password recovery',
-      'Forgot password is ready for backend integration. Connect it to your recovery endpoint or deep link next.',
-    );
+    setStatus({
+      title: 'Password recovery',
+      message: 'Forgot password is ready for backend integration. Connect it to your recovery endpoint or deep link next.',
+      variant: 'error',
+      createdAt: Date.now(),
+    });
   };
 
   return (
@@ -119,6 +146,18 @@ export default function Login() {
       >
         <View style={styles.pageTint} />
 
+        <StatusMessageBox
+          status={status}
+          redirectDuration={3}
+          onClose={() => {
+            if (redirectTimer.current) clearTimeout(redirectTimer.current);
+            if (status?.variant === 'success') {
+              router.replace('/mainPage');
+            }
+            setStatus(null);
+          }}
+        />
+
         <View
           style={[
             styles.shell,
@@ -132,24 +171,13 @@ export default function Login() {
               isWideLayout ? styles.formColumnWide : styles.formColumnStacked,
             ]}
           >
-            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
+            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
               <View style={styles.topRow}>
                 <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                   <AppText variant="caption" style={styles.homeLinkText}>
                     Back to home
                   </AppText>
                 </Pressable>
-
-                <View style={styles.brandPill}>
-                  <Image
-                    source={require('@/assets/images/tree_icon.png')}
-                    style={styles.brandIcon}
-                    resizeMode="contain"
-                  />
-                  <AppText variant="caption" style={styles.brandPillText}>
-                    TreeGuardians
-                  </AppText>
-                </View>
               </View>
 
               <AppText variant="title" style={[styles.title, isMobileLayout && styles.titleMobile]}>
@@ -163,55 +191,41 @@ export default function Login() {
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
                   <AppText variant="caption" style={styles.label}>
-                    Email address
+                    Username or email
                   </AppText>
 
                   <AppInput
-                    placeholder="name@example.com"
-                    value={email}
+                    placeholder="username or name@example.com"
+                    value={usernameOrEmail}
                     onChangeText={(value) => {
-                      setEmail(value);
-                      if (!emailTouched) {
-                        setEmailTouched(true);
+                      setUsernameOrEmail(value);
+                      if (!credentialTouched) {
+                        setCredentialTouched(true);
                       }
                     }}
-                    keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    autoComplete="email"
-                    textContentType="emailAddress"
+                    autoComplete="username"
+                    textContentType="username"
                     returnKeyType="next"
                     onSubmitEditing={() => passwordRef.current?.focus()}
-                    onFocus={() => setEmailFocused(true)}
+                    onFocus={() => setCredentialFocused(true)}
                     onBlur={() => {
-                      setEmailFocused(false);
-                      setEmailTouched(true);
+                      setCredentialFocused(false);
+                      setCredentialTouched(true);
                     }}
-                    invalid={emailTouched && !!emailError}
+                    invalid={credentialTouched && !!credentialError}
                     inputWrapperStyle={[
                       styles.inputWrapper,
-                      emailFocused && styles.inputFocused,
-                      emailTouched && !!emailError && styles.inputError,
+                      credentialFocused && styles.inputFocused,
+                      credentialTouched && !!credentialError && styles.inputError,
                     ]}
-                    leftAdornment={(
-                      <View style={styles.inputTag}>
-                        <AppText variant="caption" style={styles.inputTagText}>
-                          @
-                        </AppText>
-                      </View>
-                    )}
                     containerStyle={styles.inputContainer}
                   />
 
-                  {emailTouched && !!emailError ? (
+                  {credentialTouched && !!credentialError ? (
                     <AppText variant="caption" style={styles.errorText}>
-                      {emailError}
-                    </AppText>
-                  ) : null}
-
-                  {emailTouched && !emailError ? (
-                    <AppText variant="caption" style={styles.successText}>
-                      Email looks good.
+                      {credentialError}
                     </AppText>
                   ) : null}
                 </View>
@@ -257,13 +271,6 @@ export default function Login() {
                       passwordFocused && styles.inputFocused,
                       passwordTouched && !!passwordError && styles.inputError,
                     ]}
-                    leftAdornment={(
-                      <View style={styles.inputTag}>
-                        <AppText variant="caption" style={styles.inputTagText}>
-                          PW
-                        </AppText>
-                      </View>
-                    )}
                     rightAdornment={(
                       <Pressable
                         onPress={() => setShowPassword((prev) => !prev)}
@@ -281,12 +288,6 @@ export default function Login() {
                   {passwordTouched && !!passwordError ? (
                     <AppText variant="caption" style={styles.errorText}>
                       {passwordError}
-                    </AppText>
-                  ) : null}
-
-                  {passwordTouched && !passwordError ? (
-                    <AppText variant="caption" style={styles.successText}>
-                      Password is ready to submit.
                     </AppText>
                   ) : null}
                 </View>
@@ -346,9 +347,10 @@ export default function Login() {
             style={[
               styles.previewColumn,
               isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked,
+              isWideLayout && formCardHeight != null && { height: formCardHeight },
             ]}
           >
-            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile]}>
+            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile, isWideLayout && styles.previewCardWide]}>
               <View style={styles.previewEyebrow}>
                 <AppText variant="caption" style={styles.previewEyebrowText}>
                   Calm, local, community-first
@@ -413,19 +415,47 @@ export default function Login() {
                 </View>
               </View>
 
-              <View style={styles.mapPreviewCard}>
-                <View style={styles.mapPreviewGrid}>
-                  <View style={[styles.mapPath, styles.mapPathPrimary]} />
-                  <View style={[styles.mapPath, styles.mapPathSecondary]} />
-                  <View style={[styles.mapDot, styles.mapDotOne]} />
-                  <View style={[styles.mapDot, styles.mapDotTwo]} />
-                  <View style={[styles.mapDot, styles.mapDotThree]} />
-                  <View style={styles.mapOverlayCard}>
-                    <AppText variant="caption" style={styles.mapOverlayLabel}>
-                      This week
+              <View style={styles.activityCard}>
+                <AppText variant="caption" style={styles.activityHeading}>
+                  Recent community activity
+                </AppText>
+
+                <View style={styles.activityItem}>
+                  <View style={[styles.activityDot, { backgroundColor: '#81C784' }]} />
+                  <View style={styles.activityContent}>
+                    <AppText variant="body" style={styles.activityTitle}>
+                      Oak logged on King William Walk
                     </AppText>
-                    <AppText variant="subtitle" style={styles.mapOverlayValue}>
-                      12 trees revisited
+                    <AppText variant="caption" style={styles.activityMeta}>
+                      2 hours ago
+                    </AppText>
+                  </View>
+                </View>
+
+                <View style={styles.activityDivider} />
+
+                <View style={styles.activityItem}>
+                  <View style={[styles.activityDot, { backgroundColor: '#A5D6A7' }]} />
+                  <View style={styles.activityContent}>
+                    <AppText variant="body" style={styles.activityTitle}>
+                      Health check added for Silver Birch
+                    </AppText>
+                    <AppText variant="caption" style={styles.activityMeta}>
+                      5 hours ago
+                    </AppText>
+                  </View>
+                </View>
+
+                <View style={styles.activityDivider} />
+
+                <View style={styles.activityItem}>
+                  <View style={[styles.activityDot, { backgroundColor: '#66BB6A' }]} />
+                  <View style={styles.activityContent}>
+                    <AppText variant="body" style={styles.activityTitle}>
+                      3 new trees mapped in Charlton Kings
+                    </AppText>
+                    <AppText variant="caption" style={styles.activityMeta}>
+                      Yesterday
                     </AppText>
                   </View>
                 </View>
@@ -536,25 +566,6 @@ const styles = StyleSheet.create({
     color: '#1B5E20',
     fontWeight: '700',
   },
-  brandPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(46, 125, 50, 0.15)',
-  },
-  brandIcon: {
-    width: 18,
-    height: 18,
-    marginRight: 6,
-  },
-  brandPillText: {
-    color: '#16391A',
-    fontWeight: '700',
-  },
   title: {
     color: '#16391A',
     fontSize: 34,
@@ -612,18 +623,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderColor: '#A4B2A4',
     backgroundColor: '#FFFFFF',
-  },
-  inputTag: {
-    minWidth: 30,
-    height: 30,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(46, 125, 50, 0.10)',
-  },
-  inputTagText: {
-    color: '#1B5E20',
-    fontWeight: '700',
   },
   inputFocused: {
     borderColor: '#2E7D32',
@@ -763,9 +762,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   previewCard: {
-    minHeight: 640,
     borderRadius: 28,
     padding: Theme.Spacing.extraLarge,
+    justifyContent: 'space-between',
     backgroundColor: 'rgba(9, 22, 12, 0.58)',
     borderWidth: 1,
     borderColor: 'rgba(230, 244, 231, 0.18)',
@@ -779,6 +778,10 @@ const styles = StyleSheet.create({
     minHeight: 520,
     borderRadius: 20,
     padding: Theme.Spacing.large,
+  },
+  previewCardWide: {
+    flex: 1,
+    overflow: 'hidden',
   },
   previewEyebrow: {
     alignSelf: 'flex-start',
@@ -845,78 +848,52 @@ const styles = StyleSheet.create({
     color: 'rgba(230, 244, 231, 0.82)',
     lineHeight: 19,
   },
-  mapPreviewCard: {
-    borderRadius: 22,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+  activityCard: {
+    borderRadius: 18,
+    backgroundColor: 'rgba(230, 244, 231, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(230, 244, 231, 0.12)',
+    borderColor: 'rgba(230, 244, 231, 0.14)',
+    padding: Theme.Spacing.medium,
     marginBottom: Theme.Spacing.large,
   },
-  mapPreviewGrid: {
-    height: 220,
-    position: 'relative',
-    backgroundColor: 'rgba(13, 31, 17, 0.54)',
-  },
-  mapPath: {
-    position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(165, 214, 167, 0.70)',
-  },
-  mapPathPrimary: {
-    top: 38,
-    left: 42,
-    width: 210,
-    height: 4,
-    transform: [{ rotate: '-14deg' }],
-  },
-  mapPathSecondary: {
-    top: 112,
-    right: 36,
-    width: 190,
-    height: 4,
-    transform: [{ rotate: '18deg' }],
-  },
-  mapDot: {
-    position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#A5D6A7',
-    borderWidth: 4,
-    borderColor: '#F7FBF7',
-  },
-  mapDotOne: {
-    top: 34,
-    left: 64,
-  },
-  mapDotTwo: {
-    top: 88,
-    right: 94,
-  },
-  mapDotThree: {
-    bottom: 42,
-    left: 168,
-  },
-  mapOverlayCard: {
-    position: 'absolute',
-    left: Theme.Spacing.medium,
-    right: Theme.Spacing.medium,
-    bottom: Theme.Spacing.medium,
-    borderRadius: 16,
-    backgroundColor: 'rgba(247, 251, 247, 0.94)',
-    padding: Theme.Spacing.medium,
-  },
-  mapOverlayLabel: {
-    color: '#466046',
+  activityHeading: {
+    color: 'rgba(230, 244, 231, 0.60)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: Theme.Spacing.medium,
   },
-  mapOverlayValue: {
-    color: '#16391A',
-    fontSize: 22,
-    lineHeight: 28,
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: Theme.Spacing.small,
+  },
+  activityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 5,
+    marginRight: Theme.Spacing.small + 2,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityTitle: {
+    color: '#F7FBF7',
+    fontWeight: '500',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  activityMeta: {
+    color: 'rgba(230, 244, 231, 0.55)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  activityDivider: {
+    height: 1,
+    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+    marginLeft: 22,
   },
   previewStatsRow: {
     flexDirection: 'row',

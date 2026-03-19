@@ -17,10 +17,6 @@ function createAuthRoute({ db }) {
       res.status(400).json({ error: "Username is required" });
       return;
     }
-    if (!email) {
-      res.status(400).json({ error: "Email is required" });
-      return;
-    }
     if (!password) {
       res.status(400).json({ error: "Password is required" });
       return;
@@ -40,18 +36,24 @@ function createAuthRoute({ db }) {
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const user = await db.transaction(async (tx) => {
-      const [usernameExists, emailExists] = await Promise.all([
-        db.users.existsByUsername(username, tx),
-        db.users.existsByEmail(email, tx)
-      ]);
+      const usernameExists = await db.users.existsByUsername(username, tx);
 
-      if (usernameExists || emailExists) {
-        const conflict = new Error("Username or email already exists");
+      if (usernameExists) {
+        const conflict = new Error("Username already exists");
         conflict.name = "ConflictError";
         throw conflict;
       }
 
-      const createdUser = await db.users.create({ username, email }, tx);
+      if (email) {
+        const emailExists = await db.users.existsByEmail(email, tx);
+        if (emailExists) {
+          const conflict = new Error("Email already exists");
+          conflict.name = "ConflictError";
+          throw conflict;
+        }
+      }
+
+      const createdUser = await db.users.create({ username, email: email || null }, tx);
       await db.userPasswords.setForUser(createdUser.id, passwordHash, tx);
       await db.userSessions.create(
         {

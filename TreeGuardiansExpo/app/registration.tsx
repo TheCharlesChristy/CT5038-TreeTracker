@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -12,69 +11,102 @@ import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
-import { getEmailError, getPasswordError } from '@/lib/authValidation';
+import { getUsernameError, getEmailError, getPasswordError } from '@/lib/authValidation';
 import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
-import { showAlert } from '@/utilities/showAlert'
-import { normalizePhone, isValidPhone } from '@/utilities/phone';
+import { PasswordStrengthIndicator } from '@/components/base/PasswordStrengthIndicator';
+import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 
 export default function CreateAccount() {
   const { width, height } = useWindowDimensions();
   const isMobileLayout = width < 680;
   const isWideLayout = width >= 920;
 
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const [usernameTouched, setUsernameTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
+  const [usernameFocused, setUsernameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [formCardHeight, setFormCardHeight] = useState<number | undefined>(undefined);
 
+  const trimmedUsername = useMemo(() => username.trim(), [username]);
   const trimmedEmail = useMemo(() => email.trim(), [email]);
 
+  const usernameError = getUsernameError(trimmedUsername);
   const emailError = getEmailError(trimmedEmail);
   const passwordError = getPasswordError(password);
-  const canSubmit = Boolean(trimmedEmail && password) && !emailError && !passwordError;
+  const canSubmit = Boolean(trimmedUsername && password) && !usernameError && !emailError && !passwordError;
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<StatusMessage | null>(null);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (status?.variant === 'success') {
+      redirectTimer.current = setTimeout(() => {
+        setStatus(null);
+        router.replace('/mainPage');
+      }, 3000);
+    }
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, [status?.createdAt]);
 
   const handleCreateAccount = async () => {
+    setUsernameTouched(true);
     setEmailTouched(true);
     setPasswordTouched(true);
 
+    if (usernameError) {
+      setStatus({ title: 'Check your username', message: usernameError, variant: 'error', createdAt: Date.now() });
+      return;
+    }
+
     if (emailError) {
-      Alert.alert('Check your email', emailError);
+      setStatus({ title: 'Check your email', message: emailError, variant: 'error', createdAt: Date.now() });
       return;
     }
 
     if (passwordError) {
-      Alert.alert('Check your password', passwordError);
+      setStatus({ title: 'Check your password', message: passwordError, variant: 'error', createdAt: Date.now() });
       return;
     }
 
     try {
       setLoading(true);
+      setStatus(null);
 
-      const response = await fetch(API_BASE + ENDPOINTS.REGISTER, {
+      const response = await fetch(API_BASE + ENDPOINTS.AUTH_REGISTER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: username.trim(),
-          email: email.trim(),
-          phone: normalizedPhone || null,
+          username: trimmedUsername,
+          email: trimmedEmail || null,
           password,
         }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setStatus({ title: 'Server Error', message: `${response.status} ${response.statusText}: ${text}`, variant: 'error', createdAt: Date.now() });
+        return;
+      }
 
       if (!response.ok) {
-        showAlert('Error', data.error || 'Failed to create account');
+        const detail = `${response.status} ${response.statusText}: ${data.error || JSON.stringify(data)}`;
+        setStatus({ title: 'Registration Failed', message: detail, variant: 'error', createdAt: Date.now() });
         return;
       }
 
@@ -82,14 +114,18 @@ export default function CreateAccount() {
       await saveItem('refreshToken', data.refreshToken);
       await saveItem('user', JSON.stringify(data.user));
 
-      showAlert(
-        'Account Created',
-        'Your account has been created successfully.',
-        () => router.replace('/login')
-      );
+      setStatus({
+        title: 'Account Created',
+        message: 'Your account has been created successfully.',
+        variant: 'success',
+        createdAt: Date.now(),
+      });
     } catch (error) {
+      const message = error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
       console.error('Registration error:', error);
-      showAlert('Error', 'Could not connect to the server');
+      setStatus({ title: 'Connection Error', message: `Network or client error — ${message}`, variant: 'error', createdAt: Date.now() });
     } finally {
       setLoading(false);
     }
@@ -110,9 +146,21 @@ export default function CreateAccount() {
       >
         <View style={styles.pageTint} />
 
+        <StatusMessageBox
+          status={status}
+          redirectDuration={3}
+          onClose={() => {
+            if (redirectTimer.current) clearTimeout(redirectTimer.current);
+            if (status?.variant === 'success') {
+              router.replace('/mainPage');
+            }
+            setStatus(null);
+          }}
+        />
+
         <View style={[styles.shell, isMobileLayout && styles.shellMobile, isWideLayout ? styles.shellWide : styles.shellStacked]}>
           <View style={[styles.formColumn, isWideLayout ? styles.formColumnWide : styles.formColumnStacked]}>
-            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
+            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
               <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                 <AppText variant="caption" style={styles.homeLinkText}>
                   Back to Home
@@ -130,7 +178,46 @@ export default function CreateAccount() {
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
                   <AppText variant="caption" style={styles.label}>
-                    Email address
+                    Username *
+                  </AppText>
+
+                  <AppInput
+                    placeholder="e.g. tree_guardian"
+                    value={username}
+                    onChangeText={(value) => {
+                      setUsername(value);
+                      if (!usernameTouched) {
+                        setUsernameTouched(true);
+                      }
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="username"
+                    autoComplete="username"
+                    onFocus={() => setUsernameFocused(true)}
+                    onBlur={() => {
+                      setUsernameFocused(false);
+                      setUsernameTouched(true);
+                    }}
+                    invalid={usernameTouched && !!usernameError}
+                    inputWrapperStyle={[
+                      styles.inputWrapper,
+                      usernameFocused && styles.inputFocused,
+                      usernameTouched && !!usernameError && styles.inputError,
+                    ]}
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  {usernameTouched && !!usernameError && (
+                    <AppText variant="caption" style={styles.errorText}>
+                      {usernameError}
+                    </AppText>
+                  )}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <AppText variant="caption" style={styles.label}>
+                    Email address (optional)
                   </AppText>
 
                   <AppInput
@@ -166,25 +253,12 @@ export default function CreateAccount() {
                       {emailError}
                     </AppText>
                   )}
-
-                  {emailTouched && !emailError && (
-                    <AppText variant="caption" style={styles.successText}>
-                      Email looks good.
-                    </AppText>
-                  )}
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <View style={styles.passwordHeaderRow}>
-                    <AppText variant="caption" style={styles.label}>
-                      Password
-                    </AppText>
-                    <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                      <AppText variant="caption" style={styles.toggleText}>
-                        {showPassword ? 'Hide' : 'Show'}
-                      </AppText>
-                    </Pressable>
-                  </View>
+                  <AppText variant="caption" style={styles.label}>
+                    Password
+                  </AppText>
 
                   <AppInput
                     placeholder="At least 8 characters"
@@ -211,6 +285,17 @@ export default function CreateAccount() {
                       passwordFocused && styles.inputFocused,
                       passwordTouched && !!passwordError && styles.inputError,
                     ]}
+                    rightAdornment={(
+                      <Pressable
+                        onPress={() => setShowPassword((prev) => !prev)}
+                        hitSlop={8}
+                        style={styles.visibilityToggle}
+                      >
+                        <AppText variant="caption" style={styles.visibilityToggleText}>
+                          {showPassword ? 'Hide' : 'Show'}
+                        </AppText>
+                      </Pressable>
+                    )}
                     containerStyle={styles.inputContainer}
                   />
 
@@ -220,11 +305,7 @@ export default function CreateAccount() {
                     </AppText>
                   )}
 
-                  {passwordTouched && !passwordError && (
-                    <AppText variant="caption" style={styles.successText}>
-                      Strong enough to continue.
-                    </AppText>
-                  )}
+                  <PasswordStrengthIndicator password={password} />
                 </View>
 
                 <AppButton
@@ -258,8 +339,14 @@ export default function CreateAccount() {
             </View>
           </View>
 
-          <View style={[styles.previewColumn, isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked]}>
-            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile]}>
+          <View style={[styles.previewColumn, isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked, isWideLayout && formCardHeight != null && { height: formCardHeight }]}>
+            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile, isWideLayout && styles.previewCardWide]}>
+              <View style={styles.previewEyebrow}>
+                <AppText variant="caption" style={styles.previewEyebrowText}>
+                  Open, local, community-led
+                </AppText>
+              </View>
+
               <AppText variant="subtitle" style={[styles.previewTitle, isMobileLayout && styles.previewTitleMobile]}>
                 Build your local tree network
               </AppText>
@@ -269,15 +356,73 @@ export default function CreateAccount() {
               </AppText>
 
               <View style={styles.previewList}>
-                <AppText variant="body" style={styles.previewItem}>
-                  Add and monitor trees around your neighborhood
-                </AppText>
-                <AppText variant="body" style={styles.previewItem}>
-                  Explore local tree photos, stories, and biodiversity
-                </AppText>
-                <AppText variant="body" style={styles.previewItem}>
-                  Connect with guardians who care about green spaces
-                </AppText>
+                <View style={styles.previewFeatureItem}>
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Map
+                    </AppText>
+                  </View>
+                  <View style={styles.previewFeatureCopy}>
+                    <AppText variant="body" style={styles.previewFeatureTitle}>
+                      Add and monitor trees around your neighborhood
+                    </AppText>
+                    <AppText variant="caption" style={styles.previewFeatureText}>
+                      Pin locations, upload photos, and track growth over time.
+                    </AppText>
+                  </View>
+                </View>
+
+                <View style={styles.previewFeatureItem}>
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Explore
+                    </AppText>
+                  </View>
+                  <View style={styles.previewFeatureCopy}>
+                    <AppText variant="body" style={styles.previewFeatureTitle}>
+                      Discover local tree photos and biodiversity
+                    </AppText>
+                    <AppText variant="caption" style={styles.previewFeatureText}>
+                      Browse species data and community stories from your area.
+                    </AppText>
+                  </View>
+                </View>
+
+                <View style={styles.previewFeatureItem}>
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Connect
+                    </AppText>
+                  </View>
+                  <View style={styles.previewFeatureCopy}>
+                    <AppText variant="body" style={styles.previewFeatureTitle}>
+                      Join guardians who care about green spaces
+                    </AppText>
+                    <AppText variant="caption" style={styles.previewFeatureText}>
+                      Collaborate with neighbors to protect and restore local nature.
+                    </AppText>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.previewStatsRow}>
+                <View style={styles.previewStatCard}>
+                  <AppText variant="caption" style={styles.previewStatLabel}>
+                    Setup time
+                  </AppText>
+                  <AppText variant="subtitle" style={styles.previewStatValue}>
+                    Under 2 minutes
+                  </AppText>
+                </View>
+
+                <View style={styles.previewStatCard}>
+                  <AppText variant="caption" style={styles.previewStatLabel}>
+                    Your data
+                  </AppText>
+                  <AppText variant="subtitle" style={styles.previewStatValue}>
+                    Private by default
+                  </AppText>
+                </View>
               </View>
 
               <View style={styles.previewBadge}>
@@ -413,14 +558,13 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: '#B3261E',
   },
-  passwordHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  visibilityToggle: {
+    paddingLeft: Theme.Spacing.small,
+    paddingVertical: 4,
   },
-  toggleText: {
+  visibilityToggleText: {
     color: '#2E7D32',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   errorText: {
     color: '#B3261E',
@@ -527,13 +671,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   previewCard: {
-    minHeight: 320,
     borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(220, 235, 220, 0.45)',
     backgroundColor: 'rgba(12, 39, 16, 0.57)',
     padding: Theme.Spacing.extraLarge,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
@@ -544,6 +687,10 @@ const styles = StyleSheet.create({
     minHeight: 0,
     padding: Theme.Spacing.large,
     borderRadius: 16,
+  },
+  previewCardWide: {
+    flex: 1,
+    overflow: 'hidden',
   },
   previewTitle: {
     color: '#EFF7EE',
@@ -563,11 +710,80 @@ const styles = StyleSheet.create({
     marginBottom: Theme.Spacing.medium,
   },
   previewList: {
-    gap: Theme.Spacing.small,
+    gap: Theme.Spacing.medium,
     marginBottom: Theme.Spacing.large,
   },
   previewItem: {
     color: '#E8F4E8',
+    lineHeight: 24,
+  },
+  previewEyebrow: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: Theme.Spacing.large,
+  },
+  previewEyebrowText: {
+    color: '#E6F4E7',
+    fontWeight: '700',
+  },
+  previewFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  previewFeatureBadge: {
+    minWidth: 52,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E6F4E7',
+    marginRight: Theme.Spacing.medium,
+  },
+  previewFeatureBadgeText: {
+    color: '#16391A',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    fontSize: 11,
+  },
+  previewFeatureCopy: {
+    flex: 1,
+  },
+  previewFeatureTitle: {
+    color: '#F7FBF7',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  previewFeatureText: {
+    color: 'rgba(230, 244, 231, 0.82)',
+    lineHeight: 19,
+  },
+  previewStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+    marginBottom: Theme.Spacing.large,
+  },
+  previewStatCard: {
+    minWidth: 160,
+    flex: 1,
+    marginHorizontal: 6,
+    marginBottom: 12,
+    borderRadius: 18,
+    padding: Theme.Spacing.medium,
+    backgroundColor: 'rgba(230, 244, 231, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(230, 244, 231, 0.12)',
+  },
+  previewStatLabel: {
+    color: 'rgba(230, 244, 231, 0.72)',
+    marginBottom: Theme.Spacing.extraSmall,
+  },
+  previewStatValue: {
+    color: '#F7FBF7',
+    fontSize: 18,
     lineHeight: 24,
   },
   previewBadge: {
