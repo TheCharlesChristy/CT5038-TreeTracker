@@ -3,7 +3,6 @@ import { Platform, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { Tree } from '@/objects/TreeDetails';
 import {
-  BOUNDS_SQUARE_RING_LEAFLET,
   BOUNDS,
   BOUNDS_PADDING_RATIO,
   CENTER,
@@ -23,7 +22,6 @@ export default function MapComponentNative({
 }: MapComponentProps) {
   const webViewRef = useRef<WebView | null>(null);
   const regionRingJson = JSON.stringify(REGION_RING_LEAFLET);
-  const squareRingJson = JSON.stringify(BOUNDS_SQUARE_RING_LEAFLET);
 
   useEffect(() => {
     if (onPlotPointerMove) {
@@ -98,15 +96,35 @@ export default function MapComponentNative({
     L.control.zoom({ position: 'topright' }).addTo(map);
 
     var regionRing = ${regionRingJson};
-    var squareRing = ${squareRingJson};
 
-    L.polygon([squareRing, regionRing], {
+    var maskLayer = L.polygon([], {
       stroke: false,
       fillColor: '#9ca3af',
       fillOpacity: 0.45,
       fillRule: 'evenodd',
       interactive: false
     }).addTo(map);
+
+    function updateMaskToViewport() {
+      var viewportBounds = map.getBounds();
+      var south = viewportBounds.getSouth();
+      var west = viewportBounds.getWest();
+      var north = viewportBounds.getNorth();
+      var east = viewportBounds.getEast();
+
+      var viewportRing = [
+        [south, west],
+        [north, west],
+        [north, east],
+        [south, east],
+        [south, west]
+      ];
+
+      maskLayer.setLatLngs([viewportRing, regionRing]);
+    }
+
+    updateMaskToViewport();
+    map.on('move zoom resize', updateMaskToViewport);
 
     L.polygon(regionRing, {
       color: '#4b5563',
