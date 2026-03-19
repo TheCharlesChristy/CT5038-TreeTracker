@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import * as Leaflet from 'leaflet';
 import { Tree } from '@/objects/TreeDetails';
 import {
   BOUNDS,
@@ -9,6 +8,10 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
 } from './MapComponent.types';
+
+type LeafletModule = typeof import('leaflet');
+type LeafletMapInstance = InstanceType<LeafletModule['Map']>;
+type LeafletLayerGroupInstance = InstanceType<LeafletModule['LayerGroup']>;
 
 type LeafletMouseEvent = {
   latlng?: {
@@ -50,8 +53,9 @@ export default function MapComponentWeb({
   const onPressRef = useRef(onPress);
   const onPlotPointerMoveRef = useRef(onPlotPointerMove);
   const isPlottingRef = useRef(isPlotting);
-  const mapInstance = useRef<Leaflet.Map | null>(null);
-  const treeLayer = useRef<Leaflet.LayerGroup | null>(null);
+  const leafletRef = useRef<LeafletModule | null>(null);
+  const mapInstance = useRef<LeafletMapInstance | null>(null);
+  const treeLayer = useRef<LeafletLayerGroupInstance | null>(null);
 
   useEffect(() => {
     onPressRef.current = onPress;
@@ -70,87 +74,106 @@ export default function MapComponentWeb({
       return;
     }
 
-    ensureLeafletCss();
+    let isDisposed = false;
 
-    if ((mapRef.current as unknown as Record<string, unknown>)._leaflet_id) {
-      return;
-    }
+    const setupMap = async () => {
+      ensureLeafletCss();
 
-    const hardBounds = Leaflet.latLngBounds(
-      [BOUNDS.southWest.lat, BOUNDS.southWest.lng],
-      [BOUNDS.northEast.lat, BOUNDS.northEast.lng]
-    );
-    const interactionBounds = hardBounds.pad(BOUNDS_PADDING_RATIO);
-
-    const map = Leaflet.map(mapRef.current, {
-      center: [CENTER.lat, CENTER.lng],
-      zoom: MIN_ZOOM,
-      minZoom: MIN_ZOOM,
-      maxZoom: MAX_ZOOM,
-      maxBounds: interactionBounds,
-      maxBoundsViscosity: 0.85,
-      zoomControl: false,
-    });
-
-    Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(map);
-
-    const tilePane = map.getPane('tilePane');
-    if (tilePane) {
-      tilePane.style.filter = 'saturate(0.74) contrast(0.92) brightness(0.98)';
-    }
-
-    Leaflet.control.zoom({ position: 'topright' }).addTo(map);
-
-    treeLayer.current = Leaflet.layerGroup().addTo(map);
-    mapInstance.current = map;
-
-    map.on('click', (event: unknown) => {
-      if (!onPressRef.current) {
+      const Leaflet = await import('leaflet');
+      if (isDisposed || !mapRef.current) {
         return;
       }
 
-      const e = event as LeafletMouseEvent;
-      if (!e.latlng) {
+      leafletRef.current = Leaflet;
+
+      if ((mapRef.current as unknown as Record<string, unknown>)._leaflet_id) {
         return;
       }
 
-      onPressRef.current({
-        latitude: e.latlng.lat,
-        longitude: e.latlng.lng,
+      const hardBounds = Leaflet.latLngBounds(
+        [BOUNDS.southWest.lat, BOUNDS.southWest.lng],
+        [BOUNDS.northEast.lat, BOUNDS.northEast.lng]
+      );
+      const interactionBounds = hardBounds.pad(BOUNDS_PADDING_RATIO);
+
+      const map = Leaflet.map(mapRef.current, {
+        center: [CENTER.lat, CENTER.lng],
+        zoom: MIN_ZOOM,
+        minZoom: MIN_ZOOM,
+        maxZoom: MAX_ZOOM,
+        maxBounds: interactionBounds,
+        maxBoundsViscosity: 0.85,
+        zoomControl: false,
       });
-    });
 
-    map.on('mousemove', (event: unknown) => {
-      if (!isPlottingRef.current || !onPlotPointerMoveRef.current) {
-        return;
+      Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+      }).addTo(map);
+
+      const tilePane = map.getPane('tilePane');
+      if (tilePane) {
+        tilePane.style.filter = 'saturate(0.74) contrast(0.92) brightness(0.98)';
       }
 
-      const e = event as LeafletMouseEvent;
-      if (!e.latlng || !e.originalEvent) {
-        return;
-      }
+      Leaflet.control.zoom({ position: 'topright' }).addTo(map);
 
-      onPlotPointerMoveRef.current({
-        latitude: e.latlng.lat,
-        longitude: e.latlng.lng,
-        screenX: e.originalEvent.clientX,
-        screenY: e.originalEvent.clientY,
+      treeLayer.current = Leaflet.layerGroup().addTo(map);
+      mapInstance.current = map;
+
+      map.on('click', (event: unknown) => {
+        if (!onPressRef.current) {
+          return;
+        }
+
+        const e = event as LeafletMouseEvent;
+        if (!e.latlng) {
+          return;
+        }
+
+        onPressRef.current({
+          latitude: e.latlng.lat,
+          longitude: e.latlng.lng,
+        });
       });
-    });
 
-    map.on('mouseout', () => {
-      if (!onPlotPointerMoveRef.current) {
-        return;
-      }
-      onPlotPointerMoveRef.current(null);
-    });
+      map.on('mousemove', (event: unknown) => {
+        if (!isPlottingRef.current || !onPlotPointerMoveRef.current) {
+          return;
+        }
 
-    setTimeout(() => map.invalidateSize(), 0);
+        const e = event as LeafletMouseEvent;
+        if (!e.latlng || !e.originalEvent) {
+          return;
+        }
+
+        onPlotPointerMoveRef.current({
+          latitude: e.latlng.lat,
+          longitude: e.latlng.lng,
+          screenX: e.originalEvent.clientX,
+          screenY: e.originalEvent.clientY,
+        });
+      });
+
+      map.on('mouseout', () => {
+        if (!onPlotPointerMoveRef.current) {
+          return;
+        }
+        onPlotPointerMoveRef.current(null);
+      });
+
+      setTimeout(() => map.invalidateSize(), 0);
+    };
+
+    void setupMap();
 
     return () => {
-      map.remove();
+      isDisposed = true;
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+      treeLayer.current = null;
+      leafletRef.current = null;
     };
   }, []);
 
@@ -164,9 +187,11 @@ export default function MapComponentWeb({
   }, [isPlotting]);
 
   useEffect(() => {
-    if (!treeLayer.current) {
+    if (!treeLayer.current || !leafletRef.current) {
       return;
     }
+
+    const Leaflet = leafletRef.current;
 
     treeLayer.current.clearLayers();
 
