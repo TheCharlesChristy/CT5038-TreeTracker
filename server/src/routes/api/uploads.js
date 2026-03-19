@@ -1,10 +1,15 @@
 const path = require("path");
+const fs = require("fs");
 const express = require("express");
 const multer = require("multer");
 const { asyncHandler } = require("../middleware/async-handler");
 const { parsePositiveInt, getUploadPublicBase, requireJson } = require("./utils/http");
 
 const DEFAULT_UPLOADS_DIR = path.resolve(__dirname, "..", "..", "..", "uploads");
+
+function ensureUploadsDirExists(uploadsDir) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 function extFromMimeType(mimeType) {
   const map = {
@@ -22,6 +27,7 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
 
   const storage = multer.diskStorage({
     destination: (_req, _file, callback) => {
+      ensureUploadsDirExists(uploadsDir);
       callback(null, uploadsDir);
     },
     filename: (_req, file, callback) => {
@@ -139,5 +145,6 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
 
 module.exports = {
   createUploadsRoute,
-  DEFAULT_UPLOADS_DIR
+  DEFAULT_UPLOADS_DIR,
+  ensureUploadsDirExists
 };

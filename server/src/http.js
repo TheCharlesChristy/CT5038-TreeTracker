@@ -5,7 +5,7 @@ const express = require("express");
 const { createHealthRouter } = require("./routes/health");
 const { createDbTestBenchRouter } = require("./routes/db-testbench");
 const { createApiRouter } = require("./routes/api");
-const { DEFAULT_UPLOADS_DIR } = require("./routes/api/uploads");
+const { DEFAULT_UPLOADS_DIR, ensureUploadsDirExists } = require("./routes/api/uploads");
 
 const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
 const MIME_TYPES = {
@@ -348,6 +348,8 @@ function createHttpServer({
 
   const staticRoot = expoStaticEnabled && expoWebDistPath ? path.resolve(expoWebDistPath) : null;
   const app = express();
+
+  ensureUploadsDirExists(DEFAULT_UPLOADS_DIR);
 
   app.use((req, res, next) => {
     applyCorsHeaders(res);

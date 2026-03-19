@@ -17,6 +17,9 @@ echo "=== Backend install ==="
 cd "$SERVER_DIR"
 npm install --omit=dev
 
+echo "=== Ensure runtime directories ==="
+mkdir -p "$ROOT/server/uploads"
+
 echo "=== Restart app ==="
 mkdir -p "$ROOT/tmp"
 touch "$ROOT/tmp/restart.txt"
