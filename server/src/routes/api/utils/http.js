@@ -38,7 +38,11 @@ function getUploadPublicBase(req, explicitBase) {
   }
 
   const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
-  const protocol = forwardedProto || "https";
+  const requestProtocol =
+    forwardedProto ||
+    req.protocol ||
+    (req.socket && req.socket.encrypted ? "https" : "http");
+  const protocol = requestProtocol || "http";
   return `${protocol}://${host}/uploads`;
 }
 

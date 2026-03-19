@@ -3,6 +3,7 @@ import { Platform, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { Tree } from '@/objects/TreeDetails';
 import { getTreeMarkerIconHtml } from '@/components/map/TreeMarkerIcon';
+import leafletBundle from './leafletBundle.json';
 import {
   BOUNDS,
   BOUNDS_PADDING_RATIO,
@@ -26,6 +27,8 @@ export default function MapComponentNative({
   const webViewRef = useRef<WebView | null>(null);
   const maskOuterRingJson = JSON.stringify(MASK_OUTER_RING_LEAFLET);
   const regionRingJson = JSON.stringify(REGION_RING_LEAFLET);
+  const leafletCss = leafletBundle.css;
+  const leafletJs = leafletBundle.js.replace(/<\/script/gi, '<\\/script');
   const [isWebViewReady, setIsWebViewReady] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(MIN_ZOOM);
 
@@ -81,6 +84,8 @@ export default function MapComponentNative({
   <meta name="viewport"
   content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <style>
+  ${leafletCss}
+
   html, body, #map {
     height: 100%;
     margin: 0;
@@ -92,11 +97,13 @@ export default function MapComponentNative({
     filter: saturate(0.74) contrast(0.92) brightness(0.98);
   }
   </style>
-  <link rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   </head>
   <body>
   <div id="map"></div>
+
+  <script>
+  ${leafletJs}
+  </script>
 
   <script>
   function initMap() {
@@ -199,11 +206,6 @@ export default function MapComponentNative({
   }
 
   window.onload = initMap;
-  </script>
-
-  <script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  onload="initMap()">
   </script>
 
   </body>

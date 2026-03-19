@@ -1,3 +1,6 @@
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+
 const DEFAULT_NATIVE_API_ORIGIN = "http://localhost:4000";
 
 function trimTrailingSlashes(value: string): string {
@@ -5,10 +8,31 @@ function trimTrailingSlashes(value: string): string {
 }
 
 function getWindowOrigin(): string | null {
+  if (Platform.OS !== "web") {
+    return null;
+  }
+
   if (typeof window === "undefined" || !window.location?.origin) {
     return null;
   }
   return trimTrailingSlashes(window.location.origin);
+}
+
+function getExpoHostOrigin(): string | null {
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants.manifest && "hostUri" in Constants.manifest ? Constants.manifest.hostUri : undefined);
+
+  if (typeof hostUri !== "string" || !hostUri.trim()) {
+    return null;
+  }
+
+  const trimmedHost = hostUri.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!trimmedHost) {
+    return null;
+  }
+
+  return `http://${trimmedHost}`;
 }
 
 function normalizeOrigin(value: string): string {
@@ -38,6 +62,23 @@ function normalizeApiBase(value: string): string {
   return absolute.endsWith("/api") ? absolute : `${absolute}/api`;
 }
 
+function rewriteLocalhostForNative(value: string): string {
+  if (Platform.OS === "web") {
+    return value;
+  }
+
+  const expoHostOrigin = getExpoHostOrigin();
+  if (!expoHostOrigin) {
+    return value;
+  }
+
+  return value.replace(/^(https?):\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, (_match, protocol, _host, port) => {
+    const expoUrl = new URL(expoHostOrigin);
+    const nextPort = port || "";
+    return `${protocol}://${expoUrl.hostname}${nextPort}`;
+  });
+}
+
 export function resolveApiBaseUrl(): string {
   const windowOrigin = getWindowOrigin();
   console.log("[resolveApiBaseUrl] windowOrigin:", windowOrigin);
@@ -53,15 +94,13 @@ export function resolveApiBaseUrl(): string {
     }
 
     const envBase = process.env.EXPO_PUBLIC_API_BASE_URL;
-    console.log("[resolveApiBaseUrl] envBase:", envBase);
     if (typeof envBase === "string" && envBase.trim()) {
-      return normalizeApiBase(envBase);
+      return normalizeApiBase(rewriteLocalhostForNative(envBase));
     }
 
     const envOrigin = process.env.EXPO_PUBLIC_API_ORIGIN;
-    console.log("[resolveApiBaseUrl] envOrigin:", envOrigin);
     if (typeof envOrigin === "string" && envOrigin.trim()) {
-      const origin = normalizeOrigin(envOrigin);
+      const origin = normalizeOrigin(rewriteLocalhostForNative(envOrigin));
       return `${origin}/api`;
     }
 
@@ -71,17 +110,17 @@ export function resolveApiBaseUrl(): string {
   const envBase = process.env.EXPO_PUBLIC_API_BASE_URL;
   console.log("[resolveApiBaseUrl] envBase:", envBase);
   if (typeof envBase === "string" && envBase.trim()) {
-    return normalizeApiBase(envBase);
+    return normalizeApiBase(rewriteLocalhostForNative(envBase));
   }
 
   const envOrigin = process.env.EXPO_PUBLIC_API_ORIGIN;
   console.log("[resolveApiBaseUrl] envOrigin:", envOrigin);
   if (typeof envOrigin === "string" && envOrigin.trim()) {
-    const origin = normalizeOrigin(envOrigin);
+    const origin = normalizeOrigin(rewriteLocalhostForNative(envOrigin));
     return `${origin}/api`;
   }
 
-  return `${DEFAULT_NATIVE_API_ORIGIN}/api`;
+  return `${rewriteLocalhostForNative(DEFAULT_NATIVE_API_ORIGIN)}/api`;
 }
 
 export function resolveApiOrigin(): string {
