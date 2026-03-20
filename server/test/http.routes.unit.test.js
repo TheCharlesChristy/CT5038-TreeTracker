@@ -8,10 +8,19 @@ const path = require("node:path");
 const { createHttpServer } = require("../src/http");
 
 function createDbStub(health = { ready: true }) {
+  const deletedTokens = [];
+
   return {
+    deletedTokens,
     health: async () => health,
     trees: {
       list: async () => ["ok"]
+    },
+    userSessions: {
+      deleteByToken: async (sessionToken) => {
+        deletedTokens.push(sessionToken);
+        return { deleted: true };
+      }
     }
   };
 }
@@ -109,6 +118,31 @@ test("invalid path and endpoint responses map correctly", async () => {
     const missing = await sendRequest({ port, path: "/unknown/path" });
     assert.equal(missing.status, 404);
     assert.equal(missing.body.error, "Not found");
+  } finally {
+    await httpServer.stop();
+  }
+});
+
+test("auth logout route deletes the refresh-token session", async () => {
+  const db = createDbStub();
+  const httpServer = createHttpServer({ port: 0, db });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+  const refreshToken = "a".repeat(64);
+
+  try {
+    const response = await sendRequest({
+      port,
+      method: "POST",
+      path: "/api/auth/logout",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refreshToken })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.message, "Logout successful");
+    assert.deepEqual(db.deletedTokens, [refreshToken]);
   } finally {
     await httpServer.stop();
   }

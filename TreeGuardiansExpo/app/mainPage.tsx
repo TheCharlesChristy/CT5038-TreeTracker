@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
+  Alert,
   View,
   StyleSheet,
   TouchableOpacity,
@@ -14,7 +15,7 @@ import PlotDashboard from '@/components/base/AddTreeDashboard';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
-import { StatusMessageBox } from '@/components/base/StatusMessageBox';
+import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
 import { DashboardPanel } from '@/components/map/DashboardPanel';
@@ -23,15 +24,29 @@ import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
-import { getCurrentUser } from '@/utilities/authHelper';
+import { getCurrentUser, logoutUser } from '@/utilities/authHelper';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutStatus, setLogoutStatus] = useState<StatusMessage | null>(null);
+  const logoutTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     getCurrentUser().then((user) => setLoggedInUsername(user?.username ?? null));
   }, []);
+
+  const clearLogoutTimer = useCallback(() => {
+    if (logoutTimer.current) {
+      clearTimeout(logoutTimer.current);
+      logoutTimer.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => {
+    clearLogoutTimer();
+  }, [clearLogoutTimer]);
 
   const {
     mode,
@@ -75,6 +90,48 @@ export default function MainPage() {
     return <TreeMarkerIcon selected={selected} zoomLevel={zoom} />;
   }, [selectedTree?.id]);
 
+  const executeLogout = useCallback(async () => {
+    clearLogoutTimer();
+    const didLogout = await logoutUser();
+
+    if (!didLogout) {
+      setLogoutStatus(null);
+      setIsLoggingOut(false);
+      Alert.alert('Logout Failed', 'We could not log you out. Please try again.');
+      return;
+    }
+
+    setLogoutStatus(null);
+    setLoggedInUsername(null);
+    setIsLoggingOut(false);
+    router.replace('/');
+  }, [clearLogoutTimer]);
+
+  const cancelLogout = useCallback(() => {
+    clearLogoutTimer();
+    setLogoutStatus(null);
+    setIsLoggingOut(false);
+  }, [clearLogoutTimer]);
+
+  const handleLogout = useCallback(() => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    clearLogoutTimer();
+    closeAllOverlays();
+    setIsLoggingOut(true);
+    setLogoutStatus({
+      title: 'Logout Pending',
+      message: 'You will be logged out in 3 seconds unless you cancel.',
+      variant: 'error',
+      createdAt: Date.now(),
+    });
+    logoutTimer.current = setTimeout(() => {
+      void executeLogout();
+    }, 3000);
+  }, [clearLogoutTimer, closeAllOverlays, executeLogout, isLoggingOut]);
+
   return (
     <ActionSheetProvider>
       <AppContainer noPadding>
@@ -95,6 +152,15 @@ export default function MainPage() {
           ) : null}
 
           <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} />
+
+          <StatusMessageBox
+            status={logoutStatus}
+            redirectDuration={logoutStatus ? 3 : undefined}
+            countdownLabel="Logging out…"
+            closeLabel="Cancel"
+            showCopyButton={false}
+            onClose={cancelLogout}
+          />
 
           <TouchableOpacity
             style={styles.homeButton}
@@ -187,6 +253,8 @@ export default function MainPage() {
               healthyCount={healthyCount}
               treesNeedingAttention={treesNeedingAttention}
               onClose={closeAllOverlays}
+              onLogout={handleLogout}
+              isLoggingOut={isLoggingOut}
             />
           ) : null}
 

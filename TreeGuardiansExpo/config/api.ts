@@ -144,5 +144,7 @@ export const ENDPOINTS = {
   TREES: "trees",
   AUTH_LOGIN: "auth/login",
   AUTH_REGISTER: "auth/register",
+  VALIDATE_SESSION: "validate-session",
+  LOGOUT: "auth/logout",
   USERS_ME: "users/me"
 } as const;

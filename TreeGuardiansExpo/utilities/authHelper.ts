@@ -106,18 +106,28 @@ export async function logoutUser(): Promise<boolean> {
     const refreshToken = await getItem("refreshToken");
 
     if (refreshToken) {
-      await fetch(API_BASE + ENDPOINTS.LOGOUT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken }),
-      });
+      try {
+        const response = await fetch(API_BASE + ENDPOINTS.LOGOUT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (!response.ok) {
+          console.warn("Remote logout request failed:", response.status, response.statusText);
+        }
+      } catch (error) {
+        console.warn("Remote logout request failed:", error);
+      }
     }
 
-    await removeItem("accessToken");
-    await removeItem("refreshToken");
-    await removeItem("user");
+    await Promise.all([
+      removeItem("accessToken"),
+      removeItem("refreshToken"),
+      removeItem("user"),
+    ]);
 
     return true;
   } catch (error) {

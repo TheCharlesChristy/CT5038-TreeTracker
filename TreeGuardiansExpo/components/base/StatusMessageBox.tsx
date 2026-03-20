@@ -20,9 +20,19 @@ type StatusMessageBoxProps = {
   onClose: () => void;
   /** Seconds before auto-redirect on success (shows countdown). Omit to disable. */
   redirectDuration?: number;
+  countdownLabel?: string;
+  closeLabel?: string;
+  showCopyButton?: boolean;
 };
 
-export function StatusMessageBox({ status, onClose, redirectDuration }: StatusMessageBoxProps) {
+export function StatusMessageBox({
+  status,
+  onClose,
+  redirectDuration,
+  countdownLabel,
+  closeLabel,
+  showCopyButton,
+}: StatusMessageBoxProps) {
   const [copyFeedback, setCopyFeedback] = useState('');
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
@@ -37,7 +47,7 @@ export function StatusMessageBox({ status, onClose, redirectDuration }: StatusMe
         Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
       ]).start();
     }
-  }, [status?.createdAt]);
+  }, [opacity, status, translateY]);
 
   if (!status) {
     return null;
@@ -62,6 +72,8 @@ export function StatusMessageBox({ status, onClose, redirectDuration }: StatusMe
   };
 
   const isSuccess = status.variant === 'success';
+  const shouldShowCountdown = Boolean(redirectDuration);
+  const shouldShowCopyButton = showCopyButton ?? !isSuccess;
 
   return (
     <Animated.View
@@ -76,10 +88,16 @@ export function StatusMessageBox({ status, onClose, redirectDuration }: StatusMe
       </AppText>
       <AppText style={styles.body}>{status.message}</AppText>
 
-      {isSuccess && redirectDuration ? (
+      {shouldShowCountdown ? (
         <View style={styles.countdownRow}>
-          <CircularCountdown duration={redirectDuration} color="#194C22" trackColor="#D2E4D4" />
-          <AppText style={styles.countdownText}>Redirecting&hellip;</AppText>
+          <CircularCountdown
+            duration={redirectDuration!}
+            color={isSuccess ? '#194C22' : Theme.Colours.error}
+            trackColor={isSuccess ? '#D2E4D4' : '#F0C9C9'}
+          />
+          <AppText style={[styles.countdownText, !isSuccess && styles.countdownTextError]}>
+            {countdownLabel ?? 'Redirecting…'}
+          </AppText>
         </View>
       ) : null}
 
@@ -88,7 +106,7 @@ export function StatusMessageBox({ status, onClose, redirectDuration }: StatusMe
       ) : null}
 
       <View style={styles.actions}>
-        {!isSuccess && (
+        {shouldShowCopyButton && (
           <AppButton
             title="Copy"
             variant="outline"
@@ -97,7 +115,7 @@ export function StatusMessageBox({ status, onClose, redirectDuration }: StatusMe
           />
         )}
         <AppButton
-          title={isSuccess ? 'Continue' : 'Close'}
+          title={closeLabel ?? (isSuccess ? 'Continue' : 'Close')}
           variant="secondary"
           onPress={handleClose}
           style={styles.actionButton}
@@ -157,6 +175,9 @@ const styles = StyleSheet.create({
     ...Theme.Typography.caption,
     color: '#194C22',
     fontWeight: '600',
+  },
+  countdownTextError: {
+    color: Theme.Colours.error,
   },
   copyFeedback: {
     ...Theme.Typography.caption,

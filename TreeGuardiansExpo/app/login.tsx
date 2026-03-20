@@ -146,7 +146,7 @@ export default function Login() {
       >
         <StatusMessageBox
           status={status}
-          redirectDuration={3}
+          redirectDuration={1}
           onClose={() => {
             if (redirectTimer.current) clearTimeout(redirectTimer.current);
             if (status?.variant === 'success') {

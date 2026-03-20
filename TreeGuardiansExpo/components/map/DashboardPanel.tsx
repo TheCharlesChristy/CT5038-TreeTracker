@@ -12,6 +12,8 @@ type DashboardPanelProps = {
   healthyCount: number;
   treesNeedingAttention: number;
   onClose: () => void;
+  onLogout: () => Promise<void> | void;
+  isLoggingOut?: boolean;
 };
 
 export function DashboardPanel({
@@ -20,6 +22,8 @@ export function DashboardPanel({
   healthyCount,
   treesNeedingAttention,
   onClose,
+  onLogout,
+  isLoggingOut = false,
 }: DashboardPanelProps) {
   return (
     <View style={styles.dashboardWrap}>
@@ -53,7 +57,7 @@ export function DashboardPanel({
             variant="secondary"
             onPress={() => {
               onClose();
-              router.push('/dbTestBench');
+              Alert.alert('Local Activity', 'Local activity feed is ready to connect. This should show a popup, must not redirect to a new page.');
             }}
             style={styles.dashboardActionButton}
           />
@@ -62,7 +66,7 @@ export function DashboardPanel({
             title="View Weather Data"
             variant="secondary"
             onPress={() => {
-              Alert.alert('Weather Data', 'Weather integration is ready to connect.');
+              Alert.alert('Weather Data', 'Weather integration is ready to connect. Show a popup with current weather data for the area, including temperature, humidity, and precipitation.');
             }}
             style={styles.dashboardActionButton}
           />
@@ -73,7 +77,7 @@ export function DashboardPanel({
               variant="secondary"
               onPress={() => {
                 onClose();
-                router.push('/(protected)/myTrees' as never);
+                Alert.alert('My Trees', 'My Trees is ready to connect. This should show a popup, must not redirect to a new page.');
               }}
               style={styles.dashboardActionButton}
             />
@@ -85,7 +89,8 @@ export function DashboardPanel({
                 title="Analytics"
                 variant="secondary"
                 onPress={() => {
-                  Alert.alert('Analytics', 'Analytics view is ready to connect.');
+                  onClose();
+                  router.push('/(protected)/admin/analytics' as never);
                 }}
                 style={styles.dashboardActionButton}
               />
@@ -101,6 +106,18 @@ export function DashboardPanel({
               />
             </>
           ) : null}
+
+          <AppButton
+            title={isLoggingOut ? 'Logout Pending...' : 'Log Out'}
+            variant="outline"
+            onPress={() => {
+              void onLogout();
+            }}
+            disabled={isLoggingOut}
+            style={styles.dashboardActionButton}
+            buttonStyle={styles.logoutButton}
+            textStyle={styles.logoutButtonText}
+          />
 
           <View style={styles.dashboardStatsRow}>
             <View style={styles.statCardCompact}>
@@ -183,6 +200,13 @@ const styles = StyleSheet.create({
   },
   dashboardActionButton: {
     marginBottom: 8,
+  },
+  logoutButton: {
+    backgroundColor: '#FFF2F2',
+    borderColor: '#E6B8B8',
+  },
+  logoutButtonText: {
+    color: '#A53333',
   },
   dashboardStatsRow: {
     marginTop: 8,

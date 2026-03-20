@@ -146,11 +146,30 @@ function createAuthRoute({ db }) {
     });
   };
 
+  const logoutHandler = async (req, res) => {
+    requireJson(req);
+
+    const refreshToken = String(req.body.refreshToken || "").trim();
+    if (!refreshToken) {
+      res.status(400).json({ error: "Refresh token is required" });
+      return;
+    }
+
+    await db.userSessions.deleteByToken(refreshToken);
+
+    res.json({
+      message: "Logout successful"
+    });
+  };
+
   router.post("/auth/register", asyncHandler(registerHandler));
   router.post("/register", asyncHandler(registerHandler));
 
   router.post("/auth/login", asyncHandler(loginHandler));
   router.post("/login", asyncHandler(loginHandler));
+
+  router.post("/auth/logout", asyncHandler(logoutHandler));
+  router.post("/logout", asyncHandler(logoutHandler));
 
   return router;
 }
