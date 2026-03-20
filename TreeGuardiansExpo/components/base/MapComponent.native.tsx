@@ -21,6 +21,7 @@ export default function MapComponentNative({
   onPress,
   onTreeClick,
   plottedTrees = [],
+  selectedLocation = null,
   renderTreeIcon,
   onPlotPointerMove,
 }: MapComponentProps) {
@@ -69,9 +70,17 @@ export default function MapComponentNative({
       JSON.stringify({
         type: 'updateTrees',
         plottedTrees: treesToSend,
+        selectedLocation,
+        selectedLocationIconHtml: getTreeMarkerIconHtml({
+          selected: true,
+          zoomLevel: currentZoom,
+        }).replace(/rgba\(14, 56, 25, 0\.82\)/g, 'rgba(202, 104, 20, 0.92)')
+          .replace(/rgba\(14, 56, 25, 0\.62\)/g, 'rgba(202, 104, 20, 0.74)')
+          .replace(/rgba\(18, 72, 32, 0\.5\)/g, 'rgba(120, 58, 8, 0.56)')
+          .replace(/rgba\(214, 232, 219, 0\.85\)/g, 'rgba(255, 233, 210, 0.92)'),
       })
     );
-  }, [buildIconHtml, isWebViewReady, plottedTrees]);
+  }, [buildIconHtml, currentZoom, isWebViewReady, plottedTrees, selectedLocation]);
 
   useEffect(() => {
     syncTreesToMap();
@@ -158,6 +167,7 @@ export default function MapComponentNative({
     }).addTo(map);
 
     var treeLayer = L.layerGroup().addTo(map);
+    var selectedLocationLayer = L.layerGroup().addTo(map);
 
     map.on('click', function(e) {
       window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -179,6 +189,7 @@ export default function MapComponentNative({
 
       if (data.type === 'updateTrees' && data.plottedTrees) {
         treeLayer.clearLayers();
+        selectedLocationLayer.clearLayers();
 
         data.plottedTrees.forEach(function(tree) {
           const html = tree.iconHtml || '🌳';
@@ -193,6 +204,17 @@ export default function MapComponentNative({
             }));
           });
         });
+
+        if (data.selectedLocation && typeof data.selectedLocation.latitude === 'number' && typeof data.selectedLocation.longitude === 'number') {
+          const selectedIcon = L.divIcon({
+            html: data.selectedLocationIconHtml || '🌳',
+            className: '',
+            iconSize: [63, 63],
+            iconAnchor: [31.5, 31.5]
+          });
+
+          L.marker([data.selectedLocation.latitude, data.selectedLocation.longitude], { icon: selectedIcon }).addTo(selectedLocationLayer);
+        }
       }
     }
 

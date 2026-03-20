@@ -61,6 +61,7 @@ export default function MainPage() {
     handleMapTreeClick,
     handleMapPress,
     handleSelectManualPlacement,
+    handleCancelManualPlacement,
     handleSelectDevicePlacement,
     handleConfirmTreeAdd,
     handleCloseTreeDetails,
@@ -82,6 +83,7 @@ export default function MainPage() {
             style={StyleSheet.absoluteFillObject}
             isPlotting={mode === 'add' && isSelectingManualLocation}
             plottedTrees={plottedTrees}
+            selectedLocation={selectedDraftLocation}
             onPlotPointerMove={handleMapPointerMove}
             onTreeClick={handleMapTreeClick}
             onPress={handleMapPress}
@@ -132,7 +134,18 @@ export default function MainPage() {
             </View>
           ) : null}
 
-          {mode === 'add' && loggedInUsername !== null ? (
+          {mode === 'add' && isSelectingManualLocation ? (
+            <TouchableOpacity
+              style={styles.exitMapSelectionButton}
+              activeOpacity={0.85}
+              onPress={handleCancelManualPlacement}
+            >
+              <MaterialCommunityIcons name="close-circle-outline" size={18} color="#FFF4F4" />
+              <AppText style={styles.exitMapSelectionText}>Exit Map Selection</AppText>
+            </TouchableOpacity>
+          ) : null}
+
+          {mode === 'add' && loggedInUsername !== null && !isSelectingManualLocation ? (
             <PlotDashboard
               onConfirmAdd={handleConfirmTreeAdd}
               onCancel={closeAllOverlays}
@@ -177,27 +190,29 @@ export default function MainPage() {
             />
           ) : null}
 
-          <FloatingActionBar
-            searchActive={mode === 'search'}
-            addActive={mode === 'add'}
-            dashboardActive={mode === 'dashboard'}
-            isGuest={loggedInUsername === null}
-            onSearchPress={() => {
-              if (mode === 'search') {
-                closeAllOverlays();
-                return;
-              }
-              openMode('search');
-            }}
-            onAddTreePress={() => openMode('add')}
-            onDashboardPress={() => {
-              if (mode === 'dashboard') {
-                closeAllOverlays();
-                return;
-              }
-              openMode('dashboard');
-            }}
-          />
+          {!isSelectingManualLocation ? (
+            <FloatingActionBar
+              searchActive={mode === 'search'}
+              addActive={mode === 'add'}
+              dashboardActive={mode === 'dashboard'}
+              isGuest={loggedInUsername === null}
+              onSearchPress={() => {
+                if (mode === 'search') {
+                  closeAllOverlays();
+                  return;
+                }
+                openMode('search');
+              }}
+              onAddTreePress={() => openMode('add')}
+              onDashboardPress={() => {
+                if (mode === 'dashboard') {
+                  closeAllOverlays();
+                  return;
+                }
+                openMode('dashboard');
+              }}
+            />
+          ) : null}
 
           {isLoadingTrees ? (
             <View style={styles.loadingPill}>
@@ -257,6 +272,39 @@ const styles = StyleSheet.create({
     ...Theme.Typography.caption,
     color: '#000',
     fontFamily: 'Poppins_600SemiBold',
+  },
+
+  exitMapSelectionButton: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 28,
+    zIndex: 240,
+    minHeight: 56,
+    borderRadius: 20,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(160, 28, 28, 0.68)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 214, 214, 0.42)',
+    borderTopColor: 'rgba(255, 240, 240, 0.68)',
+    shadowColor: '#220909',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+
+  exitMapSelectionText: {
+    color: '#FFF6F6',
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.2,
   },
 
   dimOverlay: {

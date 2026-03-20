@@ -25,6 +25,7 @@ export interface MapComponentProps {
   onTreeClick?: (tree: Tree) => void;
   isPlotting?: boolean;
   plottedTrees?: Tree[];
+  selectedLocation?: MapCoordinate | null;
   renderTreeIcon?: (tree: Tree, context: MapRenderContext) => ReactElement;
   onPlotPointerMove?: (pointer: PlotPointer | null) => void;
 }

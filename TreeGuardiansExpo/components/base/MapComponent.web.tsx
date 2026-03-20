@@ -50,6 +50,7 @@ export default function MapComponentWeb({
   onTreeClick,
   isPlotting = false,
   plottedTrees = [],
+  selectedLocation = null,
   renderTreeIcon,
   onPlotPointerMove,
 }: MapComponentProps) {
@@ -60,6 +61,7 @@ export default function MapComponentWeb({
   const leafletRef = useRef<LeafletModule | null>(null);
   const mapInstance = useRef<LeafletMapInstance | null>(null);
   const treeLayer = useRef<LeafletLayerGroupInstance | null>(null);
+  const selectedLocationLayer = useRef<LeafletLayerGroupInstance | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(MIN_ZOOM);
 
@@ -118,6 +120,38 @@ export default function MapComponentWeb({
       });
     });
   }, [buildIconHtml, onTreeClick, plottedTrees]);
+
+  const syncSelectedLocationMarker = useCallback(() => {
+    if (!selectedLocationLayer.current || !leafletRef.current) {
+      return;
+    }
+
+    const Leaflet = leafletRef.current;
+    selectedLocationLayer.current.clearLayers();
+
+    if (!selectedLocation) {
+      return;
+    }
+
+    const html = getTreeMarkerIconHtml({
+      selected: true,
+      zoomLevel: currentZoom,
+    }).replace(/rgba\(14, 56, 25, 0\.82\)/g, 'rgba(202, 104, 20, 0.92)')
+      .replace(/rgba\(14, 56, 25, 0\.62\)/g, 'rgba(202, 104, 20, 0.74)')
+      .replace(/rgba\(18, 72, 32, 0\.5\)/g, 'rgba(120, 58, 8, 0.56)')
+      .replace(/rgba\(214, 232, 219, 0\.85\)/g, 'rgba(255, 233, 210, 0.92)');
+
+    const icon = Leaflet.divIcon({
+      html,
+      className: '',
+      iconSize: [63, 63],
+      iconAnchor: [31.5, 31.5],
+    });
+
+    Leaflet.marker([selectedLocation.latitude, selectedLocation.longitude], { icon }).addTo(
+      selectedLocationLayer.current
+    );
+  }, [currentZoom, selectedLocation]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) {
@@ -186,6 +220,7 @@ export default function MapComponentWeb({
       }).addTo(map);
 
       treeLayer.current = Leaflet.layerGroup().addTo(map);
+      selectedLocationLayer.current = Leaflet.layerGroup().addTo(map);
       mapInstance.current = map;
       setCurrentZoom(map.getZoom());
       setIsMapReady(true);
@@ -249,6 +284,7 @@ export default function MapComponentWeb({
         mapInstance.current = null;
       }
       treeLayer.current = null;
+      selectedLocationLayer.current = null;
       leafletRef.current = null;
     };
   }, []);
@@ -269,6 +305,14 @@ export default function MapComponentWeb({
 
     syncTreeMarkers();
   }, [isMapReady, syncTreeMarkers]);
+
+  useEffect(() => {
+    if (!isMapReady) {
+      return;
+    }
+
+    syncSelectedLocationMarker();
+  }, [isMapReady, syncSelectedLocationMarker]);
 
   return <div ref={mapRef} style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0 }} />;
 }

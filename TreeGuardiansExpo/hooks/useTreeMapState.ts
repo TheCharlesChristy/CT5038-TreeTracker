@@ -76,6 +76,16 @@ export function useTreeMapState() {
     fetchTreesFromServer();
   }, [fetchTreesFromServer]);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      void fetchTreesFromServer();
+    }, 10000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [fetchTreesFromServer]);
+
   const searchResults = useMemo(() => {
     const textQuery = searchQuery.trim().toLowerCase();
 
@@ -175,6 +185,12 @@ export function useTreeMapState() {
     setIsSelectingManualLocation(true);
     setAddValidationError(null);
     setMode('add');
+  }, []);
+
+  const handleCancelManualPlacement = useCallback(() => {
+    setIsSelectingManualLocation(false);
+    setAddValidationError(null);
+    setPlotPointer(null);
   }, []);
 
   const handleSelectDevicePlacement = useCallback(async (details: TreeDetails) => {
@@ -289,6 +305,7 @@ export function useTreeMapState() {
     handleMapTreeClick,
     handleMapPress,
     handleSelectManualPlacement,
+    handleCancelManualPlacement,
     handleSelectDevicePlacement,
     handleConfirmTreeAdd,
     handleCloseTreeDetails,
