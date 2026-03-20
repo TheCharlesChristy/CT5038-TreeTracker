@@ -4,6 +4,7 @@ const { spawn } = require("child_process");
 const { loadConfig } = require("./config");
 const db = require("./db");
 const { createHttpServer } = require("./http");
+const { hashPassword } = require("./routes/api/utils/security");
 
 function runCommand(command, args, options) {
   return new Promise((resolve, reject) => {
@@ -85,10 +86,32 @@ async function startExpo(config) {
   return child;
 }
 
+async function ensureDefaultDevUsers() {
+  const defaultPasswordHash = await hashPassword("Password");
+
+  await db.transaction(async (tx) => {
+    let adminUser = await db.users.getByUsername("admin", tx);
+    if (!adminUser) {
+      adminUser = await db.users.create({ username: "admin" }, tx);
+    }
+    await db.userPasswords.setForUser(adminUser.id, defaultPasswordHash, tx);
+    await db.admins.grant(adminUser.id, tx);
+
+    let guardianUser = await db.users.getByUsername("guardian", tx);
+    if (!guardianUser) {
+      guardianUser = await db.users.create({ username: "guardian" }, tx);
+    }
+    await db.userPasswords.setForUser(guardianUser.id, defaultPasswordHash, tx);
+  });
+
+  console.log('[server] ensured default dev users: "admin" and "guardian"');
+}
+
 async function bootstrap({ exitOnShutdown = false } = {}) {
   const config = loadConfig();
   await prepareExpoWeb(config);
   await db.init(config.db);
+  await ensureDefaultDevUsers();
 
   const http = createHttpServer({
     port: config.port,
