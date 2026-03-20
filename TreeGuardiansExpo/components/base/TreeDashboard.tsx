@@ -95,6 +95,12 @@ function TreeOverview({
       </View>
 
       <View style={styles.summaryChipRow}>
+        {tree.species ? (
+          <View style={styles.summaryChip}>
+            <MaterialCommunityIcons name="pine-tree" size={14} color="#1B5E20" />
+            <AppText style={styles.summaryChipText}>{tree.species}</AppText>
+          </View>
+        ) : null}
         <View style={styles.summaryChip}>
           <MaterialCommunityIcons name="image-outline" size={14} color="#1B5E20" />
           <AppText style={styles.summaryChipText}>{photoCount} photos</AppText>
@@ -433,7 +439,7 @@ export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashb
               {tree.id !== undefined ? `Tree #${tree.id}` : 'Observed Tree'}
             </AppText>
             <AppText style={styles.subtitle}>
-              {photos.length} photos • {activityItems.length} updates
+              {tree.species ? `${tree.species} • ` : ''}{photos.length} photos • {activityItems.length} updates
             </AppText>
           </View>
 

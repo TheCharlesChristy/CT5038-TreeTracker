@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS tree_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     UNIQUE INDEX uq_tree_data_tree_id (tree_id),
+    tree_species varchar(255) NULL,
     avoided_runoff decimal(10,2) NULL, -- in m^3
     carbon_dioxide_stored decimal(10,2) NULL, -- in kg
     carbon_dioxide_removed decimal(10,2) NULL, -- in kg

@@ -1,7 +1,10 @@
 // information filled in dashboard
 export type TreeDetails = {
+    species?: string,
     wildlife?: string,
+    wildlifeList?: string[],
     disease?: string,
+    diseaseList?: string[],
     photos?: string[],  // array of image URL's
     notes?: string, // "seen" obervations or additional notes
     diameter?: number,

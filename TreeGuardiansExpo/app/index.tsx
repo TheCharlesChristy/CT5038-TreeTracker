@@ -43,7 +43,7 @@ export default function Index() {
           />
 
           <AppButton
-            title="Continue as Guest"
+            title="Explore Map"
             variant="ghost"
             style={styles.button}
             onPress={() => router.push('/mainPage')}

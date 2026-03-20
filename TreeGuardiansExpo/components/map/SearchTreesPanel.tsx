@@ -1,8 +1,12 @@
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { PanResponder, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
+import { TreeHealthFilterSelect } from '@/components/base/TreeHealthSelect';
+
+import type { DistanceFilterKm } from '@/hooks/useTreeMapState';
 
 type HealthFilter = 'all' | 'healthy' | 'attention';
 
@@ -11,13 +15,18 @@ type SearchTreesPanelProps = {
   onSearchQueryChange: (value: string) => void;
   healthFilter: HealthFilter;
   onHealthFilterChange: (value: HealthFilter) => void;
-  distanceFilterKm: number;
-  onDistanceFilterKmChange: (value: number) => void;
+  distanceFilterKm: DistanceFilterKm;
+  onDistanceFilterKmChange: (value: DistanceFilterKm) => void;
   searchResults: Tree[];
   onClose: () => void;
+  onClearFilters: () => void;
   onSelectTree: (tree: Tree) => void;
   getDistanceKm: (tree: Tree) => number;
 };
+
+const DISTANCE_OPTIONS: DistanceFilterKm[] = [null, 1.0, 2.5, 4.0, 6.0];
+const MIN_DISTANCE_KM = 0.5;
+const MAX_DISTANCE_KM = 6;
 
 export function SearchTreesPanel({
   searchQuery,
@@ -28,9 +37,39 @@ export function SearchTreesPanel({
   onDistanceFilterKmChange,
   searchResults,
   onClose,
+  onClearFilters,
   onSelectTree,
   getDistanceKm,
 }: SearchTreesPanelProps) {
+  const [sliderWidth, setSliderWidth] = React.useState(0);
+
+  const updateDistanceFromPosition = React.useCallback((positionX: number) => {
+    if (sliderWidth <= 0) {
+      return;
+    }
+
+    const clampedX = Math.max(0, Math.min(positionX, sliderWidth));
+    const ratio = clampedX / sliderWidth;
+    const rawDistance = MIN_DISTANCE_KM + ratio * (MAX_DISTANCE_KM - MIN_DISTANCE_KM);
+    const roundedDistance = Math.round(rawDistance * 10) / 10;
+    onDistanceFilterKmChange(roundedDistance);
+  }, [onDistanceFilterKmChange, sliderWidth]);
+
+  const distanceRatio = distanceFilterKm === null
+    ? 1
+    : (distanceFilterKm - MIN_DISTANCE_KM) / (MAX_DISTANCE_KM - MIN_DISTANCE_KM);
+
+  const panResponder = React.useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (event) => {
+      updateDistanceFromPosition(event.nativeEvent.locationX);
+    },
+    onPanResponderMove: (event) => {
+      updateDistanceFromPosition(event.nativeEvent.locationX);
+    },
+  }), [updateDistanceFromPosition]);
+
   return (
     <View style={styles.searchPanelWrap}>
       <View style={styles.searchPanel}>
@@ -46,7 +85,7 @@ export function SearchTreesPanel({
         </View>
 
         <TextInput
-          placeholder="Search notes, wildlife, disease, or tree id"
+          placeholder="Search species, notes, wildlife, disease, or tree id"
           placeholderTextColor={Theme.Colours.textLight}
           value={searchQuery}
           onChangeText={onSearchQueryChange}
@@ -55,56 +94,68 @@ export function SearchTreesPanel({
 
         <View style={styles.filterSection}>
           <AppText style={styles.filterLabel}>Tree Health</AppText>
-          <View style={styles.filterRow}>
-            {(['all', 'healthy', 'attention'] as const).map((value) => (
-              <TouchableOpacity
-                key={value}
-                onPress={() => onHealthFilterChange(value)}
-                style={[
-                  styles.filterChip,
-                  healthFilter === value && styles.filterChipActive,
-                ]}
-              >
-                <AppText
-                  style={[
-                    styles.filterChipText,
-                    healthFilter === value && styles.filterChipTextActive,
-                  ]}
-                >
-                  {value === 'all'
-                    ? 'All'
-                    : value === 'healthy'
-                      ? 'Healthy'
-                      : 'Needs Attention'}
-                </AppText>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TreeHealthFilterSelect value={healthFilter} onChange={onHealthFilterChange} compact />
         </View>
 
         <View style={styles.filterSection}>
-          <AppText style={styles.filterLabel}>Distance ({distanceFilterKm.toFixed(1)} km)</AppText>
-          <View style={styles.filterRow}>
-            {[1.0, 2.5, 4.0, 6.0].map((distance) => (
-              <TouchableOpacity
-                key={distance}
-                onPress={() => onDistanceFilterKmChange(distance)}
-                style={[
-                  styles.filterChip,
-                  distanceFilterKm === distance && styles.filterChipActive,
-                ]}
-              >
-                <AppText
-                  style={[
-                    styles.filterChipText,
-                    distanceFilterKm === distance && styles.filterChipTextActive,
-                  ]}
-                >
-                  {distance} km
-                </AppText>
-              </TouchableOpacity>
-            ))}
+          <AppText style={styles.filterLabel}>
+            Distance ({distanceFilterKm === null ? 'Any' : `${distanceFilterKm.toFixed(1)} km`})
+          </AppText>
+          <View style={styles.distanceTopRow}>
+            <TouchableOpacity
+              onPress={() => onDistanceFilterKmChange(null)}
+              style={[styles.anyChip, distanceFilterKm === null && styles.anyChipActive]}
+              activeOpacity={0.85}
+            >
+              <AppText style={[styles.anyChipText, distanceFilterKm === null && styles.anyChipTextActive]}>
+                Any
+              </AppText>
+            </TouchableOpacity>
+            <AppText style={styles.sliderRangeText}>{MIN_DISTANCE_KM.toFixed(1)} - {MAX_DISTANCE_KM.toFixed(1)} km</AppText>
           </View>
+          <View
+            style={styles.sliderWrap}
+            onLayout={(event) => setSliderWidth(event.nativeEvent.layout.width)}
+            {...panResponder.panHandlers}
+          >
+            <View style={styles.sliderTrack} />
+            <View style={[styles.sliderFill, { width: `${Math.max(0, Math.min(distanceRatio, 1)) * 100}%` }]} />
+            <View
+              style={[
+                styles.sliderThumb,
+                { left: `${Math.max(0, Math.min(distanceRatio, 1)) * 100}%` },
+                distanceFilterKm === null && styles.sliderThumbMuted,
+              ]}
+            />
+          </View>
+          <View style={styles.sliderStopsRow}>
+            {DISTANCE_OPTIONS.slice(1).map((distance) => {
+              const selected = distanceFilterKm === distance;
+              return (
+                <TouchableOpacity
+                  key={distance}
+                  onPress={() => onDistanceFilterKmChange(distance)}
+                  style={styles.sliderStop}
+                  activeOpacity={0.85}
+                >
+                  <AppText style={[styles.sliderLabel, selected && styles.sliderLabelActive]}>
+                    {distance} km
+                  </AppText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.actionRow}>
+          <AppButton
+            title="Clear Filters"
+            variant="secondary"
+            onPress={onClearFilters}
+            style={styles.clearActionButton}
+            buttonStyle={styles.clearButton}
+            textStyle={styles.clearButtonText}
+          />
         </View>
 
         <ScrollView style={styles.searchResultList} showsVerticalScrollIndicator>
@@ -114,23 +165,25 @@ export function SearchTreesPanel({
               <AppText style={styles.emptyStateBody}>Try relaxing health or distance filters.</AppText>
             </View>
           ) : (
-            searchResults.map((tree) => (
-              <TouchableOpacity
-                key={`${tree.id ?? 'tree'}-${tree.latitude}-${tree.longitude}`}
-                style={styles.searchResultCard}
-                onPress={() => onSelectTree(tree)}
-              >
-                <AppText style={styles.searchResultTitle}>
-                  Tree #{tree.id ?? 'Unknown'}
-                </AppText>
-                <AppText style={styles.searchResultMeta}>
-                  {getDistanceKm(tree).toFixed(2)} km away
-                </AppText>
-                <AppText style={styles.searchResultBody}>
-                  {tree.notes || tree.wildlife || tree.disease || 'No additional notes'}
-                </AppText>
-              </TouchableOpacity>
-            ))
+            <>
+              {searchResults.map((tree) => (
+                <TouchableOpacity
+                  key={`${tree.id ?? 'tree'}-${tree.latitude}-${tree.longitude}`}
+                  style={styles.searchResultCard}
+                  onPress={() => onSelectTree(tree)}
+                >
+                  <AppText style={styles.searchResultTitle}>
+                    {tree.species ? `${tree.species} · ` : ''}Tree #{tree.id ?? 'Unknown'}
+                  </AppText>
+                  <AppText style={styles.searchResultMeta}>
+                    {getDistanceKm(tree).toFixed(2)} km away
+                  </AppText>
+                  <AppText style={styles.searchResultBody}>
+                    {tree.notes || tree.wildlife || tree.disease || 'No additional notes'}
+                  </AppText>
+                </TouchableOpacity>
+              ))}
+            </>
           )}
         </ScrollView>
       </View>
@@ -199,32 +252,108 @@ const styles = StyleSheet.create({
     color: Theme.Colours.textMuted,
     marginBottom: 8,
   },
-  filterRow: {
+  distanceTopRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  filterChip: {
+  anyChip: {
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#BFD0C0',
     backgroundColor: '#F2F7F2',
-    paddingVertical: 7,
+    paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  filterChipActive: {
+  anyChipActive: {
     backgroundColor: Theme.Colours.primary,
     borderColor: Theme.Colours.primary,
   },
-  filterChipText: {
+  anyChipText: {
     ...Theme.Typography.caption,
     color: Theme.Colours.textMuted,
   },
-  filterChipTextActive: {
+  anyChipTextActive: {
     color: Theme.Colours.white,
+  },
+  sliderRangeText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+  },
+  sliderWrap: {
+    position: 'relative',
+    height: 28,
+    justifyContent: 'center',
+  },
+  sliderTrack: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: '#C8D7C9',
+    borderRadius: 999,
+  },
+  sliderFill: {
+    position: 'absolute',
+    left: 0,
+    height: 4,
+    backgroundColor: Theme.Colours.primary,
+    borderRadius: 999,
+  },
+  sliderThumb: {
+    position: 'absolute',
+    marginLeft: -10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Theme.Colours.white,
+    borderWidth: 3,
+    borderColor: Theme.Colours.primary,
+    shadowColor: '#12301A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  sliderThumbMuted: {
+    borderColor: '#A9B8AC',
+  },
+  sliderStopsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  sliderStop: {
+    alignItems: 'center',
+  },
+  sliderLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    textAlign: 'center',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  sliderLabelActive: {
+    color: Theme.Colours.primary,
+    fontFamily: 'Poppins_600SemiBold',
   },
   searchResultList: {
     marginTop: 14,
+  },
+  actionRow: {
+    marginTop: 14,
+  },
+  clearActionButton: {
+    marginBottom: 0,
+  },
+  clearButton: {
+    marginBottom: 0,
+    borderColor: '#D8C5C5',
+    backgroundColor: '#FBF2F2',
+  },
+  clearButtonText: {
+    color: '#9C3A3A',
   },
   searchResultCard: {
     paddingVertical: 12,

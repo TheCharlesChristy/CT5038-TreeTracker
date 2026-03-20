@@ -10,6 +10,7 @@ import type { StatusMessage } from '@/components/base/StatusMessageBox';
 export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
 
 export type HealthFilter = 'all' | 'healthy' | 'attention';
+export type DistanceFilterKm = number | null;
 
 export function useTreeMapState() {
   const [mode, setMode] = useState<PageMode>('explore');
@@ -25,7 +26,7 @@ export function useTreeMapState() {
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [distanceFilterKm, setDistanceFilterKm] = useState(2.5);
+  const [distanceFilterKm, setDistanceFilterKm] = useState<DistanceFilterKm>(null);
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all');
 
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
@@ -60,6 +61,46 @@ export function useTreeMapState() {
     setMode(nextMode);
   }, [clearAddDraft, mode]);
 
+  const filterTrees = useCallback((trees: Tree[], query: string, distanceKm: DistanceFilterKm, health: HealthFilter) => {
+    const textQuery = query.trim().toLowerCase();
+
+    return trees
+      .filter((tree) => {
+        const aggregateText = `${tree.species || ''} ${tree.notes || ''} ${tree.wildlife || ''} ${tree.disease || ''}`.toLowerCase();
+
+        const matchesText =
+          textQuery.length === 0 ||
+          aggregateText.includes(textQuery) ||
+          `${tree.id ?? ''}`.includes(textQuery);
+
+        const distance = haversineDistanceKm(
+          { latitude: tree.latitude, longitude: tree.longitude },
+          CHARLTON_CENTER
+        );
+        const withinDistance = distanceKm === null || distance <= distanceKm;
+
+        const hasDisease = Boolean(tree.disease && tree.disease.trim().length > 0);
+        const matchesHealth =
+          health === 'all' ||
+          (health === 'healthy' && !hasDisease) ||
+          (health === 'attention' && hasDisease);
+
+        return matchesText && withinDistance && matchesHealth;
+      })
+      .sort((a, b) => {
+        const aDistance = haversineDistanceKm(
+          { latitude: a.latitude, longitude: a.longitude },
+          CHARLTON_CENTER
+        );
+        const bDistance = haversineDistanceKm(
+          { latitude: b.latitude, longitude: b.longitude },
+          CHARLTON_CENTER
+        );
+
+        return aDistance - bDistance;
+      });
+  }, []);
+
   const fetchTreesFromServer = useCallback(async () => {
     try {
       setIsLoadingTrees(true);
@@ -86,45 +127,15 @@ export function useTreeMapState() {
     };
   }, [fetchTreesFromServer]);
 
-  const searchResults = useMemo(() => {
-    const textQuery = searchQuery.trim().toLowerCase();
+  const searchResults = useMemo(
+    () => filterTrees(plottedTrees, searchQuery, distanceFilterKm, healthFilter),
+    [distanceFilterKm, filterTrees, healthFilter, plottedTrees, searchQuery]
+  );
 
-    return plottedTrees
-      .filter((tree) => {
-        const aggregateText = `${tree.notes || ''} ${tree.wildlife || ''} ${tree.disease || ''}`.toLowerCase();
-
-        const matchesText =
-          textQuery.length === 0 ||
-          aggregateText.includes(textQuery) ||
-          `${tree.id ?? ''}`.includes(textQuery);
-
-        const distance = haversineDistanceKm(
-          { latitude: tree.latitude, longitude: tree.longitude },
-          CHARLTON_CENTER
-        );
-        const withinDistance = distance <= distanceFilterKm;
-
-        const hasDisease = Boolean(tree.disease && tree.disease.trim().length > 0);
-        const matchesHealth =
-          healthFilter === 'all' ||
-          (healthFilter === 'healthy' && !hasDisease) ||
-          (healthFilter === 'attention' && hasDisease);
-
-        return matchesText && withinDistance && matchesHealth;
-      })
-      .sort((a, b) => {
-        const aDistance = haversineDistanceKm(
-          { latitude: a.latitude, longitude: a.longitude },
-          CHARLTON_CENTER
-        );
-        const bDistance = haversineDistanceKm(
-          { latitude: b.latitude, longitude: b.longitude },
-          CHARLTON_CENTER
-        );
-
-        return aDistance - bDistance;
-      });
-  }, [distanceFilterKm, healthFilter, plottedTrees, searchQuery]);
+  const hasSearchFilters = useMemo(
+    () => searchQuery.trim().length > 0 || distanceFilterKm !== null || healthFilter !== 'all',
+    [distanceFilterKm, healthFilter, searchQuery]
+  );
 
   const healthyCount = useMemo(
     () => plottedTrees.filter((tree) => !(tree.disease && tree.disease.trim())).length,
@@ -218,7 +229,12 @@ export function useTreeMapState() {
   }, []);
 
   const handleConfirmTreeAdd = useCallback(async (details: TreeDetails) => {
-    setDraftTreeDetails(details);
+    const mergedDetails: TreeDetails = {
+      ...(draftTreeDetails ?? {}),
+      ...details,
+    };
+
+    setDraftTreeDetails(mergedDetails);
     setAddValidationError(null);
 
     if (!selectedDraftLocation) {
@@ -234,7 +250,7 @@ export function useTreeMapState() {
     }
 
     const completeTree: Tree = {
-      ...details,
+      ...mergedDetails,
       latitude: selectedDraftLocation.latitude,
       longitude: selectedDraftLocation.longitude,
     };
@@ -264,7 +280,7 @@ export function useTreeMapState() {
     } finally {
       setIsSubmittingTree(false);
     }
-  }, [selectedDraftLocation, fetchTreesFromServer, clearAddDraft]);
+  }, [draftTreeDetails, selectedDraftLocation, fetchTreesFromServer, clearAddDraft]);
 
   const handleCloseTreeDetails = useCallback(() => {
     setSelectedTree(null);
@@ -274,6 +290,12 @@ export function useTreeMapState() {
   const handleSelectSearchResultTree = useCallback((tree: Tree) => {
     setSelectedTree(tree);
     setMode('view-tree');
+  }, []);
+
+  const clearSearchFilters = useCallback(() => {
+    setSearchQuery('');
+    setDistanceFilterKm(null);
+    setHealthFilter('all');
   }, []);
 
   return {
@@ -288,6 +310,7 @@ export function useTreeMapState() {
     plotPointer,
     showDimOverlay,
     searchResults,
+    hasSearchFilters,
     healthyCount,
     treesNeedingAttention,
     draftTreeDetails,
@@ -310,6 +333,7 @@ export function useTreeMapState() {
     handleConfirmTreeAdd,
     handleCloseTreeDetails,
     handleSelectSearchResultTree,
+    clearSearchFilters,
     clearAddValidationError,
     clearStatusMessage,
     getDistanceFromCenterKm,

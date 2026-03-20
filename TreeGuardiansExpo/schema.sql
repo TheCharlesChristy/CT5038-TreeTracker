@@ -84,6 +84,7 @@ CREATE TABLE tree_creation_data (
 CREATE TABLE tree_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
+    tree_species varchar(255) NULL,
     avoided_runoff decimal(10,2) NULL, 
     carbon_dioxide_stored decimal(10,2) NULL, 
     carbon_dioxide_removed decimal(10,2) NULL, 

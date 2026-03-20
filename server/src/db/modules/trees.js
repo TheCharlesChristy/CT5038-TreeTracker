@@ -1,6 +1,14 @@
 function createTreeEndpoints(ctx) {
   const { run, selectOne, runtimeExecutor, toDateInput, buildUpdate, validators, NotFoundError } = ctx;
-  const { assert, ensurePositiveInt, ensureLatitude, ensureLongitude, ensureNumberOrNull, normalizeListParams } = validators;
+  const {
+    assert,
+    ensurePositiveInt,
+    ensureLatitude,
+    ensureLongitude,
+    ensureNumberOrNull,
+    ensureStringMax,
+    normalizeListParams
+  } = validators;
 
   const trees = {
     async create(payload, tx) {
@@ -174,10 +182,15 @@ function createTreeEndpoints(ctx) {
     trunkDiameter: "trunk_diameter",
     treeHeight: "tree_height"
   };
+  const TREE_HEALTH_VALUES = new Set(["excellent", "good", "ok", "bad", "terrible"]);
 
   const treeData = {
     async create(payload, tx) {
       ensurePositiveInt("treeId", payload.treeId);
+      ensureStringMax("treeSpecies", payload.treeSpecies, 255);
+      if (payload.health !== undefined && payload.health !== null) {
+        assert(TREE_HEALTH_VALUES.has(payload.health), "health must be one of excellent, good, ok, bad, terrible");
+      }
       for (const field of Object.keys(TREE_DATA_NUMERIC_FIELDS)) {
         ensureNumberOrNull(field, payload[field]);
       }
@@ -185,12 +198,13 @@ function createTreeEndpoints(ctx) {
       const result = await run(
         runtimeExecutor(tx),
         `INSERT INTO tree_data (
-          tree_id, avoided_runoff, carbon_dioxide_stored, carbon_dioxide_removed,
+          tree_id, tree_species, avoided_runoff, carbon_dioxide_stored, carbon_dioxide_removed,
           water_intercepted, air_quality_improvement, leaf_area, evapotranspiration,
-          trunk_circumference, trunk_diameter, tree_height
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          trunk_circumference, trunk_diameter, tree_height, health
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           payload.treeId,
+          payload.treeSpecies ?? null,
           payload.avoidedRunoff ?? null,
           payload.carbonDioxideStored ?? null,
           payload.carbonDioxideRemoved ?? null,
@@ -200,7 +214,8 @@ function createTreeEndpoints(ctx) {
           payload.evapotranspiration ?? null,
           payload.trunkCircumference ?? null,
           payload.trunkDiameter ?? null,
-          payload.treeHeight ?? null
+          payload.treeHeight ?? null,
+          payload.health ?? null
         ]
       );
       return this.getById(Number(result.insertId), tx);
@@ -218,13 +233,23 @@ function createTreeEndpoints(ctx) {
 
     async updateByTreeId(treeId, fields, tx) {
       ensurePositiveInt("treeId", treeId);
+      if (Object.prototype.hasOwnProperty.call(fields, "treeSpecies")) {
+        ensureStringMax("treeSpecies", fields.treeSpecies, 255);
+      }
+      if (Object.prototype.hasOwnProperty.call(fields, "health") && fields.health !== null) {
+        assert(TREE_HEALTH_VALUES.has(fields.health), "health must be one of excellent, good, ok, bad, terrible");
+      }
       for (const field of Object.keys(TREE_DATA_NUMERIC_FIELDS)) {
         if (Object.prototype.hasOwnProperty.call(fields, field)) {
           ensureNumberOrNull(field, fields[field]);
         }
       }
 
-      const { updates, params } = buildUpdate(fields, TREE_DATA_NUMERIC_FIELDS);
+      const { updates, params } = buildUpdate(fields, {
+        treeSpecies: "tree_species",
+        health: "health",
+        ...TREE_DATA_NUMERIC_FIELDS
+      });
 
       const result = await run(runtimeExecutor(tx), `UPDATE tree_data SET ${updates.join(", ")} WHERE tree_id = ?`, [
         ...params,

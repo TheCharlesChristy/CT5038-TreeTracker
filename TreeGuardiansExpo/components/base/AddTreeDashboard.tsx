@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,6 +14,7 @@ import { AppInput } from './AppInput';
 import { AppText } from './AppText';
 import { TreeDetails } from '@/objects/TreeDetails';
 import type { MapCoordinate } from './MapComponent.types';
+import { TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
 import * as ImagePicker from 'expo-image-picker';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { ErrorMessageBox } from './ErrorMessageBox';
@@ -25,6 +26,7 @@ interface PlotDashboardProps {
   onCancel: () => void;
   onSelectManual: (details: TreeDetails) => void;
   onSelectDevice: (details: TreeDetails) => void;
+  initialDetails?: TreeDetails | null;
   selectedLocation: MapCoordinate | null;
   isSelectingOnMap: boolean;
   locationError?: string | null;
@@ -38,14 +40,17 @@ export default function PlotDashboard({
   onCancel,
   onSelectManual,
   onSelectDevice,
+  initialDetails = null,
   selectedLocation,
   isSelectingOnMap,
   locationError,
   isSubmitting = false,
 }: PlotDashboardProps) {
+  const [species, setSpecies] = useState('');
+  const [health, setHealth] = useState<TreeHealth>('ok');
+  const [wildlifeList, setWildlifeList] = useState<string[]>([]);
+  const [diseaseList, setDiseaseList] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
-  const [wildlife, setWildlife] = useState('');
-  const [disease, setDisease] = useState('');
   const [diameter, setDiameter] = useState('');
   const [height, setHeight] = useState('');
   const [circumference, setCircumference] = useState('');
@@ -61,6 +66,36 @@ export default function PlotDashboard({
   const { width } = useWindowDimensions();
   const isMobile = width < 900;
   const { showActionSheetWithOptions } = useActionSheet();
+
+  useEffect(() => {
+    setSpecies(initialDetails?.species ?? '');
+    setHealth(initialDetails?.health ?? 'ok');
+    setNotes(initialDetails?.notes ?? '');
+    setWildlifeList(
+      initialDetails?.wildlifeList ??
+      (initialDetails?.wildlife ? [initialDetails.wildlife] : [])
+    );
+    setDiseaseList(
+      initialDetails?.diseaseList ??
+      (initialDetails?.disease ? [initialDetails.disease] : [])
+    );
+    setDiameter(
+      initialDetails?.diameter === undefined || initialDetails.diameter === null
+        ? ''
+        : String(initialDetails.diameter)
+    );
+    setHeight(
+      initialDetails?.height === undefined || initialDetails.height === null
+        ? ''
+        : String(initialDetails.height)
+    );
+    setCircumference(
+      initialDetails?.circumference === undefined || initialDetails.circumference === null
+        ? ''
+        : String(initialDetails.circumference)
+    );
+    setPhotos(initialDetails?.photos ?? []);
+  }, [initialDetails]);
 
   const isNumeric = (value: string) => /^(\d+)?([.]\d*)?$/.test(value);
 
@@ -90,14 +125,39 @@ export default function PlotDashboard({
 
   const buildTreeDetails = (): TreeDetails => {
     return {
+      species: species.trim() || undefined,
+      health,
       notes: notes.trim() || undefined,
-      wildlife: wildlife.trim() || undefined,
-      disease: disease.trim() || undefined,
+      wildlifeList: wildlifeList
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0),
+      diseaseList: diseaseList
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0),
       diameter: diameter.trim() ? Number(diameter) : undefined,
       height: height.trim() ? Number(height) : undefined,
       circumference: circumference.trim() ? Number(circumference) : undefined,
       photos,
     };
+  };
+
+  const updateListItem = (
+    list: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number,
+    value: string
+  ) => {
+    const nextList = [...list];
+    nextList[index] = value;
+    setter(nextList);
+  };
+
+  const removeListItem = (
+    list: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number
+  ) => {
+    setter(list.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const locationSummary = useMemo(() => {
@@ -223,26 +283,91 @@ export default function PlotDashboard({
             <AppText style={styles.sectionTitle}>Observations</AppText>
 
             <AppInput
-              placeholder="Notes"
-              value={notes}
-              onChangeText={setNotes}
-              multiline
+              placeholder="Tree Species"
+              value={species}
+              onChangeText={setSpecies}
               style={styles.input}
             />
 
-            <AppInput
-              placeholder="Wildlife Seen"
-              value={wildlife}
-              onChangeText={setWildlife}
-              style={styles.input}
-            />
+            <TreeHealthSelect value={health} onChange={setHealth} />
 
-            <AppInput
-              placeholder="Disease"
-              value={disease}
-              onChangeText={setDisease}
-              style={styles.input}
-            />
+            <View style={styles.dynamicListSection}>
+              <View style={styles.dynamicListHeader}>
+                <AppText style={styles.dynamicListTitle}>Wildlife Seen</AppText>
+              </View>
+
+              {wildlifeList.length === 0 ? (
+                <AppText style={styles.emptyListText}>No wildlife added yet.</AppText>
+              ) : (
+                wildlifeList.map((entry, index) => (
+                  <View key={`wildlife-${index}`} style={styles.dynamicListRow}>
+                    <AppInput
+                      placeholder={`Wildlife ${index + 1}`}
+                      value={entry}
+                      onChangeText={(value) => updateListItem(wildlifeList, setWildlifeList, index, value)}
+                      containerStyle={styles.dynamicListInputContainer}
+                      style={styles.dynamicListInput}
+                    />
+                    <AppButton
+                      title="Remove"
+                      variant="primary"
+                      onPress={() => removeListItem(wildlifeList, setWildlifeList, index)}
+                      style={styles.removeActionWrap}
+                      buttonStyle={styles.removeActionButton}
+                      textStyle={styles.removeActionText}
+                    />
+                  </View>
+                ))
+              )}
+
+              <AppButton
+                title="Add Wildlife"
+                variant="outline"
+                onPress={() => setWildlifeList((current) => [...current, ''])}
+                style={styles.fullWidthActionWrap}
+                buttonStyle={styles.fullWidthActionButton}
+                textStyle={styles.inlineActionText}
+              />
+            </View>
+
+            <View style={styles.dynamicListSection}>
+              <View style={styles.dynamicListHeader}>
+                <AppText style={styles.dynamicListTitle}>Diseases</AppText>
+              </View>
+
+              {diseaseList.length === 0 ? (
+                <AppText style={styles.emptyListText}>No diseases added yet.</AppText>
+              ) : (
+                diseaseList.map((entry, index) => (
+                  <View key={`disease-${index}`} style={styles.dynamicListRow}>
+                    <AppInput
+                      placeholder={`Disease ${index + 1}`}
+                      value={entry}
+                      onChangeText={(value) => updateListItem(diseaseList, setDiseaseList, index, value)}
+                      containerStyle={styles.dynamicListInputContainer}
+                      style={styles.dynamicListInput}
+                    />
+                    <AppButton
+                      title="Remove"
+                      variant="primary"
+                      onPress={() => removeListItem(diseaseList, setDiseaseList, index)}
+                      style={styles.removeActionWrap}
+                      buttonStyle={styles.removeActionButton}
+                      textStyle={styles.removeActionText}
+                    />
+                  </View>
+                ))
+              )}
+
+              <AppButton
+                title="Add Disease"
+                variant="outline"
+                onPress={() => setDiseaseList((current) => [...current, ''])}
+                style={styles.fullWidthActionWrap}
+                buttonStyle={styles.fullWidthActionButton}
+                textStyle={styles.inlineActionText}
+              />
+            </View>
           </View>
 
           <View style={styles.section}>
@@ -363,6 +488,17 @@ export default function PlotDashboard({
                 ))}
               </View>
             ) : null}
+          </View>
+
+          <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>Notes</AppText>
+            <AppInput
+              placeholder="Additional notes"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              style={styles.input}
+            />
           </View>
 
           <View style={[styles.footer, isMobile && styles.footerMobile]}>
@@ -486,6 +622,103 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     color: Theme.Colours.textPrimary,
     marginBottom: 10,
+  },
+
+  dynamicListSection: {
+    marginTop: 8,
+  },
+
+  dynamicListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 8,
+  },
+
+  dynamicListTitle: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  inlineActionWrap: {
+    marginBottom: 0,
+  },
+
+  inlineActionButton: {
+    marginBottom: 0,
+    minHeight: 36,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+
+  inlineActionText: {
+    fontSize: 13,
+  },
+
+  fullWidthActionWrap: {
+    marginBottom: 0,
+  },
+
+  fullWidthActionButton: {
+    width: '100%',
+    marginBottom: 0,
+    minHeight: 42,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+
+  emptyListText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginBottom: 8,
+  },
+
+  dynamicListRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+
+  dynamicListInput: {
+    flex: 1,
+  },
+
+  dynamicListInputContainer: {
+    flex: 1,
+    marginBottom: 8,
+  },
+
+  removeActionWrap: {
+    width: 108,
+    alignSelf: 'stretch',
+    marginBottom: 8,
+  },
+
+  removeActionButton: {
+    flex: 1,
+    minHeight: 0,
+    height: '100%',
+    marginBottom: 0,
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 0,
+    backgroundColor: 'rgba(160, 28, 28, 0.58)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 214, 214, 0.42)',
+    borderTopColor: 'rgba(255, 240, 240, 0.68)',
+    shadowColor: '#220909',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  removeActionText: {
+    color: Theme.Colours.white,
+    fontSize: 13,
   },
 
   input: {

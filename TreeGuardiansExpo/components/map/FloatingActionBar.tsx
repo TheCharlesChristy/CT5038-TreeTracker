@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles';
@@ -22,36 +22,39 @@ export function FloatingActionBar({
   onAddTreePress,
   onDashboardPress,
 }: FloatingActionBarProps) {
+  const { width } = useWindowDimensions();
+  const compact = width < 500;
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={[styles.fab, searchActive && styles.fabActive]}
+        style={[styles.fab, compact && styles.fabCompact, searchActive && styles.fabActive]}
         onPress={onSearchPress}
         activeOpacity={0.8}
       >
         <MaterialCommunityIcons name="magnify" size={20} color="#fff" />
-        <AppText style={styles.fabLabel}>Search</AppText>
+        {!compact ? <AppText style={styles.fabLabel}>Search</AppText> : null}
       </TouchableOpacity>
 
       {!isGuest ? (
         <TouchableOpacity
-          style={[styles.fab, styles.fabLarge, addActive && styles.fabActive]}
+          style={[styles.fab, compact && styles.fabCompact, addActive && styles.fabActive]}
           onPress={onAddTreePress}
           activeOpacity={0.8}
         >
           <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-          <AppText style={styles.fabLabel}>Add</AppText>
+          {!compact ? <AppText style={styles.fabLabel}>Add</AppText> : null}
         </TouchableOpacity>
       ) : null}
 
       {!isGuest ? (
         <TouchableOpacity
-          style={[styles.fab, dashboardActive && styles.fabActive]}
+          style={[styles.fab, compact && styles.fabCompact, dashboardActive && styles.fabActive]}
           onPress={onDashboardPress}
           activeOpacity={0.8}
         >
           <MaterialCommunityIcons name="view-dashboard-outline" size={20} color="#fff" />
-          <AppText style={styles.fabLabel}>Dashboard</AppText>
+          {!compact ? <AppText style={styles.fabLabel}>Dashboard</AppText> : null}
         </TouchableOpacity>
       ) : null}
     </View>
@@ -66,17 +69,17 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 190,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-evenly',
   },
   fab: {
-    minWidth: 90,
+    width: 112,
     height: 56,
     borderRadius: 28,
     backgroundColor: 'rgba(18, 72, 32, 0.68)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.45)',
@@ -87,10 +90,9 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  fabLarge: {
-    minWidth: 100,
-    height: 62,
-    borderRadius: 31,
+  fabCompact: {
+    width: 56,
+    paddingHorizontal: 0,
   },
   fabActive: {
     backgroundColor: 'rgba(12, 44, 20, 0.82)',

@@ -2,6 +2,7 @@ import { buildApiUrl, ENDPOINTS } from '@/config/api';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 
 type ServerTreeItem = {
+  species?: string;
   notes?: string;
   wildlife?: string;
   disease?: string;
@@ -67,6 +68,7 @@ const isServerTreeItem = (
 };
 
 const normalizeTree = (treeItem: ServerTreeItem & { latitude: number | string; longitude: number | string }): Tree => ({
+  species: treeItem.species ?? undefined,
   notes: treeItem.notes ?? '',
   wildlife: treeItem.wildlife ?? undefined,
   disease: treeItem.disease ?? undefined,

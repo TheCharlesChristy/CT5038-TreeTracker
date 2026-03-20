@@ -60,8 +60,10 @@ export default function MainPage() {
     plotPointer,
     showDimOverlay,
     searchResults,
+    hasSearchFilters,
     healthyCount,
     treesNeedingAttention,
+    draftTreeDetails,
     selectedDraftLocation,
     isSelectingManualLocation,
     addValidationError,
@@ -81,6 +83,7 @@ export default function MainPage() {
     handleConfirmTreeAdd,
     handleCloseTreeDetails,
     handleSelectSearchResultTree,
+    clearSearchFilters,
     clearStatusMessage,
     getDistanceFromCenterKm,
   } = useTreeMapState();
@@ -89,6 +92,15 @@ export default function MainPage() {
     const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
     return <TreeMarkerIcon selected={selected} zoomLevel={zoom} />;
   }, [selectedTree?.id]);
+
+  const visibleTrees = hasSearchFilters ? searchResults : plottedTrees;
+  const activeFilterLabels = [
+    searchQuery.trim() ? `Query: ${searchQuery.trim()}` : null,
+    distanceFilterKm !== null ? `Distance: ${distanceFilterKm.toFixed(1)} km` : null,
+    healthFilter !== 'all'
+      ? `Health: ${healthFilter === 'healthy' ? 'Healthy' : 'Needs Attention'}`
+      : null,
+  ].filter((value): value is string => Boolean(value));
 
   const executeLogout = useCallback(async () => {
     clearLogoutTimer();
@@ -139,7 +151,7 @@ export default function MainPage() {
           <MapComponent
             style={StyleSheet.absoluteFillObject}
             isPlotting={mode === 'add' && isSelectingManualLocation}
-            plottedTrees={plottedTrees}
+            plottedTrees={visibleTrees}
             selectedLocation={selectedDraftLocation}
             onPlotPointerMove={handleMapPointerMove}
             onTreeClick={handleMapTreeClick}
@@ -180,6 +192,20 @@ export default function MainPage() {
             </AppText>
           </View>
 
+          {hasSearchFilters ? (
+            <View style={styles.activeFiltersCard}>
+              <View style={styles.activeFiltersHeader}>
+                <MaterialCommunityIcons name="filter-variant" size={14} color="#E9F3EA" />
+                <AppText style={styles.activeFiltersTitle}>Active Filters</AppText>
+              </View>
+              {activeFilterLabels.map((label) => (
+                <AppText key={label} style={styles.activeFiltersText}>
+                  {label}
+                </AppText>
+              ))}
+            </View>
+          ) : null}
+
           {mode === 'add' && isSelectingManualLocation && plotPointer ? (
             <View
               pointerEvents="none"
@@ -217,6 +243,7 @@ export default function MainPage() {
               onCancel={closeAllOverlays}
               onSelectManual={handleSelectManualPlacement}
               onSelectDevice={handleSelectDevicePlacement}
+              initialDetails={draftTreeDetails}
               selectedLocation={selectedDraftLocation}
               isSelectingOnMap={isSelectingManualLocation}
               locationError={addValidationError}
@@ -241,6 +268,7 @@ export default function MainPage() {
               onDistanceFilterKmChange={setDistanceFilterKm}
               searchResults={searchResults}
               onClose={closeAllOverlays}
+              onClearFilters={clearSearchFilters}
               onSelectTree={handleSelectSearchResultTree}
               getDistanceKm={getDistanceFromCenterKm}
             />
@@ -340,6 +368,42 @@ const styles = StyleSheet.create({
     ...Theme.Typography.caption,
     color: '#000',
     fontFamily: 'Poppins_600SemiBold',
+  },
+
+  activeFiltersCard: {
+    position: 'absolute',
+    top: 46,
+    alignSelf: 'center',
+    zIndex: 180,
+    maxWidth: 260,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(17, 43, 24, 0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 235, 223, 0.24)',
+  },
+
+  activeFiltersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+
+  activeFiltersTitle: {
+    ...Theme.Typography.caption,
+    color: '#E9F3EA',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+
+  activeFiltersText: {
+    ...Theme.Typography.caption,
+    color: '#F2F6F2',
+    fontSize: 11,
+    lineHeight: 14,
   },
 
   exitMapSelectionButton: {
@@ -797,20 +861,19 @@ const styles = StyleSheet.create({
 
   loadingPill: {
     position: 'absolute',
-    top: 76,
-    alignSelf: 'center',
+    left: 16,
+    bottom: 96,
     zIndex: 230,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 999,
-    backgroundColor: 'rgba(12, 19, 14, 0.84)',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
     gap: 8,
   },
 
   loadingText: {
     ...Theme.Typography.caption,
-    color: Theme.Colours.white,
+    color: '#E9EDE9',
+    fontSize: 11,
+    lineHeight: 14,
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

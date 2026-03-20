@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker/compose.local.yml"
 ENV_FILE="$ROOT_DIR/.env.docker"
 QUIET_MODE=0
+RESET_DATABASE=0
 LOG_PIDS=()
 
 print_usage() {
@@ -14,6 +15,7 @@ Usage:
 
 Options:
   -q, --quiet   Show mostly Expo output in terminal (full logs still go to logs/*.log)
+  --reset       Drop the configured local MySQL database before starting the stack
   -h, --help    Show this help
 EOF
 }
@@ -23,6 +25,10 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     -q|--quiet)
       QUIET_MODE=1
+      shift
+      ;;
+    --reset)
+      RESET_DATABASE=1
       shift
       ;;
     -h|--help)
@@ -39,6 +45,22 @@ done
 cd "$ROOT_DIR"
 
 mkdir -p "$ROOT_DIR/logs"
+
+compose() {
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
+read_env_value() {
+  local key="$1"
+  local default_value="${2:-}"
+  local value
+  value="$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d'=' -f2- || true)"
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+  echo "${value:-$default_value}"
+}
 
 ensure_log_permissions() {
   local must_fix=0
@@ -69,9 +91,9 @@ start_container_log_streams() {
     local log_file="$ROOT_DIR/logs/${service}.log"
     : > "$log_file" 2>/dev/null || true
     echo "[local_plesk_stack] streaming logs for '$service' -> ${log_file#$ROOT_DIR/}"
-    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs -f --no-color "$service" >>"$log_file" 2>&1 &
+    compose logs -f --no-color "$service" >>"$log_file" 2>&1 &
     LOG_PIDS+=("$!")
-  done < <(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --services)
+  done < <(compose config --services)
 }
 
 stop_container_log_streams() {
@@ -101,6 +123,37 @@ announce_expo_link() {
   LOG_PIDS+=("$!")
 }
 
+wait_for_mysql() {
+  local root_password="$1"
+  local attempt
+
+  for attempt in $(seq 1 60); do
+    if compose exec -T mysql mysqladmin ping -h 127.0.0.1 -uroot "-p${root_password}" --silent >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "[local_plesk_stack] mysql did not become ready in time"
+  return 1
+}
+
+reset_local_database() {
+  local database_name="$1"
+  local root_password="$2"
+
+  if [[ ! "$database_name" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "[local_plesk_stack] refusing to reset unsafe database name: $database_name"
+    exit 1
+  fi
+
+  echo "[local_plesk_stack] resetting local database '$database_name'"
+  compose up -d mysql >/dev/null
+  wait_for_mysql "$root_password"
+  compose exec -T mysql mysql -uroot "-p${root_password}" \
+    -e "DROP DATABASE IF EXISTS \`$database_name\`;"
+}
+
 if [ ! -e /dev/kvm ]; then
   echo "Error: /dev/kvm is not available on this host."
   echo "Android emulator service requires KVM; enable virtualization and KVM access."
@@ -121,12 +174,11 @@ if [ ! -f "$ROOT_DIR/server/.env" ] && [ -f "$ROOT_DIR/server/.env.example" ]; t
   echo "Created server/.env from server/.env.example"
 fi
 
-SERVER_PORT_VALUE="$(grep -E '^SERVER_PORT=' "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d'=' -f2- || true)"
-EXPO_PORT_VALUE="$(grep -E '^EXPO_DEV_SERVER_PORT=' "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d'=' -f2- || true)"
-EXPO_HOST_MODE_VALUE="$(grep -E '^EXPO_HOST_MODE=' "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d'=' -f2- || true)"
-SERVER_PORT_VALUE="${SERVER_PORT_VALUE:-4000}"
-EXPO_PORT_VALUE="${EXPO_PORT_VALUE:-8081}"
-EXPO_HOST_MODE_VALUE="${EXPO_HOST_MODE_VALUE:-tunnel}"
+SERVER_PORT_VALUE="$(read_env_value "SERVER_PORT" "4000")"
+EXPO_PORT_VALUE="$(read_env_value "EXPO_DEV_SERVER_PORT" "8081")"
+EXPO_HOST_MODE_VALUE="$(read_env_value "EXPO_HOST_MODE" "tunnel")"
+MYSQL_DATABASE_VALUE="$(read_env_value "MYSQL_DATABASE" "treetracker_dev")"
+MYSQL_ROOT_PASSWORD_VALUE="$(read_env_value "MYSQL_ROOT_PASSWORD" "root")"
 
 echo "[local_plesk_stack] web:  http://localhost:${SERVER_PORT_VALUE}/"
 echo "[local_plesk_stack] expo: http://localhost:${EXPO_PORT_VALUE}/"
@@ -136,21 +188,25 @@ echo "[local_plesk_stack] logs: $ROOT_DIR/logs"
 
 cleanup() {
   stop_container_log_streams
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down --remove-orphans >/dev/null 2>&1 || true
+  compose down --remove-orphans >/dev/null 2>&1 || true
 }
 
 trap cleanup EXIT INT TERM
+
+if [ "$RESET_DATABASE" -eq 1 ]; then
+  reset_local_database "$MYSQL_DATABASE_VALUE" "$MYSQL_ROOT_PASSWORD_VALUE"
+fi
 
 start_container_log_streams
 announce_expo_link
 
 if [ "$QUIET_MODE" -eq 1 ]; then
   # Build first in quiet mode to avoid dumping layer logs to terminal.
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build --quiet "${COMPOSE_ARGS[@]}"
+  compose build --quiet "${COMPOSE_ARGS[@]}"
 
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up --no-build --remove-orphans --abort-on-container-failure \
+  compose up --no-build --remove-orphans --abort-on-container-failure \
     --no-attach mysql --no-attach server --no-attach expo-web-build --no-attach android-emulator "${COMPOSE_ARGS[@]}"
 else
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up --build --remove-orphans --abort-on-container-failure \
+  compose up --build --remove-orphans --abort-on-container-failure \
     --no-attach mysql --no-attach server --no-attach expo-web-build "${COMPOSE_ARGS[@]}"
 fi

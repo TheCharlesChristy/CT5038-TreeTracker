@@ -14,6 +14,7 @@ type StatItem = {
   unit?: string;
   tone: StatTone;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  featured?: boolean;
 };
 
 function formatStatValue(value: number | string | undefined, unit?: string) {
@@ -67,6 +68,14 @@ function getToneStyles(tone: StatTone) {
 
 export function TreeDataStats({ tree }: { tree: Tree }) {
   const items = useMemo<StatItem[]>(() => ([
+    {
+      key: 'species',
+      label: 'Tree Species',
+      value: tree.species,
+      tone: 'measurement',
+      icon: 'pine-tree',
+      featured: true,
+    },
     {
       key: 'height',
       label: 'Tree Height',
@@ -153,18 +162,43 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
       value: tree.health ? tree.health.replace(/^./, (letter) => letter.toUpperCase()) : undefined,
       tone: 'health',
       icon: 'heart-pulse',
+      featured: true,
     },
   ]), [tree]);
+
+  const featuredItems = items.filter((item) => item.featured);
+  const gridItems = items.filter((item) => !item.featured);
 
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <AppText style={styles.sectionTitle}>Tree Data</AppText>
-        <AppText style={styles.sectionMeta}>Schema-backed stats</AppText>
+      </View>
+
+      <View style={styles.featuredStack}>
+        {featuredItems.map((item) => {
+          const tone = getToneStyles(item.tone);
+
+          return (
+            <View key={item.key} style={[styles.featuredCard, tone.card]}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconWrap, tone.iconWrap]}>
+                  <MaterialCommunityIcons name={item.icon} size={16} color={tone.iconColor} />
+                </View>
+                <View style={[styles.badge, tone.badge]}>
+                  <AppText style={[styles.badgeText, tone.badgeText]}>{tone.badgeLabel}</AppText>
+                </View>
+              </View>
+
+              <AppText style={styles.label}>{item.label}</AppText>
+              <AppText style={[styles.value, tone.value]}>{formatStatValue(item.value, item.unit)}</AppText>
+            </View>
+          );
+        })}
       </View>
 
       <View style={styles.grid}>
-        {items.map((item) => {
+        {gridItems.map((item) => {
           const tone = getToneStyles(item.tone);
 
           return (
@@ -217,6 +251,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginHorizontal: -6,
+  },
+
+  featuredStack: {
+    gap: 12,
+  },
+
+  featuredCard: {
+    width: '100%',
   },
 
   card: {

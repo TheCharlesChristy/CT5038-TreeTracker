@@ -310,7 +310,12 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
         callLog.treeDataCreate += 1;
         return { id: 1 };
       },
-      getByTreeId: async () => ({ trunk_diameter: 15, tree_height: 10, trunk_circumference: 30 })
+      getByTreeId: async () => ({
+        tree_species: "Oak",
+        trunk_diameter: 15,
+        tree_height: 10,
+        trunk_circumference: 30
+      })
     },
     comments: {
       create: async () => {
@@ -382,6 +387,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
       body: JSON.stringify({
         latitude: 51.9,
         longitude: -2.1,
+        species: "Oak",
         notes: "healthy",
         wildlife: "bird",
         disease: "none",
@@ -405,11 +411,13 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     assert.equal(trees.status, 200);
     assert.equal(Array.isArray(trees.body), true);
     assert.equal(trees.body[0].id, 77);
+    assert.equal(trees.body[0].species, "Oak");
     assert.deepEqual(trees.body[0].photos, ["https://example.com/photo.jpg"]);
 
     const details = await sendRequest({ port, path: "/api/get-tree-details?tree_id=77" });
     assert.equal(details.status, 200);
     assert.equal(details.body.id, 77);
+    assert.equal(details.body.tree_species, "Oak");
     assert.equal(details.body.trunk_diameter, 15);
   } finally {
     await httpServer.stop();
