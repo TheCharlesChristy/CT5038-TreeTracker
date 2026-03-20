@@ -2,6 +2,7 @@ const TABLE_META = Object.freeze({
   users: { orderBy: "id" },
   user_passwords: { orderBy: "user_id" },
   admins: { orderBy: "user_id" },
+  guardian_users: { orderBy: "user_id" },
   user_sessions: { orderBy: "id" },
   trees: { orderBy: "id" },
   tree_creation_data: { orderBy: "id" },

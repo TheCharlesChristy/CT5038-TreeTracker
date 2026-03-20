@@ -21,6 +21,7 @@ const REQUIRED_TABLES = [
   "users",
   "user_passwords",
   "admins",
+  "guardian_users",
   "user_sessions",
   "trees",
   "tree_creation_data",

@@ -102,6 +102,7 @@ async function ensureDefaultDevUsers() {
       guardianUser = await db.users.create({ username: "guardian" }, tx);
     }
     await db.userPasswords.setForUser(guardianUser.id, defaultPasswordHash, tx);
+    await db.guardianUsers.grant(guardianUser.id, tx);
   });
 
   console.log('[server] ensured default dev users: "admin" and "guardian"');

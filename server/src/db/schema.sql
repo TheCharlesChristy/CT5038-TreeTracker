@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS admins (
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
+CREATE TABLE IF NOT EXISTS guardian_users (
+    user_id bigint unsigned PRIMARY KEY,
+    CONSTRAINT fk_guardian_users_user FOREIGN KEY (user_id)
+    REFERENCES users (id) ON DELETE CASCADE
+) engine = InnoDB;
+
 CREATE TABLE IF NOT EXISTS user_sessions (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     user_id bigint unsigned NOT NULL,

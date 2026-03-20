@@ -6,6 +6,7 @@ const EXPECTED_ENDPOINTS = {
   users: ["create", "getById", "getByUsername", "list", "updateById", "deleteById", "existsById", "existsByUsername"],
   userPasswords: ["setForUser", "getHashByUserId", "deleteForUser", "existsForUser"],
   admins: ["grant", "revoke", "isAdmin", "list"],
+  guardianUsers: ["grant", "revoke", "isGuardian", "list"],
   userSessions: [
     "create",
     "getById",
@@ -111,6 +112,7 @@ test("all representative endpoint operations fail with DbError before init", asy
     () => db.users.list(),
     () => db.userPasswords.existsForUser(1),
     () => db.admins.list(),
+    () => db.guardianUsers.list(),
     () => db.userSessions.listByUserId(1),
     () => db.trees.list(),
     () => db.treeCreationData.list(),
