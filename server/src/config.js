@@ -31,9 +31,11 @@ function loadConfig() {
   const root = path.resolve(__dirname, "..", "..");
   const startExpo = parseBool("START_EXPO", process.env.NODE_ENV !== "production");
   const expoProjectPath = process.env.EXPO_PROJECT_PATH || path.join(root, "TreeGuardiansExpo");
+  const seedDevUsersEnabled = parseBool("SEED_DEV_USERS", false);
   const config = {
     nodeEnv: process.env.NODE_ENV || "development",
     port: parseNumber("PORT", 4000),
+    jwtSecret: required("JWT_SECRET"),
     db: {
       host: required("DB_HOST"),
       port: parseNumber("DB_PORT", 3306),
@@ -53,6 +55,8 @@ function loadConfig() {
     expoStaticEnabled: parseBool("EXPO_STATIC_ENABLED", !startExpo),
     expoWebDistPath: process.env.EXPO_WEB_DIST_PATH || path.join(expoProjectPath, "dist"),
     expoAutoPrepare: parseBool("EXPO_AUTO_PREPARE", !startExpo),
+    seedDevUsersEnabled,
+    seedDevUsersPassword: seedDevUsersEnabled ? required("SEED_DEV_USERS_PASSWORD") : null,
     dbTestBenchEnabled: process.env.NODE_ENV === "production"
       ? false
       : parseBool("DB_TEST_BENCH_ENABLED", false),
@@ -70,6 +74,8 @@ function loadConfig() {
     expoStaticEnabled: config.expoStaticEnabled,
     expoWebDistPath: config.expoWebDistPath,
     expoAutoPrepare: config.expoAutoPrepare,
+    jwtSecretConfigured: Boolean(config.jwtSecret),
+    seedDevUsersEnabled: config.seedDevUsersEnabled,
     dbTestBenchEnabled: config.dbTestBenchEnabled,
     db: sanitizeForLog({
       host: config.db.host,

@@ -18,15 +18,16 @@ export const AppContainer = ({
   style,
   noPadding,
 }: AppContainerProps) => {
+  const containerPaddingStyle = noPadding ? null : styles.padding;
   const content = scrollable ? (
     <ScrollView
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, containerPaddingStyle]}
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={styles.inner}>{children}</View>
+    <View style={[styles.inner, containerPaddingStyle]}>{children}</View>
   );
 
   if (backgroundImage) {
@@ -47,7 +48,7 @@ export const AppContainer = ({
   }
 
   return (
-    <SafeAreaView style={[styles.container, !noPadding && { padding: Theme.Spacing.medium }, style]}>
+    <SafeAreaView style={[styles.container, style]}>
       {content}
     </SafeAreaView>
   );
@@ -76,7 +77,6 @@ const styles = StyleSheet.create({
 
   containerTransparent: {
     flex: 1,
-    padding: Theme.Spacing.medium,
   },
 
   scrollContent: {

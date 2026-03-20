@@ -33,7 +33,7 @@ test("tableNameFromCreateStatement supports quoted and unquoted identifiers", ()
 test("buildSchemaMigrations yields stable ordered versions", () => {
   const migrations = __private.buildSchemaMigrations(["CREATE TABLE a (id int)", "CREATE TABLE b (id int)"]);
   assert.deepEqual(migrations, [
-    { version: "schema-0001", statement: "CREATE TABLE a (id int)" },
-    { version: "schema-0002", statement: "CREATE TABLE b (id int)" }
+    { version: "schema-0001", statement: "CREATE TABLE a (id int)", tableName: "a" },
+    { version: "schema-0002", statement: "CREATE TABLE b (id int)", tableName: "b" }
   ]);
 });

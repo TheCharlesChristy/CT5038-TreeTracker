@@ -103,8 +103,21 @@ export function useTreeMapState() {
       setIsLoadingTrees(true);
       const trees = await fetchTrees();
       setPlottedTrees(trees);
+      setStatusMessage((current) => current?.title === 'Tree Sync Problem' ? null : current);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected tree loading error.';
       console.error('Tree fetch error:', error);
+      setStatusMessage((current) => {
+        if (current?.variant === 'success') {
+          return current;
+        }
+        return {
+          title: 'Tree Sync Problem',
+          message: `We could not refresh trees from the server. ${message}`,
+          variant: 'error',
+          createdAt: Date.now(),
+        };
+      });
     } finally {
       setIsLoadingTrees(false);
     }

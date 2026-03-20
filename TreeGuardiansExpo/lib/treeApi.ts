@@ -1,5 +1,6 @@
 import { buildApiUrl, ENDPOINTS } from '@/config/api';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
+import { getAccessToken } from '@/utilities/authHelper';
 
 type ServerTreeItem = {
   species?: string;
@@ -109,6 +110,10 @@ async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
   if (!photos || photos.length === 0) {
     return;
   }
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw new Error('Authentication is required to upload tree photos.');
+  }
 
   const formData = new FormData();
 
@@ -138,6 +143,9 @@ async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
 
   const response = await fetch(buildApiUrl(`trees/${treeId}/photos`), {
     method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: formData,
   });
 
@@ -156,9 +164,17 @@ async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
 }
 
 export async function addTreeData(tree: TreeDetails): Promise<void> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw new Error('Authentication is required to add a tree.');
+  }
+
   const response = await fetch(buildApiUrl(ENDPOINTS.ADD_TREE_DATA), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify(tree),
   });
 

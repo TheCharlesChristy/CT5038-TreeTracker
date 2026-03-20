@@ -31,19 +31,7 @@ function getUploadPublicBase(req, explicitBase) {
   if (explicitBase) {
     return explicitBase.replace(/\/+$/, "");
   }
-
-  const host = String(req.headers.host || "").trim();
-  if (!host) {
-    return "/uploads";
-  }
-
-  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
-  const requestProtocol =
-    forwardedProto ||
-    req.protocol ||
-    (req.socket && req.socket.encrypted ? "https" : "http");
-  const protocol = requestProtocol || "http";
-  return `${protocol}://${host}/uploads`;
+  return "/uploads";
 }
 
 function requireJson(req) {

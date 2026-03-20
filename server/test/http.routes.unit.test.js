@@ -6,6 +6,7 @@ const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
 const { createHttpServer } = require("../src/http");
+const { signJwt } = require("../src/routes/api/utils/security");
 
 function createDbStub(health = { ready: true }) {
   const deletedTokens = [];
@@ -15,6 +16,9 @@ function createDbStub(health = { ready: true }) {
     health: async () => health,
     trees: {
       list: async () => ["ok"]
+    },
+    users: {
+      getById: async (id) => (id === 1 ? { id: 1, username: "tester", email: "tester@example.com" } : null)
     },
     userSessions: {
       deleteByToken: async (sessionToken) => {
@@ -144,6 +148,35 @@ test("auth logout route deletes the refresh-token session", async () => {
     assert.equal(response.body.message, "Logout successful");
     assert.deepEqual(db.deletedTokens, [refreshToken]);
   } finally {
+    await httpServer.stop();
+  }
+});
+
+test("tree creation requires an authenticated user", async () => {
+  const previousSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = "unit-test-secret";
+
+  const httpServer = createHttpServer({ port: 0, db: createDbStub() });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+
+  try {
+    const response = await sendRequest({
+      port,
+      method: "POST",
+      path: "/api/trees",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ latitude: 51.9, longitude: -2.1 })
+    });
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.code, "AuthError");
+  } finally {
+    delete process.env.JWT_SECRET;
+    if (previousSecret !== undefined) {
+      process.env.JWT_SECRET = previousSecret;
+    }
     await httpServer.stop();
   }
 });
@@ -278,6 +311,8 @@ test("unmatched GET routes serve the exported Expo web build when enabled", asyn
 });
 
 test("legacy /api routes expose old frontend-compatible endpoints", async () => {
+  const previousSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = "unit-test-secret";
   const callLog = {
     treesCreate: 0,
     creationDataCreate: 0,
@@ -287,6 +322,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     wildlifeCreate: 0,
     diseaseCreate: 0
   };
+  const accessToken = signJwt({ userId: 2, username: "user" }, process.env.JWT_SECRET, 15 * 60);
 
   const db = {
     health: async () => ({ ready: true }),
@@ -358,7 +394,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
       create: async () => ({ id: 2, username: "user", email: "user@example.com" }),
       getByUsername: async () => null,
       getByEmail: async () => null,
-      getById: async () => null
+      getById: async (id) => (id === 2 ? { id: 2, username: "user", email: "user@example.com" } : null)
     },
     userPasswords: {
       setForUser: async () => ({ userId: 2 }),
@@ -383,7 +419,10 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
       port,
       method: "POST",
       path: "/api/add-tree-data",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${accessToken}`
+      },
       body: JSON.stringify({
         latitude: 51.9,
         longitude: -2.1,
@@ -402,7 +441,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     assert.equal(callLog.treesCreate, 1);
     assert.equal(callLog.creationDataCreate, 1);
     assert.equal(callLog.treeDataCreate, 1);
-    assert.equal(callLog.commentsCreate, 1);
+    assert.equal(callLog.commentsCreate, 3);
     assert.equal(callLog.seenCreate, 1);
     assert.equal(callLog.wildlifeCreate, 1);
     assert.equal(callLog.diseaseCreate, 1);
@@ -420,6 +459,10 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     assert.equal(details.body.tree_species, "Oak");
     assert.equal(details.body.trunk_diameter, 15);
   } finally {
+    delete process.env.JWT_SECRET;
+    if (previousSecret !== undefined) {
+      process.env.JWT_SECRET = previousSecret;
+    }
     await httpServer.stop();
   }
 });

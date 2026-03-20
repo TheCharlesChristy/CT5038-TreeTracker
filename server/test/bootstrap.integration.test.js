@@ -19,6 +19,9 @@ const ENV_KEYS = [
   "DB_SLOW_QUERY_MS",
   "DB_ALLOW_CREATE_DATABASE",
   "DB_SCHEMA_PATH",
+  "JWT_SECRET",
+  "SEED_DEV_USERS",
+  "SEED_DEV_USERS_PASSWORD",
   "START_EXPO",
   "EXPO_PROJECT_PATH",
   "EXPO_DEV_SERVER_PORT",
@@ -76,6 +79,7 @@ test("bootstrap loads env and initializes the database when create-if-missing is
       "DB_SLOW_QUERY_MS=500",
       "DB_ALLOW_CREATE_DATABASE=true",
       `DB_SCHEMA_PATH=${schemaPath}`,
+      "JWT_SECRET=integration-test-secret",
       "START_EXPO=false",
       "EXPO_STATIC_ENABLED=false",
       "EXPO_AUTO_PREPARE=false"

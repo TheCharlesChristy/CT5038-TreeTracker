@@ -24,8 +24,6 @@ export function DashboardPanel({
   onLogout,
   isLoggingOut = false,
 }: DashboardPanelProps) {
-  console.log('[DashboardPanel] received userRole:', userRole);
-
   return (
     <View style={styles.dashboardWrap}>
       <View style={styles.dashboardPanel}>
@@ -78,7 +76,7 @@ export function DashboardPanel({
               variant="secondary"
               onPress={() => {
                 onClose();
-                Alert.alert('My Trees', 'My Trees is ready to connect. This should show a popup, must not redirect to a new page.');
+                router.push('/(protected)/myTrees' as never);
               }}
               style={styles.dashboardActionButton}
             />

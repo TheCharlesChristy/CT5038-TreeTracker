@@ -1,14 +1,40 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
-import { getSessionUser } from '@/lib/session';
+import { useSessionUser } from '@/lib/session';
 
 export default function MyProfilePage() {
-	const user = getSessionUser();
+	const { user, isLoading } = useSessionUser();
+
+	if (isLoading) {
+		return (
+			<AppContainer>
+				<View style={styles.loadingRow}>
+					<ActivityIndicator color={Theme.Colours.primary} />
+					<AppText style={styles.body}>Loading profile...</AppText>
+				</View>
+			</AppContainer>
+		);
+	}
+
+	if (!user) {
+		return (
+			<AppContainer>
+				<View style={styles.topBar}>
+					<NavigationButton onPress={() => router.push('/mainPage')}>Back to Map</NavigationButton>
+				</View>
+				<AppText variant="title" style={styles.title}>Sign In Required</AppText>
+				<AppText style={styles.subtitle}>
+					Sign in to view your profile details.
+				</AppText>
+				<AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
+			</AppContainer>
+		);
+	}
 
 	return (
 		<AppContainer>
@@ -23,7 +49,8 @@ export default function MyProfilePage() {
 
 			<View style={styles.card}>
 				<AppText variant="subtitle" style={styles.sectionTitle}>Account</AppText>
-				<AppText style={styles.body}>Name: {user.name}</AppText>
+				<AppText style={styles.body}>Username: {user.username}</AppText>
+				<AppText style={styles.body}>Email: {user.email ?? 'Not provided'}</AppText>
 				<AppText style={styles.body}>Role: {user.role}</AppText>
 				<AppText style={styles.body}>User ID: {user.id}</AppText>
 			</View>
@@ -73,6 +100,12 @@ const styles = StyleSheet.create({
 	body: {
 		color: Theme.Colours.textMuted,
 		marginBottom: Theme.Spacing.extraSmall,
+	},
+	loadingRow: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: Theme.Spacing.small,
 	},
 	actions: {
 		marginTop: Theme.Spacing.large,

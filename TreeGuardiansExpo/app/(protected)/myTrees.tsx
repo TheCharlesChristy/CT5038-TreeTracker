@@ -7,18 +7,18 @@ import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { Tree } from '@/objects/TreeDetails';
-import { canAccessMyTrees, getSessionUser } from '@/lib/session';
+import { canAccessMyTrees, useSessionUser } from '@/lib/session';
 import { fetchTrees } from '@/lib/treeApi';
 
 export default function MyTreesPage() {
-	const user = getSessionUser();
-	const authorized = canAccessMyTrees(user.role);
+	const { user, isLoading: isLoadingUser } = useSessionUser();
+	const authorized = canAccessMyTrees(user?.role);
 	const [trees, setTrees] = useState<Tree[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (!authorized) {
+		if (isLoadingUser || !authorized) {
 			return;
 		}
 
@@ -38,7 +38,7 @@ export default function MyTreesPage() {
 		};
 
 		loadTrees();
-	}, [authorized]);
+	}, [authorized, isLoadingUser]);
 
 	const treeSummary = useMemo(() => {
 		const needsAttention = trees.filter((tree) => Boolean(tree.disease && tree.disease.trim().length > 0)).length;
@@ -49,6 +49,17 @@ export default function MyTreesPage() {
 		};
 	}, [trees]);
 
+	if (isLoadingUser) {
+		return (
+			<AppContainer>
+				<View style={styles.loadingRow}>
+					<ActivityIndicator color={Theme.Colours.primary} />
+					<AppText style={styles.loadingText}>Loading session...</AppText>
+				</View>
+			</AppContainer>
+		);
+	}
+
 	if (!authorized) {
 		return (
 			<AppContainer>
@@ -57,7 +68,7 @@ export default function MyTreesPage() {
 				</View>
 				<AppText variant="title" style={styles.title}>Access Restricted</AppText>
 				<AppText style={styles.subtitle}>
-					Your account role ({user.role}) does not currently include the My Trees dashboard.
+					Your account role ({user?.role ?? 'guest'}) does not currently include the My Trees dashboard.
 				</AppText>
 				<AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
 			</AppContainer>

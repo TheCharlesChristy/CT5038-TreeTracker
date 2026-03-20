@@ -81,7 +81,6 @@ function rewriteLocalhostForNative(value: string): string {
 
 export function resolveApiBaseUrl(): string {
   const windowOrigin = getWindowOrigin();
-  console.log("[resolveApiBaseUrl] windowOrigin:", windowOrigin);
   if (windowOrigin) {
     const isLocalhost =
       windowOrigin.startsWith("http://localhost:") ||
@@ -108,13 +107,11 @@ export function resolveApiBaseUrl(): string {
   }
 
   const envBase = process.env.EXPO_PUBLIC_API_BASE_URL;
-  console.log("[resolveApiBaseUrl] envBase:", envBase);
   if (typeof envBase === "string" && envBase.trim()) {
     return normalizeApiBase(rewriteLocalhostForNative(envBase));
   }
 
   const envOrigin = process.env.EXPO_PUBLIC_API_ORIGIN;
-  console.log("[resolveApiBaseUrl] envOrigin:", envOrigin);
   if (typeof envOrigin === "string" && envOrigin.trim()) {
     const origin = normalizeOrigin(rewriteLocalhostForNative(envOrigin));
     return `${origin}/api`;
@@ -144,7 +141,7 @@ export const ENDPOINTS = {
   TREES: "trees",
   AUTH_LOGIN: "auth/login",
   AUTH_REGISTER: "auth/register",
-  VALIDATE_SESSION: "validate-session",
+  VALIDATE_SESSION: "users/me",
   LOGOUT: "auth/logout",
   USERS_ME: "users/me"
 } as const;

@@ -3,34 +3,12 @@ const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { requireJson } = require("./utils/http");
 const { hashPassword, randomHex64, signJwt, verifyPassword } = require("./utils/security");
+const { requireJwtSecret, resolveUserRole } = require("./utils/auth");
 
 const logger = createLogger("routes.api.auth");
 
 function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.auth", extra) : logger.child(extra);
-}
-
-async function resolveUserRole(db, userId, tx) {
-  if (db.users && typeof db.users.getRoleById === "function") {
-    return db.users.getRoleById(userId, tx);
-  }
-
-  const [isAdmin, isGuardian] = await Promise.all([
-    db.admins && typeof db.admins.isAdmin === "function" ? db.admins.isAdmin(userId, tx) : false,
-    db.guardianUsers && typeof db.guardianUsers.isGuardian === "function"
-      ? db.guardianUsers.isGuardian(userId, tx)
-      : false
-  ]);
-
-  if (isAdmin) {
-    return "admin";
-  }
-
-  if (isGuardian) {
-    return "guardian";
-  }
-
-  return "registered_user";
 }
 
 function createAuthRoute({ db }) {
@@ -67,11 +45,7 @@ function createAuthRoute({ db }) {
       return;
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      routeLog.error("configuration.missing", { key: "JWT_SECRET" });
-      throw new Error("Missing required env var JWT_SECRET");
-    }
+    const jwtSecret = requireJwtSecret();
 
     routeLog.info("registration.attempt", {
       username,
@@ -168,11 +142,7 @@ function createAuthRoute({ db }) {
       return;
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      routeLog.error("configuration.missing", { key: "JWT_SECRET" });
-      throw new Error("Missing required env var JWT_SECRET");
-    }
+    const jwtSecret = requireJwtSecret();
 
     routeLog.info("login.lookup", {
       authType: usernameOrEmail.includes("@") ? "email" : "username"

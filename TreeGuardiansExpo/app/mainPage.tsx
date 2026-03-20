@@ -36,8 +36,6 @@ export default function MainPage() {
 
   useEffect(() => {
     getCurrentUser().then((user) => {
-      console.log('[MainPage] current user from auth storage:', user);
-      console.log('[MainPage] normalized dashboard role:', normalizeUserRole(user?.role));
       setLoggedInUsername(user?.username ?? null);
       setLoggedInUserRole(normalizeUserRole(user?.role));
     });

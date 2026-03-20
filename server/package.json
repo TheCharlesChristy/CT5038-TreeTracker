@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
-  "main": "bootstrap.js",
+  "main": "server.js",
   "engines": {
-    "node": "16.20.2"
+    "node": "20.20.1"
   },
   "scripts": {
-    "dev": "node bootstrap.js",
-    "dev:watch": "nodemon bootstrap.js",
-    "start": "node bootstrap.js",
+    "dev": "node server.js",
+    "dev:watch": "nodemon server.js",
+    "start": "node server.js",
     "lint": "npm run db-lock:check",
     "db-lock:check": "node scripts/enforce-db-lock.js",
     "test": "node --test",

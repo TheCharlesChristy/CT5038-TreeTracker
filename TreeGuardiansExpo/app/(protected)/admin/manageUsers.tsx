@@ -1,27 +1,38 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
-import { canAccessManageUsers, getSessionUser } from '@/lib/session';
+import { canAccessManageUsers, useSessionUser } from '@/lib/session';
 
 type UserSummary = {
 	id: number;
 	name: string;
-	role: 'user' | 'guardian' | 'admin';
+	role: 'registered_user' | 'guardian' | 'admin';
 };
 
 const PLACEHOLDER_USERS: UserSummary[] = [
 	{ id: 1, name: 'Alice', role: 'admin' },
 	{ id: 2, name: 'Jordan', role: 'guardian' },
-	{ id: 3, name: 'Casey', role: 'user' },
+	{ id: 3, name: 'Casey', role: 'registered_user' },
 ];
 
 export default function ManageUsersPage() {
-	const user = getSessionUser();
-	const authorized = canAccessManageUsers(user.role);
+	const { user, isLoading } = useSessionUser();
+	const authorized = canAccessManageUsers(user?.role);
+
+	if (isLoading) {
+		return (
+			<AppContainer>
+				<View style={styles.loadingRow}>
+					<ActivityIndicator color={Theme.Colours.primary} />
+					<AppText style={styles.subtitle}>Loading admin access...</AppText>
+				</View>
+			</AppContainer>
+		);
+	}
 
 	if (!authorized) {
 		return (
@@ -31,7 +42,7 @@ export default function ManageUsersPage() {
 				</View>
 				<AppText variant="title" style={styles.title}>Access Restricted</AppText>
 				<AppText style={styles.subtitle}>
-					Your account role ({user.role}) does not have permission to manage users.
+					Your account role ({user?.role ?? 'guest'}) does not have permission to manage users.
 				</AppText>
 				<AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
 			</AppContainer>
@@ -102,6 +113,12 @@ const styles = StyleSheet.create({
 	userMeta: {
 		color: Theme.Colours.textMuted,
 		marginTop: 3,
+	},
+	loadingRow: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: Theme.Spacing.small,
 	},
 	actions: {
 		marginTop: Theme.Spacing.large,

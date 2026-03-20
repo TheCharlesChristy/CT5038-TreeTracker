@@ -98,8 +98,8 @@ async function startExpo(config) {
   return child;
 }
 
-async function ensureDefaultDevUsers() {
-  const defaultPasswordHash = await hashPassword("Password");
+async function ensureDefaultDevUsers(defaultPassword) {
+  const defaultPasswordHash = await hashPassword(defaultPassword);
 
   await db.transaction(async (tx) => {
     let adminUser = await db.users.getByUsername("admin", tx);
@@ -131,11 +131,14 @@ async function bootstrap({ exitOnShutdown = false } = {}) {
     startExpo: config.startExpo,
     expoProxyEnabled: config.expoProxyEnabled,
     expoStaticEnabled: config.expoStaticEnabled,
+    seedDevUsersEnabled: config.seedDevUsersEnabled,
     dbTestBenchEnabled: config.dbTestBenchEnabled
   });
   await prepareExpoWeb(config);
   await db.init(config.db);
-  await ensureDefaultDevUsers();
+  if (config.seedDevUsersEnabled) {
+    await ensureDefaultDevUsers(config.seedDevUsersPassword);
+  }
 
   const http = createHttpServer({
     port: config.port,

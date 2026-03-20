@@ -2,6 +2,7 @@ const express = require("express");
 const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { parsePositiveInt, parseListParams, requireJson } = require("./utils/http");
+const { requireAuthenticatedUser } = require("./utils/auth");
 
 const DEFAULT_TREE_DATA = {
   treeSpecies: "Unknown",
@@ -130,9 +131,9 @@ function createTreesRoute({ db }) {
     routeLog.info("tree.create.begin", {
       latitude,
       longitude,
-      creatorUserIdProvided: req.body.creatorUserId !== undefined,
       notesPresent: Boolean(req.body.notes)
     });
+    const auth = await requireAuthenticatedUser({ req, db, routeLog });
 
     const treeDataFields = normalizeTreeDataPayload(req.body);
     const wildlifeEntries = normalizeStringList(wildlifeInput);
@@ -144,12 +145,11 @@ function createTreesRoute({ db }) {
         diseaseCount: diseaseEntries.length
       });
       const tree = await db.trees.create({ latitude, longitude }, tx);
-      const creatorUserId = req.body.creatorUserId === undefined ? 1 : req.body.creatorUserId;
 
       await db.treeCreationData.create(
         {
           treeId: tree.id,
-          creatorUserId: creatorUserId === null ? null : Number(creatorUserId)
+          creatorUserId: Number(auth.user.id)
         },
         tx
       );

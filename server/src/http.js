@@ -127,6 +127,12 @@ function toErrorStatus(error) {
   if (code === "ForbiddenError") return 403;
   if (code === "NotFoundError") return 404;
   if (code === "ConflictError") return 409;
+  if (code === "MulterError") {
+    if (error?.code === "LIMIT_FILE_SIZE" || error?.code === "LIMIT_FILE_COUNT") {
+      return 413;
+    }
+    return 400;
+  }
 
   if (error?.type === "entity.too.large") return 413;
   if (error instanceof SyntaxError && error?.status === 400 && "body" in error) return 400;
@@ -143,7 +149,7 @@ function shouldReturnVerboseErrors() {
     return false;
   }
 
-  return process.env.NODE_ENV !== "production";
+  return process.env.NODE_ENV === "development";
 }
 
 function sanitizeForJson(value, maxLength = 8000) {
@@ -186,29 +192,23 @@ function buildErrorPayload(error, req, status) {
   ) {
     message = `Request body exceeds ${Math.floor(MAX_JSON_BODY_BYTES / (1024 * 1024))}MB limit`;
   }
+  if (error?.name === "MulterError") {
+    if (error?.code === "LIMIT_FILE_SIZE") {
+      message = "Uploaded file exceeds 10MB limit";
+    } else if (error?.code === "LIMIT_FILE_COUNT") {
+      message = "Too many files uploaded";
+    } else if (error?.code === "LIMIT_UNEXPECTED_FILE") {
+      message = error?.message || "Unexpected upload file";
+    }
+  }
 
   const payload = {
     error: message,
     code: error?.name || error?.code || "InternalError"
   };
 
-  if (!shouldReturnVerboseErrors()) {
-    return payload;
-  }
-
   const requestId = req?.requestId || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const causeChain = serializeErrorCauseChain(error);
-
-  payload.debug = {
-    requestId,
-    status,
-    method: req?.method || null,
-    path: req?.originalUrl || req?.url || null,
-    params: sanitizeForJson(req?.params),
-    query: sanitizeForJson(req?.query),
-    body: sanitizeForJson(req?.body),
-    causeChain
-  };
 
   logger.error("request.error", {
     requestId,
@@ -222,6 +222,21 @@ function buildErrorPayload(error, req, status) {
     query: sanitizeForLog(req?.query),
     body: sanitizeForLog(req?.body)
   });
+
+  if (!shouldReturnVerboseErrors()) {
+    return payload;
+  }
+
+  payload.debug = {
+    requestId,
+    status,
+    method: req?.method || null,
+    path: req?.originalUrl || req?.url || null,
+    params: sanitizeForJson(req?.params),
+    query: sanitizeForJson(req?.query),
+    body: sanitizeForJson(req?.body),
+    causeChain
+  };
 
   return payload;
 }

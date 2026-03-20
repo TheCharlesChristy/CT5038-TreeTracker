@@ -17,6 +17,9 @@ const ENV_KEYS = [
   "DB_SLOW_QUERY_MS",
   "DB_ALLOW_CREATE_DATABASE",
   "DB_SCHEMA_PATH",
+  "JWT_SECRET",
+  "SEED_DEV_USERS",
+  "SEED_DEV_USERS_PASSWORD",
   "START_EXPO",
   "EXPO_PROJECT_PATH",
   "EXPO_DEV_SERVER_PORT",
@@ -64,7 +67,7 @@ test("bootstrap fails clearly when the env file is missing", async () => {
 test("bootstrap fails clearly when required DB env vars are absent", async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "bootstrap-missing-db-"));
   const envPath = path.join(tempDir, ".env");
-  fs.writeFileSync(envPath, "NODE_ENV=production\nSTART_EXPO=false\nEXPO_STATIC_ENABLED=false\nPORT=0\n");
+  fs.writeFileSync(envPath, "NODE_ENV=production\nJWT_SECRET=test-secret\nSTART_EXPO=false\nEXPO_STATIC_ENABLED=false\nPORT=0\n");
 
   await withCleanEnv(async () => {
     try {
@@ -82,6 +85,7 @@ test("bootstrap fails clearly on malformed numeric env vars", async () => {
     envPath,
     [
       "NODE_ENV=production",
+      "JWT_SECRET=test-secret",
       "START_EXPO=false",
       "EXPO_STATIC_ENABLED=false",
       "PORT=0",

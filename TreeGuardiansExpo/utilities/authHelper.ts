@@ -7,6 +7,7 @@ export type AppUserRole = "user" | "guardian" | "admin";
 export interface AuthUser {
   id: number;
   username: string;
+  email?: string | null;
   role: UserRole;
 }
 
@@ -68,10 +69,11 @@ export async function getAuthState(): Promise<AuthState> {
   try {
     const token = await getItem("accessToken");
     const storedUser = await getItem("user");
+    const parsedUser = storedUser ? JSON.parse(storedUser) as AuthUser : null;
 
     return {
-      isLoggedIn: !!token,
-      user: storedUser ? JSON.parse(storedUser) : null,
+      isLoggedIn: Boolean(token && parsedUser),
+      user: token ? parsedUser : null,
     };
   } catch (error) {
     console.error("Auth state error:", error);
@@ -87,9 +89,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const token = await getItem("accessToken");
     const storedUser = await getItem("user");
+    const cachedUser = storedUser ? JSON.parse(storedUser) as AuthUser : null;
 
     if (!token) {
-      return storedUser ? JSON.parse(storedUser) : null;
+      return null;
     }
 
     try {
@@ -105,11 +108,16 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         await saveItem("user", JSON.stringify(user));
         return user;
       }
+
+      if (response.status === 401 || response.status === 403) {
+        await logoutUser();
+        return null;
+      }
     } catch (error) {
       console.warn("User refresh error:", error);
     }
 
-    return storedUser ? JSON.parse(storedUser) : null;
+    return cachedUser;
   } catch (error) {
     console.error("User fetch error:", error);
     return null;
