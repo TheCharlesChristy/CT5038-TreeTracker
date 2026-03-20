@@ -18,6 +18,7 @@ import { PasswordStrengthIndicator } from '@/components/base/PasswordStrengthInd
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 
 export default function CreateAccount() {
+  const successRedirectDuration = 3;
   const { width, height } = useWindowDimensions();
   const isMobileLayout = width < 680;
   const isWideLayout = width >= 920;
@@ -52,12 +53,12 @@ export default function CreateAccount() {
       redirectTimer.current = setTimeout(() => {
         setStatus(null);
         router.replace('/mainPage');
-      }, 3000);
+      }, successRedirectDuration * 1000);
     }
     return () => {
       if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
-  }, [status]);
+  }, [status, successRedirectDuration]);
 
   const handleCreateAccount = async () => {
     setUsernameTouched(true);
@@ -146,7 +147,7 @@ export default function CreateAccount() {
       >
         <StatusMessageBox
           status={status}
-          redirectDuration={3}
+          redirectDuration={successRedirectDuration}
           onClose={() => {
             if (redirectTimer.current) clearTimeout(redirectTimer.current);
             if (status?.variant === 'success') {

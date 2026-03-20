@@ -1,7 +1,8 @@
-import { getItem, removeItem } from "./authStorage";
+import { getItem, removeItem, saveItem } from "./authStorage";
 import { API_BASE, ENDPOINTS } from "@/config/api";
 
 export type UserRole = "registered_user" | "guardian" | "admin";
+export type AppUserRole = "user" | "guardian" | "admin";
 
 export interface AuthUser {
   id: number;
@@ -17,16 +18,15 @@ export interface AuthState {
 export async function validateSession(): Promise<AuthState> {
   try {
     const token = await getItem("accessToken");
-    const storedUser = await getItem("user");
 
-    if (!token || !storedUser) {
+    if (!token) {
       return {
         isLoggedIn: false,
         user: null,
       };
     }
 
-    const response = await fetch(API_BASE + ENDPOINTS.VALIDATE_SESSION, {
+    const response = await fetch(API_BASE + ENDPOINTS.USERS_ME, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -42,9 +42,12 @@ export async function validateSession(): Promise<AuthState> {
       };
     }
 
+    const user = (await response.json()) as AuthUser;
+    await saveItem("user", JSON.stringify(user));
+
     return {
       isLoggedIn: true,
-      user: JSON.parse(storedUser),
+      user,
     };
 
   } catch (error) {
@@ -82,12 +85,42 @@ export async function getAuthState(): Promise<AuthState> {
 // Return current logged-in user
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
+    const token = await getItem("accessToken");
     const storedUser = await getItem("user");
+
+    if (!token) {
+      return storedUser ? JSON.parse(storedUser) : null;
+    }
+
+    try {
+      const response = await fetch(API_BASE + ENDPOINTS.USERS_ME, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const user = (await response.json()) as AuthUser;
+        await saveItem("user", JSON.stringify(user));
+        return user;
+      }
+    } catch (error) {
+      console.warn("User refresh error:", error);
+    }
+
     return storedUser ? JSON.parse(storedUser) : null;
   } catch (error) {
     console.error("User fetch error:", error);
     return null;
   }
+}
+
+export function normalizeUserRole(role: UserRole | null | undefined): AppUserRole {
+  if (role === "guardian" || role === "admin") {
+    return role;
+  }
+  return "user";
 }
 
 // Return stored access token

@@ -1,6 +1,7 @@
 const fs = require("fs/promises");
 const mysql = require("mysql2/promise");
 const { DbError, ConflictError, ValidationError } = require("../errors");
+const { createLogger, sanitizeForLog, serializeError } = require("../logging");
 const { installDbClientLock, runWithDbAccess } = require("./runtime-lock");
 const {
   assert,
@@ -21,12 +22,12 @@ const REQUIRED_TABLES = [
   "users",
   "user_passwords",
   "admins",
-  "guardian_users",
+  "guardians",
   "user_sessions",
   "trees",
   "tree_creation_data",
   "tree_data",
-  "guardians",
+  "guardian_trees",
   "photos",
   "tree_photos",
   "comments",
@@ -42,10 +43,7 @@ let config = null;
 let pool = null;
 let ready = false;
 
-function log(message, meta) {
-  const payload = meta ? ` ${JSON.stringify(meta)}` : "";
-  console.log(`[db] ${message}${payload}`);
-}
+const logger = createLogger("db.core");
 
 function ensureReady() {
   if (!ready || !pool) {
@@ -78,7 +76,8 @@ function tableNameFromCreateStatement(statement) {
 function buildSchemaMigrations(statements) {
   return statements.map((statement, index) => ({
     version: `schema-${String(index + 1).padStart(4, "0")}`,
-    statement
+    statement,
+    tableName: tableNameFromCreateStatement(statement)
   }));
 }
 
@@ -99,7 +98,29 @@ async function listAppliedMigrationVersions(executor) {
   return rows.map((row) => row.version);
 }
 
+async function tableExists(executor, tableName) {
+  const row = await selectOne(
+    executor,
+    "SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
+    [config.database, tableName]
+  );
+  return Boolean(row);
+}
+
+async function renameTableIfNeeded(executor, fromName, toName) {
+  const [fromExists, toExists] = await Promise.all([tableExists(executor, fromName), tableExists(executor, toName)]);
+  if (!fromExists || toExists) {
+    return;
+  }
+
+  logger.info("migration.rename-legacy-table", { from: fromName, to: toName });
+  await run(executor, `RENAME TABLE ${escapeIdent(fromName)} TO ${escapeIdent(toName)}`);
+}
+
 async function applyMigrations(executor, schemaPath) {
+  await renameTableIfNeeded(executor, "guardians", "guardian_trees");
+  await renameTableIfNeeded(executor, "guardian_users", "guardians");
+
   const schemaSql = await fs.readFile(schemaPath, "utf-8");
   const statements = splitSqlStatements(schemaSql);
   const migrations = buildSchemaMigrations(statements);
@@ -115,8 +136,20 @@ async function applyMigrations(executor, schemaPath) {
 
   for (const migration of migrations) {
     if (appliedVersions.has(migration.version)) {
+      if (migration.tableName && !(await tableExists(executor, migration.tableName))) {
+        logger.warn("migration.repair-missing-table", {
+          version: migration.version,
+          table: migration.tableName
+        });
+        await run(executor, migration.statement);
+      }
       continue;
     }
+
+    logger.info("migration.apply", {
+      version: migration.version,
+      table: migration.tableName
+    });
     await run(executor, migration.statement);
     await run(executor, "INSERT INTO schema_migrations (version) VALUES (?)", [migration.version]);
   }
@@ -124,44 +157,58 @@ async function applyMigrations(executor, schemaPath) {
 
 async function run(executor, sql, params = []) {
   return runWithDbAccess(async () => {
-  const start = Date.now();
-  let executionSql = sql;
-  let executionParams = params;
+    const start = Date.now();
+    let executionSql = sql;
+    let executionParams = params;
 
-  const limitOffsetPattern = /LIMIT\s+\?\s+OFFSET\s+\?/i;
-  if (limitOffsetPattern.test(executionSql)) {
-    const limit = Number(executionParams[executionParams.length - 2]);
-    const offset = Number(executionParams[executionParams.length - 1]);
-    assert(Number.isInteger(limit) && limit >= 0, "LIMIT must be a non-negative integer");
-    assert(Number.isInteger(offset) && offset >= 0, "OFFSET must be a non-negative integer");
-    executionSql = executionSql.replace(limitOffsetPattern, `LIMIT ${limit} OFFSET ${offset}`);
-    executionParams = executionParams.slice(0, -2);
-  } else {
-    const limitOnlyPattern = /LIMIT\s+\?/i;
-    if (limitOnlyPattern.test(executionSql)) {
-      const limit = Number(executionParams[executionParams.length - 1]);
+    const limitOffsetPattern = /LIMIT\s+\?\s+OFFSET\s+\?/i;
+    if (limitOffsetPattern.test(executionSql)) {
+      const limit = Number(executionParams[executionParams.length - 2]);
+      const offset = Number(executionParams[executionParams.length - 1]);
       assert(Number.isInteger(limit) && limit >= 0, "LIMIT must be a non-negative integer");
-      executionSql = executionSql.replace(limitOnlyPattern, `LIMIT ${limit}`);
-      executionParams = executionParams.slice(0, -1);
+      assert(Number.isInteger(offset) && offset >= 0, "OFFSET must be a non-negative integer");
+      executionSql = executionSql.replace(limitOffsetPattern, `LIMIT ${limit} OFFSET ${offset}`);
+      executionParams = executionParams.slice(0, -2);
+    } else {
+      const limitOnlyPattern = /LIMIT\s+\?/i;
+      if (limitOnlyPattern.test(executionSql)) {
+        const limit = Number(executionParams[executionParams.length - 1]);
+        assert(Number.isInteger(limit) && limit >= 0, "LIMIT must be a non-negative integer");
+        executionSql = executionSql.replace(limitOnlyPattern, `LIMIT ${limit}`);
+        executionParams = executionParams.slice(0, -1);
+      }
     }
-  }
 
-  try {
-    const [rows] = await executor.execute(executionSql, executionParams);
-    const elapsed = Date.now() - start;
-    if (config && elapsed >= config.slowQueryMs) {
-      log("slow-query", { elapsedMs: elapsed, sql: executionSql });
+    try {
+      const [rows] = await executor.execute(executionSql, executionParams);
+      const elapsed = Date.now() - start;
+
+      logger.debug("query.success", {
+        elapsedMs: elapsed,
+        sql: executionSql,
+        params: sanitizeForLog(executionParams)
+      });
+
+      if (config && elapsed >= config.slowQueryMs) {
+        logger.warn("query.slow", { elapsedMs: elapsed, sql: executionSql });
+      }
+      return rows;
+    } catch (error) {
+      logger.error("query.failure", {
+        elapsedMs: Date.now() - start,
+        sql: executionSql,
+        params: sanitizeForLog(executionParams),
+        error: serializeError(error)
+      });
+
+      if (error && error.code === "ER_DUP_ENTRY") {
+        throw new ConflictError("Duplicate value violates unique constraint", { cause: error });
+      }
+      if (error && ["ER_NO_REFERENCED_ROW_2", "ER_ROW_IS_REFERENCED_2"].includes(error.code)) {
+        throw new ConflictError("Foreign key constraint violation", { cause: error });
+      }
+      throw new DbError("Database operation failed", { cause: error });
     }
-    return rows;
-  } catch (error) {
-    if (error && error.code === "ER_DUP_ENTRY") {
-      throw new ConflictError("Duplicate value violates unique constraint", { cause: error });
-    }
-    if (error && ["ER_NO_REFERENCED_ROW_2", "ER_ROW_IS_REFERENCED_2"].includes(error.code)) {
-      throw new ConflictError("Foreign key constraint violation", { cause: error });
-    }
-    throw new DbError("Database operation failed", { cause: error });
-  }
   });
 }
 
@@ -238,7 +285,15 @@ async function init(userConfig) {
     schemaPath: userConfig.schemaPath
   };
 
-  log("init-start");
+  logger.info("init.start", {
+    host: config.host,
+    port: config.port,
+    database: config.database,
+    connectionLimit: config.connectionLimit,
+    slowQueryMs: config.slowQueryMs,
+    allowCreateDatabase: config.allowCreateDatabase,
+    schemaPath: config.schemaPath
+  });
 
   const bootstrapConn = await mysql.createConnection({
     host: config.host,
@@ -259,7 +314,7 @@ async function init(userConfig) {
       if (!config.allowCreateDatabase) {
         throw new DbError("Database does not exist and auto-create is disabled");
       }
-      log("creating-database", { database: config.database });
+      logger.warn("init.create-database", { database: config.database });
       await run(bootstrapConn, `CREATE DATABASE ${escapeIdent(config.database)}`);
     }
   } finally {
@@ -277,7 +332,7 @@ async function init(userConfig) {
     queueLimit: 0
   });
 
-  log("applying-migrations");
+  logger.info("init.apply-migrations");
   await applyMigrations(pool, config.schemaPath);
 
   const stillMissing = await ensureTablesExist(pool);
@@ -286,12 +341,14 @@ async function init(userConfig) {
   }
 
   ready = true;
-  log("init-complete");
+  logger.info("init.complete");
 }
 
 async function close() {
   if (pool) {
+    logger.info("close.start");
     await pool.end();
+    logger.info("close.complete");
   }
   pool = null;
   ready = false;
@@ -305,26 +362,44 @@ async function health() {
     await run(pool, "SELECT 1 AS ok");
     return { ready: true };
   } catch (error) {
+    logger.warn("health.failed", { error: serializeError(error) });
     return { ready: false };
   }
 }
 
 async function transaction(fn) {
   return runWithDbAccess(async () => {
-  ensureReady();
-  const connection = await pool.getConnection();
-  try {
-    await connection.beginTransaction();
-    const tx = { __txConn: connection };
-    const result = await fn(tx);
-    await connection.commit();
-    return result;
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
+    ensureReady();
+    const startedAt = Date.now();
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+      logger.debug("transaction.begin");
+
+      const tx = { __txConn: connection };
+      const result = await fn(tx);
+
+      await connection.commit();
+      logger.debug("transaction.commit", { durationMs: Date.now() - startedAt });
+      return result;
+    } catch (error) {
+      try {
+        await connection.rollback();
+        logger.warn("transaction.rollback", {
+          durationMs: Date.now() - startedAt,
+          error: serializeError(error)
+        });
+      } catch (rollbackError) {
+        logger.error("transaction.rollback.failed", {
+          durationMs: Date.now() - startedAt,
+          error: serializeError(rollbackError)
+        });
+      }
+      throw error;
+    } finally {
+      connection.release();
+    }
   });
 }
 

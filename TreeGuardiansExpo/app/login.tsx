@@ -18,6 +18,7 @@ import { API_BASE, ENDPOINTS } from '@/config/api';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 
 export default function Login() {
+  const successRedirectDuration = 1;
   const { width, height } = useWindowDimensions();
   const isMobileLayout = width < 680;
   const isWideLayout = width >= 920;
@@ -50,12 +51,12 @@ export default function Login() {
       redirectTimer.current = setTimeout(() => {
         setStatus(null);
         router.replace('/mainPage');
-      }, 3000);
+      }, successRedirectDuration * 1000);
     }
     return () => {
       if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
-  }, [status]);
+  }, [status, successRedirectDuration]);
 
   const handleLogin = async () => {
     setCredentialTouched(true);
@@ -146,7 +147,7 @@ export default function Login() {
       >
         <StatusMessageBox
           status={status}
-          redirectDuration={1}
+          redirectDuration={successRedirectDuration}
           onClose={() => {
             if (redirectTimer.current) clearTimeout(redirectTimer.current);
             if (status?.variant === 'success') {
@@ -233,12 +234,6 @@ export default function Login() {
                     <AppText variant="caption" style={styles.label}>
                       Password
                     </AppText>
-
-                    <Pressable onPress={handleForgotPassword}>
-                      <AppText variant="caption" style={styles.forgotPasswordText}>
-                        Forgot password?
-                      </AppText>
-                    </Pressable>
                   </View>
 
                   <AppInput
@@ -288,6 +283,12 @@ export default function Login() {
                       {passwordError}
                     </AppText>
                   ) : null}
+
+                  <Pressable onPress={handleForgotPassword}>
+                    <AppText variant="caption" style={styles.forgotPasswordText}>
+                      Forgot password?
+                    </AppText>
+                  </Pressable>
                 </View>
 
                 <View style={styles.optionsRow}>

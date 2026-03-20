@@ -1,5 +1,6 @@
 const express = require("express");
 const { asyncHandler } = require("../middleware/async-handler");
+const { createLogger } = require("../../logging");
 const { parsePositiveInt, parseListParams, requireJson } = require("./utils/http");
 
 const DEFAULT_TREE_DATA = {
@@ -93,25 +94,55 @@ function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos) 
   };
 }
 
+const logger = createLogger("routes.api.trees");
+
+function getRouteLogger(req, extra = {}) {
+  return req?.log?.scope ? req.log.scope("routes.api.trees", extra) : logger.child(extra);
+}
+
 function createTreesRoute({ db }) {
   const router = express.Router();
 
   const createTreeHandler = async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "create-tree" });
+    const wildlifeInput = req.body?.wildlifeList ?? req.body?.wildlife;
+    const diseaseInput = req.body?.diseaseList ?? req.body?.disease;
+    routeLog.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      latitudePresent: req.body?.latitude !== undefined,
+      longitudePresent: req.body?.longitude !== undefined,
+      wildlifeCount: Array.isArray(wildlifeInput) ? wildlifeInput.length : wildlifeInput ? 1 : 0,
+      diseaseCount: Array.isArray(diseaseInput) ? diseaseInput.length : diseaseInput ? 1 : 0
+    });
+
     requireJson(req);
 
     const latitude = Number(req.body.latitude);
     const longitude = Number(req.body.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      routeLog.warn("validation.failed", { reason: "invalid-coordinates" });
       const error = new Error("latitude and longitude are required numbers");
       error.name = "ValidationError";
       throw error;
     }
 
+    routeLog.info("tree.create.begin", {
+      latitude,
+      longitude,
+      creatorUserIdProvided: req.body.creatorUserId !== undefined,
+      notesPresent: Boolean(req.body.notes)
+    });
+
     const treeDataFields = normalizeTreeDataPayload(req.body);
-    const wildlifeEntries = normalizeStringList(req.body.wildlifeList ?? req.body.wildlife);
-    const diseaseEntries = normalizeStringList(req.body.diseaseList ?? req.body.disease);
+    const wildlifeEntries = normalizeStringList(wildlifeInput);
+    const diseaseEntries = normalizeStringList(diseaseInput);
 
     const treeId = await db.transaction(async (tx) => {
+      routeLog.debug("tree.transaction.start", {
+        wildlifeCount: wildlifeEntries.length,
+        diseaseCount: diseaseEntries.length
+      });
       const tree = await db.trees.create({ latitude, longitude }, tx);
       const creatorUserId = req.body.creatorUserId === undefined ? 1 : req.body.creatorUserId;
 
@@ -173,12 +204,25 @@ function createTreesRoute({ db }) {
       return tree.id;
     });
 
+    routeLog.info("tree.create.success", {
+      treeId
+    });
+
     res.json({ success: true, tree_id: treeId });
   };
 
   const listTreesHandler = async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "list-trees" });
+    routeLog.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      query: req.query
+    });
+
     const { limit, offset } = parseListParams(req.query);
+    routeLog.debug("query.normalized", { limit, offset });
     const trees = await db.trees.list({ limit, offset });
+    routeLog.info("trees.list.fetched", { count: trees.length });
 
     const result = await Promise.all(
       trees.map(async (tree) => {
@@ -199,19 +243,29 @@ function createTreesRoute({ db }) {
       })
     );
 
+    routeLog.info("request.success", { count: result.length });
     res.json(result);
   };
 
   const getTreeDetailsHandler = async (req, res, treeIdInput) => {
+    const routeLog = getRouteLogger(req, { route: "get-tree-details" });
     const treeId = parsePositiveInt(treeIdInput, "treeId");
+    routeLog.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      treeId
+    });
+
     const tree = await db.trees.getById(treeId);
     if (!tree) {
+      routeLog.warn("lookup.miss", { treeId });
       res.status(404).json({ error: "Tree not found" });
       return;
     }
 
     const dataRow = await db.treeData.getByTreeId(treeId);
 
+    routeLog.info("request.success", { treeId });
     res.json({
       id: tree.id,
       latitude: tree.latitude,

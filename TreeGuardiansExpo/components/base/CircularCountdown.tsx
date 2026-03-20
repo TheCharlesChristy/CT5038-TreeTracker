@@ -57,7 +57,7 @@ export function CircularCountdown({
 
     let timer = setTimeout(tick, FRAME_MS);
     return () => clearTimeout(timer);
-  }, [duration]);
+  }, [duration, onComplete]);
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>

@@ -277,7 +277,7 @@ function createTreeEndpoints(ctx) {
     async add(payload, tx) {
       ensurePositiveInt("userId", payload.userId);
       ensurePositiveInt("treeId", payload.treeId);
-      const result = await run(runtimeExecutor(tx), "INSERT IGNORE INTO guardians (user_id, tree_id) VALUES (?, ?)", [
+      const result = await run(runtimeExecutor(tx), "INSERT IGNORE INTO guardian_trees (user_id, tree_id) VALUES (?, ?)", [
         payload.userId,
         payload.treeId
       ]);
@@ -287,7 +287,7 @@ function createTreeEndpoints(ctx) {
     async remove(payload, tx) {
       ensurePositiveInt("userId", payload.userId);
       ensurePositiveInt("treeId", payload.treeId);
-      const result = await run(runtimeExecutor(tx), "DELETE FROM guardians WHERE user_id = ? AND tree_id = ?", [
+      const result = await run(runtimeExecutor(tx), "DELETE FROM guardian_trees WHERE user_id = ? AND tree_id = ?", [
         payload.userId,
         payload.treeId
       ]);
@@ -297,7 +297,7 @@ function createTreeEndpoints(ctx) {
     async exists(payload, tx) {
       ensurePositiveInt("userId", payload.userId);
       ensurePositiveInt("treeId", payload.treeId);
-      const row = await selectOne(runtimeExecutor(tx), "SELECT 1 AS ok FROM guardians WHERE user_id = ? AND tree_id = ?", [
+      const row = await selectOne(runtimeExecutor(tx), "SELECT 1 AS ok FROM guardian_trees WHERE user_id = ? AND tree_id = ?", [
         payload.userId,
         payload.treeId
       ]);
@@ -309,7 +309,7 @@ function createTreeEndpoints(ctx) {
       const { limit, offset } = normalizeListParams(params);
       const rows = await run(
         runtimeExecutor(tx),
-        "SELECT tree_id FROM guardians WHERE user_id = ? ORDER BY tree_id DESC LIMIT ? OFFSET ?",
+        "SELECT tree_id FROM guardian_trees WHERE user_id = ? ORDER BY tree_id DESC LIMIT ? OFFSET ?",
         [userId, limit, offset]
       );
       return rows.map((row) => row.tree_id);
@@ -320,7 +320,7 @@ function createTreeEndpoints(ctx) {
       const { limit, offset } = normalizeListParams(params);
       const rows = await run(
         runtimeExecutor(tx),
-        "SELECT user_id FROM guardians WHERE tree_id = ? ORDER BY user_id DESC LIMIT ? OFFSET ?",
+        "SELECT user_id FROM guardian_trees WHERE tree_id = ? ORDER BY user_id DESC LIMIT ? OFFSET ?",
         [treeId, limit, offset]
       );
       return rows.map((row) => row.user_id);
@@ -328,13 +328,13 @@ function createTreeEndpoints(ctx) {
 
     async countByUser(userId, tx) {
       ensurePositiveInt("userId", userId);
-      const row = await selectOne(runtimeExecutor(tx), "SELECT COUNT(*) AS total FROM guardians WHERE user_id = ?", [userId]);
+      const row = await selectOne(runtimeExecutor(tx), "SELECT COUNT(*) AS total FROM guardian_trees WHERE user_id = ?", [userId]);
       return Number(row.total || 0);
     },
 
     async countByTree(treeId, tx) {
       ensurePositiveInt("treeId", treeId);
-      const row = await selectOne(runtimeExecutor(tx), "SELECT COUNT(*) AS total FROM guardians WHERE tree_id = ?", [treeId]);
+      const row = await selectOne(runtimeExecutor(tx), "SELECT COUNT(*) AS total FROM guardian_trees WHERE tree_id = ?", [treeId]);
       return Number(row.total || 0);
     }
   };

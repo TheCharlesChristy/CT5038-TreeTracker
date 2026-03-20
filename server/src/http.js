@@ -5,9 +5,11 @@ const express = require("express");
 const { createHealthRouter } = require("./routes/health");
 const { createDbTestBenchRouter } = require("./routes/db-testbench");
 const { createApiRouter } = require("./routes/api");
+const { createLogger, sanitizeForLog, serializeError } = require("./logging");
 const { DEFAULT_UPLOADS_DIR, ensureUploadsDirExists } = require("./routes/api/uploads");
 
 const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+const logger = createLogger("http");
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -62,7 +64,13 @@ function sendStaticFile(req, res, filePath) {
   }
 
   fs.createReadStream(filePath)
-    .on("error", () => {
+    .on("error", (error) => {
+      logger.error("static.read.failed", {
+        method: req.method,
+        path: req.originalUrl || req.url,
+        filePath,
+        error: serializeError(error)
+      });
       if (!res.headersSent) {
         res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
       }
@@ -138,38 +146,12 @@ function shouldReturnVerboseErrors() {
   return process.env.NODE_ENV !== "production";
 }
 
-function redactSensitive(key, value) {
-  if (typeof key === "string") {
-    const lowered = key.toLowerCase();
-    if (
-      lowered.includes("password") ||
-      lowered.includes("token") ||
-      lowered.includes("secret") ||
-      lowered === "authorization"
-    ) {
-      return "[REDACTED]";
-    }
-  }
-
-  return value;
-}
-
 function sanitizeForJson(value, maxLength = 8000) {
   if (value === undefined) {
     return undefined;
   }
 
-  try {
-    const serialized = JSON.stringify(value, redactSensitive);
-    if (serialized.length <= maxLength) {
-      return JSON.parse(serialized);
-    }
-
-    const truncated = `${serialized.slice(0, maxLength)}... [truncated ${serialized.length - maxLength} chars]`;
-    return truncated;
-  } catch {
-    return "[unserializable payload]";
-  }
+  return sanitizeForLog(value, { maxStringLength: maxLength });
 }
 
 function serializeErrorCauseChain(error, maxDepth = 5) {
@@ -214,7 +196,7 @@ function buildErrorPayload(error, req, status) {
     return payload;
   }
 
-  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const requestId = req?.requestId || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const causeChain = serializeErrorCauseChain(error);
 
   payload.debug = {
@@ -228,20 +210,27 @@ function buildErrorPayload(error, req, status) {
     causeChain
   };
 
-  console.error("[http-error]", {
+  logger.error("request.error", {
     requestId,
     status,
     method: req?.method || null,
     path: req?.originalUrl || req?.url || null,
     code: payload.code,
     message: payload.error,
-    causeChain
+    causeChain,
+    params: sanitizeForLog(req?.params),
+    query: sanitizeForLog(req?.query),
+    body: sanitizeForLog(req?.body)
   });
 
   return payload;
 }
 
 function sendProxyError(res, error) {
+  logger.error("proxy.request.failed", {
+    error: serializeError(error)
+  });
+
   if (res.headersSent) {
     res.end();
     return;
@@ -254,6 +243,12 @@ function sendProxyError(res, error) {
 }
 
 function proxyHttpRequest(req, res, target) {
+  logger.debug("proxy.request.start", {
+    method: req.method,
+    path: req.originalUrl || req.url,
+    target
+  });
+
   const proxyReq = http.request(
     {
       host: target.host,
@@ -266,6 +261,12 @@ function proxyHttpRequest(req, res, target) {
       }
     },
     (proxyRes) => {
+      logger.debug("proxy.request.success", {
+        method: req.method,
+        path: req.originalUrl || req.url,
+        status: proxyRes.statusCode || 502,
+        target
+      });
       applyCorsHeaders(res);
       res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
       proxyRes.pipe(res);
@@ -280,6 +281,11 @@ function proxyHttpRequest(req, res, target) {
 }
 
 function proxyUpgradeRequest(req, socket, head, target) {
+  logger.debug("proxy.upgrade.start", {
+    method: req.method,
+    path: req.url,
+    target
+  });
   const proxyReq = http.request({
     host: target.host,
     port: target.port,
@@ -323,10 +329,19 @@ function proxyUpgradeRequest(req, socket, head, target) {
   });
 
   proxyReq.on("error", () => {
+    logger.warn("proxy.upgrade.failed", {
+      method: req.method,
+      path: req.url,
+      target
+    });
     socket.destroy();
   });
 
   proxyReq.end();
+}
+
+function createRequestId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function createHttpServer({
@@ -349,9 +364,48 @@ function createHttpServer({
   const staticRoot = expoStaticEnabled && expoWebDistPath ? path.resolve(expoWebDistPath) : null;
   const app = express();
 
+  logger.info("server.configure", {
+    port,
+    dbTestBenchEnabled,
+    expoProxyEnabled,
+    expoStaticEnabled,
+    staticRoot,
+    expoProxyTarget
+  });
+
   ensureUploadsDirExists(DEFAULT_UPLOADS_DIR);
 
   app.use((req, res, next) => {
+    req.requestId = createRequestId();
+    req.log = logger.child({ requestId: req.requestId });
+    const startedAt = Date.now();
+    res.setHeader("x-request-id", req.requestId);
+
+    req.log.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      contentType: req.headers["content-type"] || null,
+      contentLength: req.headers["content-length"] || null,
+      ip: req.ip || req.socket?.remoteAddress || null
+    });
+
+    let settled = false;
+    const logCompletion = (event) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      req.log.info(`request.${event}`, {
+        method: req.method,
+        path: req.originalUrl || req.url,
+        status: res.statusCode,
+        durationMs: Date.now() - startedAt
+      });
+    };
+
+    res.on("finish", () => logCompletion("finish"));
+    res.on("close", () => logCompletion("close"));
+
     applyCorsHeaders(res);
     if (req.method === "OPTIONS") {
       res.status(204).end();
@@ -399,6 +453,10 @@ function createHttpServer({
 
       const staticFilePath = resolveStaticRoute(staticRoot, pathname);
       if (staticFilePath) {
+        req.log.debug("static.route.hit", {
+          pathname,
+          staticFilePath
+        });
         sendStaticFile(req, res, staticFilePath);
         return;
       }
@@ -425,10 +483,12 @@ function createHttpServer({
       return new Promise((resolve, reject) => {
         const onError = (error) => {
           server.off("listening", onListening);
+          logger.error("server.start.failed", { port, error: serializeError(error) });
           reject(error);
         };
         const onListening = () => {
           server.off("error", onError);
+          logger.info("server.start.listening", { port });
           resolve(server);
         };
 
@@ -441,9 +501,11 @@ function createHttpServer({
       return new Promise((resolve, reject) => {
         server.close((error) => {
           if (error) {
+            logger.error("server.stop.failed", { error: serializeError(error) });
             reject(error);
             return;
           }
+          logger.info("server.stop.complete");
           resolve();
         });
       });

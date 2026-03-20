@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
@@ -83,10 +83,17 @@ export function StatusMessageBox({
         { opacity, transform: [{ translateY }] },
       ]}
     >
-      <AppText style={[styles.title, isSuccess ? styles.successTitle : styles.errorTitle]}>
-        {status.title}
-      </AppText>
-      <AppText style={styles.body}>{status.message}</AppText>
+      <ScrollView
+        style={styles.contentScroll}
+        contentContainerStyle={styles.contentScrollInner}
+        showsVerticalScrollIndicator
+        bounces={false}
+      >
+        <AppText style={[styles.title, isSuccess ? styles.successTitle : styles.errorTitle]}>
+          {status.title}
+        </AppText>
+        <AppText style={styles.body}>{status.message}</AppText>
+      </ScrollView>
 
       {shouldShowCountdown ? (
         <View style={styles.countdownRow}>
@@ -132,6 +139,7 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 260,
     maxWidth: 340,
+    maxHeight: 320,
     borderWidth: 1,
     borderRadius: 14,
     paddingVertical: 10,
@@ -153,6 +161,13 @@ const styles = StyleSheet.create({
   title: {
     ...Theme.Typography.body,
     fontFamily: 'Poppins_600SemiBold',
+  },
+  contentScroll: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  contentScrollInner: {
+    paddingBottom: 2,
   },
   successTitle: {
     color: '#194C22',

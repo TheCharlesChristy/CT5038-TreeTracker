@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
-import { getSessionUser } from '@/lib/session';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
 import { BOUNDS, CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds } from '@/components/base/MapComponent.types';
 import { haversineDistanceKm } from '@/utilities/geo';
@@ -31,8 +30,6 @@ export function useTreeMapState() {
 
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
   const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
-
-  const userRole = getSessionUser().role;
 
   const showDimOverlay = mode !== 'explore' && mode !== 'add';
 
@@ -300,7 +297,6 @@ export function useTreeMapState() {
 
   return {
     mode,
-    userRole,
     plottedTrees,
     selectedTree,
     searchQuery,

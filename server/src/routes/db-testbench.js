@@ -1,5 +1,12 @@
 const express = require("express");
 const { asyncHandler } = require("./middleware/async-handler");
+const { createLogger } = require("../logging");
+
+const logger = createLogger("routes.db-testbench");
+
+function getRouteLogger(req, extra = {}) {
+  return req?.log?.scope ? req.log.scope("routes.db-testbench", extra) : logger.child(extra);
+}
 
 function listDbEndpoints(db) {
   const endpointMap = {};
@@ -89,8 +96,9 @@ function createAuthError(name, message) {
   return error;
 }
 
-function authorizeTestBench(req, token) {
+function authorizeTestBench(req, token, routeLog = logger) {
   if (!token) {
+    routeLog.error("auth.misconfigured", { reason: "missing-token" });
     throw createAuthError("InternalError", "Testbench is enabled but no token is configured");
   }
 
@@ -103,10 +111,12 @@ function authorizeTestBench(req, token) {
   const providedToken = bearerToken || (typeof headerToken === "string" ? headerToken : null);
 
   if (!providedToken) {
+    routeLog.warn("auth.missing", { reason: "missing-testbench-token" });
     throw createAuthError("AuthError", "Missing testbench authorization token");
   }
 
   if (providedToken !== token) {
+    routeLog.warn("auth.denied", { reason: "invalid-testbench-token" });
     throw createAuthError("ForbiddenError", "Invalid testbench authorization token");
   }
 }
@@ -119,7 +129,15 @@ function createDbTestBenchRouter({ db, token }) {
   router.get(
     "/endpoints",
     asyncHandler(async (req, res) => {
-      authorizeTestBench(req, token);
+      const routeLog = getRouteLogger(req, { route: "endpoints" });
+      routeLog.info("request.start", {
+        method: req.method,
+        path: req.originalUrl || req.url
+      });
+      authorizeTestBench(req, token, routeLog);
+      routeLog.info("request.success", {
+        endpointCount: flatEndpoints.length
+      });
       res.json({ endpoints: endpointMap, flatEndpoints });
     })
   );
@@ -127,33 +145,51 @@ function createDbTestBenchRouter({ db, token }) {
   router.post(
     "/invoke",
     asyncHandler(async (req, res) => {
-      authorizeTestBench(req, token);
+      const routeLog = getRouteLogger(req, { route: "invoke" });
+      routeLog.info("request.start", {
+        method: req.method,
+        path: req.originalUrl || req.url,
+        endpointPresent: Boolean(req.body?.endpoint)
+      });
+
+      authorizeTestBench(req, token, routeLog);
 
       if (!req.is("application/json")) {
+        routeLog.warn("validation.failed", { reason: "unsupported-media-type" });
         const unsupported = new Error("Content-Type must be application/json");
         unsupported.name = "UnsupportedMediaTypeError";
         throw unsupported;
       }
 
       if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) || !req.body.endpoint) {
+        routeLog.warn("validation.failed", { reason: "missing-endpoint" });
         const payloadError = new Error("Request body must include endpoint");
         payloadError.name = "ValidationError";
         throw payloadError;
       }
 
       if (!flatEndpoints.includes(req.body.endpoint)) {
+        routeLog.warn("lookup.miss", { endpoint: req.body.endpoint });
         res.status(404).json({ error: "Unknown endpoint", code: "NotFoundError" });
         return;
       }
 
       const fn = resolveDbEndpoint(db, req.body.endpoint);
       if (!fn) {
+        routeLog.warn("lookup.miss", { endpoint: req.body.endpoint, reason: "unresolvable" });
         res.status(404).json({ error: "Unknown endpoint", code: "NotFoundError" });
         return;
       }
 
       const args = Array.isArray(req.body.args) ? req.body.args : [];
+      routeLog.info("invoke.begin", {
+        endpoint: req.body.endpoint,
+        argCount: args.length
+      });
       const result = await fn(...args);
+      routeLog.info("invoke.success", {
+        endpoint: req.body.endpoint
+      });
       res.json({ endpoint: req.body.endpoint, result });
     })
   );

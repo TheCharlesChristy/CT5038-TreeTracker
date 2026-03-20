@@ -430,6 +430,7 @@ test("legacy auth routes register login and return /api/me", async () => {
 
   const users = [];
   const passwordByUserId = new Map();
+  const guardianUserIds = new Set();
   let nextUserId = 1;
 
   const db = {
@@ -463,6 +464,12 @@ test("legacy auth routes register login and return /api/me", async () => {
       },
       getHashByUserId: async (userId) => passwordByUserId.get(userId) || null
     },
+    admins: {
+      isAdmin: async () => false
+    },
+    guardianUsers: {
+      isGuardian: async (userId) => guardianUserIds.has(userId)
+    },
     userSessions: {
       create: async () => ({ id: 1 })
     }
@@ -483,7 +490,10 @@ test("legacy auth routes register login and return /api/me", async () => {
     });
     assert.equal(register.status, 201);
     assert.equal(register.body.user.username, "charles");
+    assert.equal(register.body.user.role, "registered_user");
     assert.equal(typeof register.body.accessToken, "string");
+
+    guardianUserIds.add(register.body.user.id);
 
     const login = await sendRequest({
       port,
@@ -494,6 +504,7 @@ test("legacy auth routes register login and return /api/me", async () => {
     });
     assert.equal(login.status, 200);
     assert.equal(login.body.user.email, "charles@example.com");
+    assert.equal(login.body.user.role, "guardian");
     assert.equal(typeof login.body.accessToken, "string");
 
     const me = await sendRequest({
@@ -504,6 +515,7 @@ test("legacy auth routes register login and return /api/me", async () => {
     });
     assert.equal(me.status, 200);
     assert.equal(me.body.username, "charles");
+    assert.equal(me.body.role, "guardian");
   } finally {
     await httpServer.stop();
     if (previousSecret === undefined) {

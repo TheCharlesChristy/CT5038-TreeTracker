@@ -4,7 +4,10 @@ const { spawn } = require("child_process");
 const { loadConfig } = require("./config");
 const db = require("./db");
 const { createHttpServer } = require("./http");
+const { createLogger, serializeError } = require("./logging");
 const { hashPassword } = require("./routes/api/utils/security");
+
+const logger = createLogger("server");
 
 function runCommand(command, args, options) {
   return new Promise((resolve, reject) => {
@@ -47,11 +50,16 @@ async function prepareExpoWeb(config) {
 
   if (!hasNodeModules) {
     const installArgs = fs.existsSync(path.join(expoPath, "package-lock.json")) ? ["ci"] : ["install"];
-    console.log(`[server] installing Expo web dependencies in ${expoPath}`);
+    logger.info("expo.install.start", { expoPath, command: npmCommand, args: installArgs });
     await runCommand(npmCommand, installArgs, { cwd: expoPath, env: process.env });
   }
 
-  console.log(`[server] exporting Expo web bundle to ${path.resolve(config.expoWebDistPath)}`);
+  logger.info("expo.export.start", {
+    expoPath,
+    distPath: path.resolve(config.expoWebDistPath),
+    command: npmCommand,
+    args: ["run", "export:web"]
+  });
   await runCommand(npmCommand, ["run", "export:web"], { cwd: expoPath, env: process.env });
 }
 
@@ -62,10 +70,14 @@ async function startExpo(config) {
 
   const expoPath = path.resolve(config.expoProjectPath);
   if (!fs.existsSync(expoPath)) {
-    console.warn(`[server] skipping Expo start: EXPO_PROJECT_PATH does not exist (${expoPath})`);
+    logger.warn("expo.start.skipped", { reason: "missing-project-path", expoPath });
     return null;
   }
 
+  logger.info("expo.starting", {
+    expoPath,
+    port: config.expoDevServerPort
+  });
   const expoCommand = process.platform === "win32" ? "npx.cmd" : "npx";
   const child = spawn(expoCommand, ["expo", "start", "--port", String(config.expoDevServerPort)], {
     cwd: expoPath,
@@ -77,7 +89,7 @@ async function startExpo(config) {
   });
 
   child.on("exit", (code, signal) => {
-    console.log(`[server] Expo exited code=${code} signal=${signal || "none"}`);
+    logger.info("expo.exit", { code, signal: signal || "none" });
     if (config.expoFatalOnExit && code !== 0) {
       process.exitCode = 1;
     }
@@ -105,11 +117,22 @@ async function ensureDefaultDevUsers() {
     await db.guardianUsers.grant(guardianUser.id, tx);
   });
 
-  console.log('[server] ensured default dev users: "admin" and "guardian"');
+  logger.info("bootstrap.dev-users.ready", {
+    users: ["admin", "guardian"]
+  });
 }
 
 async function bootstrap({ exitOnShutdown = false } = {}) {
   const config = loadConfig();
+  logger.info("bootstrap.start", {
+    exitOnShutdown,
+    nodeEnv: config.nodeEnv,
+    port: config.port,
+    startExpo: config.startExpo,
+    expoProxyEnabled: config.expoProxyEnabled,
+    expoStaticEnabled: config.expoStaticEnabled,
+    dbTestBenchEnabled: config.dbTestBenchEnabled
+  });
   await prepareExpoWeb(config);
   await db.init(config.db);
   await ensureDefaultDevUsers();
@@ -127,7 +150,7 @@ async function bootstrap({ exitOnShutdown = false } = {}) {
       : null
   });
   await http.start();
-  console.log(`[server] HTTP listening on :${config.port}`);
+  logger.info("http.listening", { port: config.port });
 
   const expoChild = await startExpo(config);
 
@@ -136,7 +159,7 @@ async function bootstrap({ exitOnShutdown = false } = {}) {
   async function shutdown(signal) {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(`[server] shutdown requested via ${signal}`);
+    logger.info("shutdown.start", { signal });
 
     if (expoChild && !expoChild.killed) {
       expoChild.kill("SIGTERM");
@@ -145,13 +168,13 @@ async function bootstrap({ exitOnShutdown = false } = {}) {
     try {
       await http.stop();
     } catch (error) {
-      console.error("[server] failed stopping HTTP server", error);
+      logger.error("shutdown.http.failed", { error: serializeError(error) });
     }
 
     try {
       await db.close();
     } catch (error) {
-      console.error("[server] failed closing DB", error);
+      logger.error("shutdown.db.failed", { error: serializeError(error) });
     }
 
     if (signalHandlersInstalled) {
@@ -171,7 +194,7 @@ async function bootstrap({ exitOnShutdown = false } = {}) {
   process.on("SIGTERM", handleSigterm);
   signalHandlersInstalled = true;
 
-  console.log("[server] ready");
+  logger.info("bootstrap.ready");
 
   return {
     config,

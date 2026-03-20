@@ -1,5 +1,8 @@
 const fs = require("fs");
 const path = require("path");
+const { createLogger } = require("./logging");
+
+const logger = createLogger("server.env");
 
 function stripWrappingQuotes(value) {
   if (value.length >= 2) {
@@ -41,16 +44,34 @@ function parseEnvText(text) {
 
 function loadEnvFile(envPath, targetEnv = process.env) {
   const resolvedPath = path.resolve(envPath);
+  logger.info("env.load.start", { envPath: resolvedPath });
+
   if (!fs.existsSync(resolvedPath)) {
+    logger.error("env.load.missing", { envPath: resolvedPath });
     throw new Error(`Missing env file at ${resolvedPath}`);
   }
 
-  const parsed = parseEnvText(fs.readFileSync(resolvedPath, "utf-8"));
+  const contents = fs.readFileSync(resolvedPath, "utf-8");
+  const parsed = parseEnvText(contents);
+  const appliedKeys = [];
+  const skippedKeys = [];
+
   for (const [key, value] of Object.entries(parsed)) {
     if (targetEnv[key] === undefined) {
       targetEnv[key] = value;
+      appliedKeys.push(key);
+      continue;
     }
+
+    skippedKeys.push(key);
   }
+
+  logger.info("env.load.complete", {
+    envPath: resolvedPath,
+    parsedKeys: Object.keys(parsed).length,
+    appliedKeyCount: appliedKeys.length,
+    skippedKeyCount: skippedKeys.length
+  });
 
   return {
     path: resolvedPath,

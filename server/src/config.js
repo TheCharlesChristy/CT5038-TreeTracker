@@ -1,4 +1,7 @@
 const path = require("path");
+const { createLogger, sanitizeForLog } = require("./logging");
+
+const logger = createLogger("server.config");
 
 function parseBool(name, fallback) {
   const value = process.env[name];
@@ -28,7 +31,7 @@ function loadConfig() {
   const root = path.resolve(__dirname, "..", "..");
   const startExpo = parseBool("START_EXPO", process.env.NODE_ENV !== "production");
   const expoProjectPath = process.env.EXPO_PROJECT_PATH || path.join(root, "TreeGuardiansExpo");
-  return {
+  const config = {
     nodeEnv: process.env.NODE_ENV || "development",
     port: parseNumber("PORT", 4000),
     db: {
@@ -55,6 +58,32 @@ function loadConfig() {
       : parseBool("DB_TEST_BENCH_ENABLED", false),
     dbTestBenchToken: process.env.DB_TEST_BENCH_TOKEN || null
   };
+
+  logger.info("config.loaded", {
+    nodeEnv: config.nodeEnv,
+    port: config.port,
+    startExpo: config.startExpo,
+    expoProjectPath: config.expoProjectPath,
+    expoDevServerPort: config.expoDevServerPort,
+    expoFatalOnExit: config.expoFatalOnExit,
+    expoProxyEnabled: config.expoProxyEnabled,
+    expoStaticEnabled: config.expoStaticEnabled,
+    expoWebDistPath: config.expoWebDistPath,
+    expoAutoPrepare: config.expoAutoPrepare,
+    dbTestBenchEnabled: config.dbTestBenchEnabled,
+    db: sanitizeForLog({
+      host: config.db.host,
+      port: config.db.port,
+      user: config.db.user,
+      database: config.db.database,
+      connectionLimit: config.db.connectionLimit,
+      slowQueryMs: config.db.slowQueryMs,
+      allowCreateDatabase: config.db.allowCreateDatabase,
+      schemaPath: config.db.schemaPath
+    })
+  });
+
+  return config;
 }
 
 module.exports = {

@@ -3,11 +3,10 @@ import { router } from 'expo-router';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles';
-
-type UserRole = 'user' | 'guardian' | 'admin';
+import type { AppUserRole } from '@/utilities/authHelper';
 
 type DashboardPanelProps = {
-  userRole: UserRole;
+  userRole: AppUserRole;
   totalTrees: number;
   healthyCount: number;
   treesNeedingAttention: number;
@@ -25,6 +24,8 @@ export function DashboardPanel({
   onLogout,
   isLoggingOut = false,
 }: DashboardPanelProps) {
+  console.log('[DashboardPanel] received userRole:', userRole);
+
   return (
     <View style={styles.dashboardWrap}>
       <View style={styles.dashboardPanel}>

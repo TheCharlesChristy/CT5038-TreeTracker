@@ -34,12 +34,6 @@ CREATE TABLE IF NOT EXISTS admins (
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
-CREATE TABLE IF NOT EXISTS guardian_users (
-    user_id bigint unsigned PRIMARY KEY,
-    CONSTRAINT fk_guardian_users_user FOREIGN KEY (user_id)
-    REFERENCES users (id) ON DELETE CASCADE
-) engine = InnoDB;
-
 CREATE TABLE IF NOT EXISTS user_sessions (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     user_id bigint unsigned NOT NULL,
@@ -93,14 +87,14 @@ CREATE TABLE IF NOT EXISTS tree_data (
 ) engine = InnoDB;
 
 -- Relationship: Users watching over specific trees
-CREATE TABLE IF NOT EXISTS guardians (
+CREATE TABLE IF NOT EXISTS guardian_trees (
     user_id bigint unsigned NOT NULL,
     tree_id bigint unsigned NOT NULL,
     PRIMARY KEY (user_id,tree_id),
-    INDEX idx_guardians_tree_id (tree_id),
-    CONSTRAINT fk_guardians_user FOREIGN KEY (user_id)
+    INDEX idx_guardian_trees_tree_id (tree_id),
+    CONSTRAINT fk_guardian_trees_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_guardians_tree FOREIGN KEY (tree_id)
+    CONSTRAINT fk_guardian_trees_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
@@ -204,4 +198,10 @@ CREATE TABLE IF NOT EXISTS seen_observations (
     REFERENCES comments (id) ON DELETE CASCADE,
     CONSTRAINT fk_seen_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE
+) engine = InnoDB;
+
+CREATE TABLE IF NOT EXISTS guardians (
+    user_id bigint unsigned PRIMARY KEY,
+    CONSTRAINT fk_guardians_user FOREIGN KEY (user_id)
+    REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;

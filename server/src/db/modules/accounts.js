@@ -31,6 +31,25 @@ function createAccountEndpoints(ctx) {
       return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE email = ?", [email]);
     },
 
+    async getRoleById(id, tx) {
+      ensurePositiveInt("id", id);
+
+      const [isAdmin, isGuardian] = await Promise.all([
+        admins.isAdmin(id, tx),
+        guardianUsers.isGuardian(id, tx)
+      ]);
+
+      if (isAdmin) {
+        return "admin";
+      }
+
+      if (isGuardian) {
+        return "guardian";
+      }
+
+      return "registered_user";
+    },
+
     async list(params = {}, tx) {
       const { limit, offset } = normalizeListParams(params);
       return run(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users ORDER BY id DESC LIMIT ? OFFSET ?", [
@@ -146,7 +165,7 @@ function createAccountEndpoints(ctx) {
       ensurePositiveInt("userId", userId);
       await run(
         runtimeExecutor(tx),
-        "INSERT INTO guardian_users (user_id) VALUES (?) ON DUPLICATE KEY UPDATE user_id = user_id",
+        "INSERT INTO guardians (user_id) VALUES (?) ON DUPLICATE KEY UPDATE user_id = user_id",
         [userId]
       );
       return { userId };
@@ -154,19 +173,19 @@ function createAccountEndpoints(ctx) {
 
     async revoke(userId, tx) {
       ensurePositiveInt("userId", userId);
-      const result = await run(runtimeExecutor(tx), "DELETE FROM guardian_users WHERE user_id = ?", [userId]);
+      const result = await run(runtimeExecutor(tx), "DELETE FROM guardians WHERE user_id = ?", [userId]);
       return { revoked: result.affectedRows > 0 };
     },
 
     async isGuardian(userId, tx) {
       ensurePositiveInt("userId", userId);
-      const row = await selectOne(runtimeExecutor(tx), "SELECT 1 AS ok FROM guardian_users WHERE user_id = ?", [userId]);
+      const row = await selectOne(runtimeExecutor(tx), "SELECT 1 AS ok FROM guardians WHERE user_id = ?", [userId]);
       return Boolean(row);
     },
 
     async list(params = {}, tx) {
       const { limit, offset } = normalizeListParams(params);
-      return run(runtimeExecutor(tx), "SELECT user_id FROM guardian_users ORDER BY user_id DESC LIMIT ? OFFSET ?", [limit, offset]);
+      return run(runtimeExecutor(tx), "SELECT user_id FROM guardians ORDER BY user_id DESC LIMIT ? OFFSET ?", [limit, offset]);
     }
   };
 

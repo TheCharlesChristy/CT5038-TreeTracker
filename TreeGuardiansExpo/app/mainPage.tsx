@@ -24,17 +24,23 @@ import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
-import { getCurrentUser, logoutUser } from '@/utilities/authHelper';
+import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
+  const [loggedInUserRole, setLoggedInUserRole] = useState<AppUserRole>('user');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutStatus, setLogoutStatus] = useState<StatusMessage | null>(null);
   const logoutTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    getCurrentUser().then((user) => setLoggedInUsername(user?.username ?? null));
+    getCurrentUser().then((user) => {
+      console.log('[MainPage] current user from auth storage:', user);
+      console.log('[MainPage] normalized dashboard role:', normalizeUserRole(user?.role));
+      setLoggedInUsername(user?.username ?? null);
+      setLoggedInUserRole(normalizeUserRole(user?.role));
+    });
   }, []);
 
   const clearLogoutTimer = useCallback(() => {
@@ -50,7 +56,6 @@ export default function MainPage() {
 
   const {
     mode,
-    userRole,
     plottedTrees,
     selectedTree,
     searchQuery,
@@ -276,7 +281,7 @@ export default function MainPage() {
 
           {mode === 'dashboard' && loggedInUsername !== null ? (
             <DashboardPanel
-              userRole={userRole}
+              userRole={loggedInUserRole}
               totalTrees={plottedTrees.length}
               healthyCount={healthyCount}
               treesNeedingAttention={treesNeedingAttention}

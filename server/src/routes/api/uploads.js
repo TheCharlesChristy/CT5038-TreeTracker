@@ -3,6 +3,7 @@ const fs = require("fs");
 const express = require("express");
 const multer = require("multer");
 const { asyncHandler } = require("../middleware/async-handler");
+const { createLogger } = require("../../logging");
 const { parsePositiveInt, getUploadPublicBase, requireJson } = require("./utils/http");
 
 const DEFAULT_UPLOADS_DIR = path.resolve(__dirname, "..", "..", "..", "uploads");
@@ -20,6 +21,12 @@ function extFromMimeType(mimeType) {
     "image/svg+xml": ".svg"
   };
   return map[String(mimeType || "").toLowerCase()] || ".jpg";
+}
+
+const logger = createLogger("routes.api.uploads");
+
+function getRouteLogger(req, extra = {}) {
+  return req?.log?.scope ? req.log.scope("routes.api.uploads", extra) : logger.child(extra);
 }
 
 function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublicBaseUrl = null }) {
@@ -49,10 +56,16 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
   async function attachPhotos(treeId, uploaded) {
     const tree = await db.trees.getById(treeId);
     if (!tree) {
+      logger.warn("upload.tree.missing", { treeId });
       const error = new Error("Tree not found");
       error.name = "NotFoundError";
       throw error;
     }
+
+    logger.info("upload.attach.begin", {
+      treeId,
+      photoCount: uploaded.length
+    });
 
     return db.transaction(async (tx) => {
       for (const file of uploaded) {
@@ -75,7 +88,14 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
   }
 
   const uploadHandler = async (req, res, treeIdInput) => {
+    const routeLog = getRouteLogger(req, { route: "upload-photos" });
     const treeId = parsePositiveInt(treeIdInput, "treeId");
+    routeLog.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      treeId,
+      multipart: Array.isArray(req.files) && req.files.length > 0
+    });
 
     if (Array.isArray(req.files) && req.files.length > 0) {
       const publicBase = getUploadPublicBase(req, uploadPublicBaseUrl || process.env.UPLOAD_PUBLIC_BASE_URL || null);
@@ -87,6 +107,12 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
 
       await attachPhotos(treeId, uploaded);
 
+      routeLog.info("upload.success", {
+        treeId,
+        count: uploaded.length,
+        mode: "multipart"
+      });
+
       res.json({
         success: true,
         uploaded: uploaded.map((item) => item.url)
@@ -97,6 +123,7 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
     requireJson(req);
     const photos = Array.isArray(req.body.photos) ? req.body.photos : [];
     if (photos.length === 0) {
+      routeLog.warn("validation.failed", { reason: "no-photos" });
       res.status(400).json({ error: "No files uploaded" });
       return;
     }
@@ -106,6 +133,7 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
         return { url: photo, mimeType: null };
       }
       if (!photo || typeof photo !== "object" || typeof photo.url !== "string") {
+        routeLog.warn("validation.failed", { reason: "invalid-photo-entry" });
         const error = new Error("photos entries must be strings or { url, mimeType }");
         error.name = "ValidationError";
         throw error;
@@ -117,6 +145,12 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
     });
 
     await attachPhotos(treeId, uploaded);
+
+    routeLog.info("upload.success", {
+      treeId,
+      count: uploaded.length,
+      mode: "json"
+    });
 
     res.json({
       success: true,
