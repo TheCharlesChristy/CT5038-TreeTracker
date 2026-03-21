@@ -10,6 +10,7 @@ import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
+import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
 import { getPasswordError } from '@/lib/authValidation';
@@ -138,6 +139,7 @@ export default function Login() {
       noPadding
       backgroundImage={require('@/assets/images/CharltonKings.jpg')}
     >
+      <AuthenticatedRedirect />
       <View
         style={[
           styles.page,
@@ -172,9 +174,9 @@ export default function Login() {
           >
             <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
               <View style={styles.topRow}>
-                <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
+                <Pressable onPress={() => router.push('/mainPage')} style={styles.homeLink}>
                   <AppText variant="caption" style={styles.homeLinkText}>
-                    Back to home
+                    Back to Map
                   </AppText>
                 </Pressable>
               </View>

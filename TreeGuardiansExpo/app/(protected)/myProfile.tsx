@@ -31,7 +31,7 @@ export default function MyProfilePage() {
 				<AppText style={styles.subtitle}>
 					Sign in to view your profile details.
 				</AppText>
-				<AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
+				<AppButton title="Return to Map" variant="secondary" onPress={() => router.push('/mainPage')} />
 			</AppContainer>
 		);
 	}
@@ -65,9 +65,9 @@ export default function MyProfilePage() {
 				/>
 
 				<AppButton
-					title="Return Home"
+					title="Return to Map"
 					variant="secondary"
-					onPress={() => router.push('/')}
+					onPress={() => router.push('/mainPage')}
 				/>
 			</View>
 		</AppContainer>

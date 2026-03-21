@@ -969,7 +969,7 @@ export default function DbTestBenchPage() {
   return (
     <AppContainer scrollable>
       <View style={styles.topBar}>
-        <NavigationButton onPress={() => router.push('/')}>Home</NavigationButton>
+        <NavigationButton onPress={() => router.push('/mainPage')}>Return to Map</NavigationButton>
       </View>
 
       <AppText variant="title" style={styles.title}>DB Endpoint Test Bench</AppText>

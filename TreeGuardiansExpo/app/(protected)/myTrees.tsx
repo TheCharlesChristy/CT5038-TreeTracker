@@ -70,7 +70,7 @@ export default function MyTreesPage() {
 				<AppText style={styles.subtitle}>
 					Your account role ({user?.role ?? 'guest'}) does not currently include the My Trees dashboard.
 				</AppText>
-				<AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
+				<AppButton title="Return to Map" variant="secondary" onPress={() => router.push('/mainPage')} />
 			</AppContainer>
 		);
 	}
@@ -128,9 +128,9 @@ export default function MyTreesPage() {
 			</View>
 
 			<AppButton
-				title="Return Home"
+				title="Return to Map"
 				variant="secondary"
-				onPress={() => router.push('/')}
+				onPress={() => router.push('/mainPage')}
 			/>
 		</AppContainer>
 	);

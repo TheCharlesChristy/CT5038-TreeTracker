@@ -177,18 +177,6 @@ export default function MainPage() {
             onClose={cancelLogout}
           />
 
-          <TouchableOpacity
-            style={styles.homeButton}
-            activeOpacity={0.8}
-            onPress={() => {
-              closeAllOverlays();
-              router.push('/');
-            }}
-          >
-            <MaterialCommunityIcons name="home-outline" size={20} color="#fff" />
-            <AppText style={styles.homeButtonText}>Home</AppText>
-          </TouchableOpacity>
-
           <View style={styles.loggedInPill}>
             <AppText style={styles.loggedInText}>
               {loggedInUsername ? `Logged in as ${loggedInUsername}` : 'Browsing as Guest'}
@@ -328,34 +316,6 @@ export default function MainPage() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-  },
-
-  homeButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 180,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 22,
-    backgroundColor: 'rgba(18, 72, 32, 0.68)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.45)',
-    borderTopColor: 'rgba(255, 255, 255, 0.6)',
-    shadowColor: '#0D1610',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  homeButtonText: {
-    fontSize: 13,
-    color: '#fff',
-    fontFamily: 'Poppins_600SemiBold',
   },
 
   loggedInPill: {

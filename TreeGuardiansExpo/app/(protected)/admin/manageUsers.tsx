@@ -38,13 +38,13 @@ export default function ManageUsersPage() {
 		return (
 			<AppContainer>
 				<View style={styles.topBar}>
-					<NavigationButton onPress={() => router.push('/mainPage')}>Back to Dashboard</NavigationButton>
+					<NavigationButton onPress={() => router.push('/mainPage')}>Back to Map</NavigationButton>
 				</View>
 				<AppText variant="title" style={styles.title}>Access Restricted</AppText>
 				<AppText style={styles.subtitle}>
 					Your account role ({user?.role ?? 'guest'}) does not have permission to manage users.
 				</AppText>
-				<AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
+				<AppButton title="Return to Map" variant="secondary" onPress={() => router.push('/mainPage')} />
 			</AppContainer>
 		);
 	}
@@ -52,7 +52,7 @@ export default function ManageUsersPage() {
 	return (
 		<AppContainer>
 			<View style={styles.topBar}>
-				<NavigationButton onPress={() => router.push('/mainPage')}>Back to Dashboard</NavigationButton>
+				<NavigationButton onPress={() => router.push('/mainPage')}>Back to Map</NavigationButton>
 			</View>
 
 			<AppText variant="title" style={styles.title}>Manage Users</AppText>
@@ -77,9 +77,9 @@ export default function ManageUsersPage() {
 				/>
 
 				<AppButton
-					title="Return Home"
+					title="Return to Map"
 					variant="secondary"
-					onPress={() => router.push('/')}
+					onPress={() => router.push('/mainPage')}
 				/>
 			</View>
 		</AppContainer>

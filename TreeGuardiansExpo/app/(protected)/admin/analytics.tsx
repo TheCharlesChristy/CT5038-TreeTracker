@@ -25,13 +25,13 @@ export default function AnalyticsPage() {
     return (
       <AppContainer>
         <View style={styles.topBar}>
-          <NavigationButton onPress={() => router.push('/mainPage')}>Back to Dashboard</NavigationButton>
+          <NavigationButton onPress={() => router.push('/mainPage')}>Back to Map</NavigationButton>
         </View>
         <AppText variant="title" style={styles.title}>Access Restricted</AppText>
         <AppText style={styles.subtitle}>
           Your account role ({user?.role ?? 'guest'}) does not have permission to view analytics.
         </AppText>
-        <AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
+        <AppButton title="Return to Map" variant="secondary" onPress={() => router.push('/mainPage')} />
       </AppContainer>
     );
   }
@@ -39,7 +39,7 @@ export default function AnalyticsPage() {
   return (
     <AppContainer>
       <View style={styles.topBar}>
-        <NavigationButton onPress={() => router.push('/mainPage')}>Back to Dashboard</NavigationButton>
+        <NavigationButton onPress={() => router.push('/mainPage')}>Back to Map</NavigationButton>
       </View>
 
       <AppText variant="title" style={styles.title}>Analytics</AppText>
@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
         <AppText style={styles.metricValue}>Ready for API-backed metrics</AppText>
       </View>
 
-      <AppButton title="Return Home" variant="secondary" onPress={() => router.push('/')} />
+      <AppButton title="Return to Map" variant="secondary" onPress={() => router.push('/mainPage')} />
     </AppContainer>
   );
 }
