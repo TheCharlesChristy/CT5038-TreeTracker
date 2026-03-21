@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, StyleSheet, TextStyle, StyleProp } from 'react-native';
 import { Theme } from '@/styles/theme';
 
-type Variant = keyof typeof Theme.Typography;
+type Variant = 'title' | 'subtitle' | 'tagline' | 'body' | 'caption';
 
 interface AppTextProps {
   children: React.ReactNode;
@@ -38,11 +38,14 @@ const styles = StyleSheet.create({
   title: {
     ...Theme.Typography.title,
   },
-  body: {
-    ...Theme.Typography.body,
-  },
   subtitle: {
     ...Theme.Typography.subtitle,
+  },
+  tagline: {
+    ...Theme.Typography.tagline,
+  },
+  body: {
+    ...Theme.Typography.body,
   },
   caption: {
     ...Theme.Typography.caption,

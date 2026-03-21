@@ -23,6 +23,7 @@
       "package": "com.anonymous.tree_guardians_expo"
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
@@ -40,6 +41,8 @@
           }
         }
       ],
+      "expo-font",
+      "expo-web-browser",
       "expo-secure-store"
     ],
     "experiments": {

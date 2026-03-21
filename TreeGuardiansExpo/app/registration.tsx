@@ -1,92 +1,114 @@
-import { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
-import { NavigationButton } from '@/components/base/NavigationButton';
+import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
+import { getUsernameError, getEmailError, getPasswordError } from '@/lib/authValidation';
 import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
-import { showAlert } from '@/utilities/showAlert'
-import { normalizePhone, isValidPhone } from '@/utilities/phone';
+import { PasswordStrengthIndicator } from '@/components/base/PasswordStrengthIndicator';
+import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 
 export default function CreateAccount() {
+  const successRedirectDuration = 3;
+  const { width, height } = useWindowDimensions();
+  const isMobileLayout = width < 680;
+  const isWideLayout = width >= 920;
+
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [usernameTouched, setUsernameTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const [usernameFocused, setUsernameFocused] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [formCardHeight, setFormCardHeight] = useState<number | undefined>(undefined);
+
+  const trimmedUsername = useMemo(() => username.trim(), [username]);
+  const trimmedEmail = useMemo(() => email.trim(), [email]);
+
+  const usernameError = getUsernameError(trimmedUsername);
+  const emailError = getEmailError(trimmedEmail);
+  const passwordError = getPasswordError(password);
+  const canSubmit = Boolean(trimmedUsername && password) && !usernameError && !emailError && !passwordError;
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<StatusMessage | null>(null);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (status?.variant === 'success') {
+      redirectTimer.current = setTimeout(() => {
+        setStatus(null);
+        router.replace('/mainPage');
+      }, successRedirectDuration * 1000);
+    }
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, [status, successRedirectDuration]);
 
   const handleCreateAccount = async () => {
-    if (loading) return;
+    setUsernameTouched(true);
+    setEmailTouched(true);
+    setPasswordTouched(true);
 
-    if (!username.trim()) {
-      showAlert('Error', 'Please enter a username');
+    if (usernameError) {
+      setStatus({ title: 'Check your username', message: usernameError, variant: 'error', createdAt: Date.now() });
       return;
     }
 
-    if (!email.trim()) {
-      showAlert('Error', 'Please enter an email address');
+    if (emailError) {
+      setStatus({ title: 'Check your email', message: emailError, variant: 'error', createdAt: Date.now() });
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showAlert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    // Optional phone validation, removes any white space inbetween the numbers and keeps the trailing + if present
-    const normalizedPhone = normalizePhone(phone);
-
-    if (!isValidPhone(normalizedPhone)) {
-      showAlert('Error', 'Please enter a valid phone number');
-      return;
-    }
-
-    if (!password) {
-      showAlert('Error', 'Please enter a password');
-      return;
-    }
-
-    if (password.length < 8) {
-      showAlert('Error', 'Password must be at least 8 characters long');
-      return;
-    }
-
-    if (!confirmPassword) {
-      showAlert('Error', 'Please confirm your password');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      showAlert('Error', 'Passwords do not match');
+    if (passwordError) {
+      setStatus({ title: 'Check your password', message: passwordError, variant: 'error', createdAt: Date.now() });
       return;
     }
 
     try {
       setLoading(true);
+      setStatus(null);
 
-      const response = await fetch(API_BASE + ENDPOINTS.REGISTER, {
+      const response = await fetch(API_BASE + ENDPOINTS.AUTH_REGISTER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: username.trim(),
-          email: email.trim(),
-          phone: normalizedPhone || null,
+          username: trimmedUsername,
+          email: trimmedEmail || null,
           password,
         }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setStatus({ title: 'Server Error', message: `${response.status} ${response.statusText}: ${text}`, variant: 'error', createdAt: Date.now() });
+        return;
+      }
 
       if (!response.ok) {
-        showAlert('Error', data.error || 'Failed to create account');
+        const detail = `${response.status} ${response.statusText}: ${data.error || JSON.stringify(data)}`;
+        setStatus({ title: 'Registration Failed', message: detail, variant: 'error', createdAt: Date.now() });
         return;
       }
 
@@ -94,124 +116,322 @@ export default function CreateAccount() {
       await saveItem('refreshToken', data.refreshToken);
       await saveItem('user', JSON.stringify(data.user));
 
-      showAlert(
-        'Account Created',
-        'Your account has been created successfully.',
-        () => router.replace('/login')
-      );
+      setStatus({
+        title: 'Account Created',
+        message: 'Your account has been created successfully.',
+        variant: 'success',
+        createdAt: Date.now(),
+      });
     } catch (error) {
+      const message = error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error);
       console.error('Registration error:', error);
-      showAlert('Error', 'Could not connect to the server');
+      setStatus({ title: 'Connection Error', message: `Network or client error — ${message}`, variant: 'error', createdAt: Date.now() });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AppContainer scrollable>
-      <NavigationButton onPress={() => router.push('/')}>
-        Home
-      </NavigationButton>
+    <AppContainer
+      scrollable
+      noPadding
+      backgroundImage={require('../assets/images/CharltonKings.jpg')}
+    >
+      <AuthenticatedRedirect />
+      <View
+        style={[
+          styles.page,
+          isMobileLayout && styles.pageMobile,
+          { minHeight: height - Theme.Spacing.large },
+        ]}
+      >
+        <StatusMessageBox
+          status={status}
+          redirectDuration={successRedirectDuration}
+          onClose={() => {
+            if (redirectTimer.current) clearTimeout(redirectTimer.current);
+            if (status?.variant === 'success') {
+              router.replace('/mainPage');
+            }
+            setStatus(null);
+          }}
+        />
 
-      <View style={styles.formContainer}>
-        <AppText variant="title" style={styles.title}>
-          Create Account
-        </AppText>
+        <View style={[styles.shell, isMobileLayout && styles.shellMobile, isWideLayout ? styles.shellWide : styles.shellStacked]}>
+          <View style={[styles.formColumn, isWideLayout ? styles.formColumnWide : styles.formColumnStacked]}>
+            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
+              <Pressable onPress={() => router.push('/mainPage')} style={styles.homeLink}>
+                <AppText variant="caption" style={styles.homeLinkText}>
+                  Back to Map
+                </AppText>
+              </Pressable>
 
-        <AppText variant="body" style={styles.subtitle}>
-          Join TreeGuardians to help track and protect our trees
-        </AppText>
+              <AppText variant="title" style={[styles.title, isMobileLayout && styles.titleMobile]}>
+                Join the Community
+              </AppText>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Username
-            </AppText>
-            <AppInput
-              placeholder="Enter your username"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+              <AppText variant="body" style={[styles.subtitle, isMobileLayout && styles.subtitleMobile]}>
+                Discover local trees, share sightings, and help protect the canopy in your area.
+              </AppText>
+
+              <View style={styles.form}>
+                <View style={styles.inputGroup}>
+                  <AppText variant="caption" style={styles.label}>
+                    Username *
+                  </AppText>
+
+                  <AppInput
+                    placeholder="e.g. tree_guardian"
+                    value={username}
+                    onChangeText={(value) => {
+                      setUsername(value);
+                      if (!usernameTouched) {
+                        setUsernameTouched(true);
+                      }
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="username"
+                    autoComplete="username"
+                    onFocus={() => setUsernameFocused(true)}
+                    onBlur={() => {
+                      setUsernameFocused(false);
+                      setUsernameTouched(true);
+                    }}
+                    invalid={usernameTouched && !!usernameError}
+                    inputWrapperStyle={[
+                      styles.inputWrapper,
+                      usernameFocused && styles.inputFocused,
+                      usernameTouched && !!usernameError && styles.inputError,
+                    ]}
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  {usernameTouched && !!usernameError && (
+                    <AppText variant="caption" style={styles.errorText}>
+                      {usernameError}
+                    </AppText>
+                  )}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <AppText variant="caption" style={styles.label}>
+                    Email address (optional)
+                  </AppText>
+
+                  <AppInput
+                    placeholder="name@example.com"
+                    value={email}
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      if (!emailTouched) {
+                        setEmailTouched(true);
+                      }
+                    }}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="emailAddress"
+                    autoComplete="email"
+                    onFocus={() => setEmailFocused(true)}
+                    onBlur={() => {
+                      setEmailFocused(false);
+                      setEmailTouched(true);
+                    }}
+                    invalid={emailTouched && !!emailError}
+                    inputWrapperStyle={[
+                      styles.inputWrapper,
+                      emailFocused && styles.inputFocused,
+                      emailTouched && !!emailError && styles.inputError,
+                    ]}
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  {emailTouched && !!emailError && (
+                    <AppText variant="caption" style={styles.errorText}>
+                      {emailError}
+                    </AppText>
+                  )}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <AppText variant="caption" style={styles.label}>
+                    Password
+                  </AppText>
+
+                  <AppInput
+                    placeholder="At least 8 characters"
+                    value={password}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      if (!passwordTouched) {
+                        setPasswordTouched(true);
+                      }
+                    }}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="newPassword"
+                    autoComplete="password-new"
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => {
+                      setPasswordFocused(false);
+                      setPasswordTouched(true);
+                    }}
+                    invalid={passwordTouched && !!passwordError}
+                    inputWrapperStyle={[
+                      styles.inputWrapper,
+                      passwordFocused && styles.inputFocused,
+                      passwordTouched && !!passwordError && styles.inputError,
+                    ]}
+                    rightAdornment={(
+                      <Pressable
+                        onPress={() => setShowPassword((prev) => !prev)}
+                        hitSlop={8}
+                        style={styles.visibilityToggle}
+                      >
+                        <AppText variant="caption" style={styles.visibilityToggleText}>
+                          {showPassword ? 'Hide' : 'Show'}
+                        </AppText>
+                      </Pressable>
+                    )}
+                    containerStyle={styles.inputContainer}
+                  />
+
+                  {passwordTouched && !!passwordError && (
+                    <AppText variant="caption" style={styles.errorText}>
+                      {passwordError}
+                    </AppText>
+                  )}
+
+                  <PasswordStrengthIndicator password={password} />
+                </View>
+
+                <AppButton
+                  title="Join the Community"
+                  onPress={handleCreateAccount}
+                  disabled={!canSubmit || loading}
+                  style={styles.submitButton}
+                  buttonStyle={styles.submitButtonInner}
+                />
+
+                <View style={styles.trustPanel}>
+                  <AppText variant="caption" style={styles.trustTitle}>
+                    Why your data is safe
+                  </AppText>
+                  <AppText variant="caption" style={styles.trustText}>
+                    We only use your email for account access and key updates. Your details are not shared publicly.
+                  </AppText>
+                </View>
+
+                <View style={styles.footer}>
+                  <AppText variant="body" style={styles.footerText}>
+                    Already have an account?
+                  </AppText>
+                  <Pressable onPress={() => router.push('/login')}>
+                    <AppText variant="body" style={styles.footerLink}>
+                      Sign in
+                    </AppText>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Email
-            </AppText>
-            <AppInput
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <View style={[styles.previewColumn, isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked, isWideLayout && formCardHeight != null && { height: formCardHeight }]}>
+            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile, isWideLayout && styles.previewCardWide]}>
+              <View style={styles.previewEyebrow}>
+                <AppText variant="caption" style={styles.previewEyebrowText}>
+                  Open, local, community-led
+                </AppText>
+              </View>
 
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Phone Number
-            </AppText>
-            <AppInput
-              placeholder="Enter your phone number (optional)"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+              <AppText variant="subtitle" style={[styles.previewTitle, isMobileLayout && styles.previewTitleMobile]}>
+                Build your local tree network
+              </AppText>
 
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Password
-            </AppText>
-            <AppInput
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              containerStyle={styles.passwordInputContainer}
-            />
-            <AppText variant="caption" style={styles.helpText}>
-              Must be at least 8 characters
-            </AppText>
-          </View>
+              <AppText variant="body" style={[styles.previewSubtitle, isMobileLayout && styles.previewSubtitleMobile]}>
+                Start in minutes and turn everyday walks into shared community impact.
+              </AppText>
 
-          <View style={styles.inputGroup}>
-            <AppText variant="body" style={styles.label}>
-              Confirm Password
-            </AppText>
-            <AppInput
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+              <View style={styles.previewList}>
+                <View style={styles.previewFeatureItem}>
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Map
+                    </AppText>
+                  </View>
+                  <View style={styles.previewFeatureCopy}>
+                    <AppText variant="body" style={styles.previewFeatureTitle}>
+                      Add and monitor trees around your neighborhood
+                    </AppText>
+                    <AppText variant="caption" style={styles.previewFeatureText}>
+                      Pin locations, upload photos, and track growth over time.
+                    </AppText>
+                  </View>
+                </View>
 
-          <AppButton
-            title={loading ? 'Creating...' : 'Create Account'}
-            onPress={handleCreateAccount}
-            style={styles.submitButton}
-          />
+                <View style={styles.previewFeatureItem}>
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Explore
+                    </AppText>
+                  </View>
+                  <View style={styles.previewFeatureCopy}>
+                    <AppText variant="body" style={styles.previewFeatureTitle}>
+                      Discover local tree photos and biodiversity
+                    </AppText>
+                    <AppText variant="caption" style={styles.previewFeatureText}>
+                      Browse species data and community stories from your area.
+                    </AppText>
+                  </View>
+                </View>
 
-          <View style={styles.footer}>
-            <AppText variant="body" style={styles.footerText}>
-              Already have an account?{' '}
-            </AppText>
-            <AppButton
-              title="Sign In"
-              variant="outline"
-              onPress={() => router.push('/login')}
-              style={styles.linkButton}
-            />
+                <View style={styles.previewFeatureItem}>
+                  <View style={styles.previewFeatureBadge}>
+                    <AppText variant="caption" style={styles.previewFeatureBadgeText}>
+                      Connect
+                    </AppText>
+                  </View>
+                  <View style={styles.previewFeatureCopy}>
+                    <AppText variant="body" style={styles.previewFeatureTitle}>
+                      Join guardians who care about green spaces
+                    </AppText>
+                    <AppText variant="caption" style={styles.previewFeatureText}>
+                      Collaborate with neighbors to protect and restore local nature.
+                    </AppText>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.previewStatsRow}>
+                <View style={styles.previewStatCard}>
+                  <AppText variant="caption" style={styles.previewStatLabel}>
+                    Setup time
+                  </AppText>
+                  <AppText variant="subtitle" style={styles.previewStatValue}>
+                    Under 2 minutes
+                  </AppText>
+                </View>
+
+                <View style={styles.previewStatCard}>
+                  <AppText variant="caption" style={styles.previewStatLabel}>
+                    Your data
+                  </AppText>
+                  <AppText variant="subtitle" style={styles.previewStatValue}>
+                    Private by default
+                  </AppText>
+                </View>
+              </View>
+
+              <View style={styles.previewBadge}>
+                <AppText variant="caption" style={styles.previewBadgeText}>
+                  TreeGuardians members are helping communities map, protect, and restore urban nature.
+                </AppText>
+              </View>
+            </View>
           </View>
         </View>
       </View>
@@ -220,42 +440,209 @@ export default function CreateAccount() {
 }
 
 const styles = StyleSheet.create({
-  formContainer: {
+  page: {
     flex: 1,
-    justifyContent: 'center',
+    position: 'relative',
+    paddingHorizontal: Theme.Spacing.large,
     paddingVertical: Theme.Spacing.extraLarge,
   },
+  pageMobile: {
+    paddingHorizontal: Theme.Spacing.medium,
+    paddingVertical: Theme.Spacing.large,
+  },
+  shell: {
+    flex: 1,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 1160,
+    gap: Theme.Spacing.large,
+    zIndex: 1,
+  },
+  shellMobile: {
+    gap: Theme.Spacing.medium,
+  },
+  shellWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  shellStacked: {
+    flexDirection: 'column',
+  },
+  formColumn: {
+    width: '100%',
+  },
+  formColumnWide: {
+    flex: 5,
+    maxWidth: 520,
+  },
+  formColumnStacked: {
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
+  formCard: {
+    backgroundColor: 'rgba(248, 252, 248, 0.76)',
+    borderRadius: 20,
+    padding: Theme.Spacing.extraLarge,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.44)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    elevation: 6,
+  },
+  formCardMobile: {
+    borderRadius: 16,
+    padding: Theme.Spacing.large,
+  },
+  homeLink: {
+    alignSelf: 'flex-start',
+    marginBottom: Theme.Spacing.medium,
+    paddingVertical: Theme.Spacing.extraSmall,
+    paddingHorizontal: Theme.Spacing.small,
+    borderRadius: 999,
+    backgroundColor: 'rgba(46, 125, 50, 0.10)',
+  },
+  homeLinkText: {
+    color: '#1B5E20',
+    fontWeight: '600',
+  },
   title: {
-    textAlign: 'center',
-    marginBottom: Theme.Spacing.small,
-    color: Theme.Colours.primary,
+    color: '#1B5E20',
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: 0.2,
+  },
+  titleMobile: {
+    fontSize: 28,
+    lineHeight: 34,
   },
   subtitle: {
-    textAlign: 'center',
-    marginBottom: Theme.Spacing.extraLarge,
-    color: Theme.Colours.gray,
+    marginTop: Theme.Spacing.small,
+    marginBottom: Theme.Spacing.large,
+    color: '#2D3A2D',
+  },
+  subtitleMobile: {
+    marginBottom: Theme.Spacing.medium,
   },
   form: {
     width: '100%',
   },
   inputGroup: {
-    marginBottom: 0,
+    marginBottom: Theme.Spacing.medium,
   },
   label: {
     marginBottom: Theme.Spacing.small,
-    color: Theme.Colours.black,
+    color: '#16391A',
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
-  helpText: {
-    marginTop: Theme.Spacing.extraSmall,
-    marginBottom: Theme.Spacing.medium,
-    color: Theme.Colours.gray,
+  inputContainer: {
+    marginBottom: Theme.Spacing.extraSmall,
   },
-  passwordInputContainer: {
-    marginBottom: 0,
+  inputWrapper: {
+    borderRadius: 12,
+    borderColor: 'rgba(255, 255, 255, 0.52)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  inputFocused: {
+    borderColor: '#2E7D32',
+    borderWidth: 2,
+    backgroundColor: 'rgba(247, 255, 247, 0.96)',
+  },
+  inputError: {
+    borderColor: '#B3261E',
+    backgroundColor: 'rgba(255, 248, 247, 0.94)',
+  },
+  visibilityToggle: {
+    paddingLeft: Theme.Spacing.small,
+    paddingVertical: 4,
+  },
+  visibilityToggleText: {
+    color: '#2E7D32',
+    fontWeight: '700',
+  },
+  errorText: {
+    color: '#B3261E',
   },
   submitButton: {
-    marginTop: Theme.Spacing.large,
+    marginTop: Theme.Spacing.small,
+    marginBottom: Theme.Spacing.medium,
+  },
+  submitButtonInner: {
+    borderRadius: 12,
+    minHeight: 54,
+    justifyContent: 'center',
+    shadowColor: '#1B5E20',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  trustPanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.26)',
+    padding: Theme.Spacing.medium,
+    marginBottom: Theme.Spacing.medium,
+  },
+  trustTitle: {
+    color: '#1B5E20',
+    fontWeight: '600',
+    marginBottom: Theme.Spacing.extraSmall,
+  },
+  trustText: {
+    color: '#2F3A2F',
+    lineHeight: 20,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.Spacing.medium,
+    gap: Theme.Spacing.small,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(46, 125, 50, 0.24)',
+  },
+  dividerText: {
+    color: '#466046',
+    textTransform: 'lowercase',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: Theme.Spacing.small,
+  },
+  socialRowStacked: {
+    flexDirection: 'column',
+  },
+  socialButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 146, 123, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.86)',
+    borderRadius: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Theme.Spacing.small,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  socialButtonStacked: {
+    width: '100%',
+  },
+  socialButtonText: {
+    color: '#1F2C1F',
+    fontSize: 15,
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
@@ -263,14 +650,151 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: Theme.Spacing.large,
     flexWrap: 'wrap',
+    gap: Theme.Spacing.extraSmall,
   },
   footerText: {
-    color: Theme.Colours.gray,
+    color: '#2F3A2F',
   },
-  linkButton: {
-    marginLeft: Theme.Spacing.small,
-    marginBottom: 0,
-    paddingVertical: Theme.Spacing.small,
-    paddingHorizontal: Theme.Spacing.medium,
+  footerLink: {
+    color: '#1B5E20',
+    fontWeight: '700',
+  },
+  previewColumn: {
+    width: '100%',
+  },
+  previewColumnWide: {
+    flex: 5,
+    maxWidth: 560,
+  },
+  previewColumnStacked: {
+    maxWidth: 520,
+    alignSelf: 'center',
+  },
+  previewCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: 'rgba(12, 39, 16, 0.34)',
+    padding: Theme.Spacing.extraLarge,
+    justifyContent: 'space-between',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  previewCardMobile: {
+    minHeight: 0,
+    padding: Theme.Spacing.large,
+    borderRadius: 16,
+  },
+  previewCardWide: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  previewTitle: {
+    color: '#EFF7EE',
+    marginBottom: Theme.Spacing.small,
+    fontSize: 30,
+    lineHeight: 36,
+  },
+  previewTitleMobile: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  previewSubtitle: {
+    color: '#D7E8D7',
+    marginBottom: Theme.Spacing.large,
+  },
+  previewSubtitleMobile: {
+    marginBottom: Theme.Spacing.medium,
+  },
+  previewList: {
+    gap: Theme.Spacing.medium,
+    marginBottom: Theme.Spacing.large,
+  },
+  previewItem: {
+    color: '#E8F4E8',
+    lineHeight: 24,
+  },
+  previewEyebrow: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: Theme.Spacing.large,
+  },
+  previewEyebrowText: {
+    color: '#E6F4E7',
+    fontWeight: '700',
+  },
+  previewFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  previewFeatureBadge: {
+    minWidth: 52,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(240, 248, 240, 0.84)',
+    marginRight: Theme.Spacing.medium,
+  },
+  previewFeatureBadgeText: {
+    color: '#16391A',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    fontSize: 11,
+  },
+  previewFeatureCopy: {
+    flex: 1,
+  },
+  previewFeatureTitle: {
+    color: '#F7FBF7',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  previewFeatureText: {
+    color: 'rgba(230, 244, 231, 0.82)',
+    lineHeight: 19,
+  },
+  previewStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+    marginBottom: Theme.Spacing.large,
+  },
+  previewStatCard: {
+    minWidth: 160,
+    flex: 1,
+    marginHorizontal: 6,
+    marginBottom: 12,
+    borderRadius: 18,
+    padding: Theme.Spacing.medium,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  previewStatLabel: {
+    color: 'rgba(230, 244, 231, 0.72)',
+    marginBottom: Theme.Spacing.extraSmall,
+  },
+  previewStatValue: {
+    color: '#F7FBF7',
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  previewBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.24)',
+    borderRadius: 12,
+    padding: Theme.Spacing.medium,
+  },
+  previewBadgeText: {
+    color: '#EAF7EA',
+    lineHeight: 20,
   },
 });

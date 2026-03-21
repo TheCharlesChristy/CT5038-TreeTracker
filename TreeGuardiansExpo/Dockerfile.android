@@ -1,0 +1,102 @@
+FROM node:20-bookworm
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG ANDROID_CMDLINE_TOOLS_VERSION=11076708
+
+ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV PATH=${PATH}:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/emulator
+ENV ANDROID_EMULATOR_USE_SYSTEM_LIBS=1
+ENV LIBGL_ALWAYS_SOFTWARE=1
+ENV QT_X11_NO_MITSHM=1
+
+WORKDIR /workspace
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    curl \
+    git \
+    libasound2 \
+    libc6-i386 \
+    lib32stdc++6 \
+    lib32z1 \
+    libdbus-1-3 \
+    libfontconfig1 \
+    libgbm1 \
+    libgl1 \
+    libglu1-mesa \
+    libnss3 \
+    libpulse0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcb-cursor0 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxi6 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon-x11-0 \
+    libxrandr2 \
+    libxrender1 \
+    libxtst6 \
+    novnc \
+    openjdk-17-jdk \
+    qemu-kvm \
+    python3 \
+    socat \
+    unzip \
+    websockify \
+    wget \
+    x11vnc \
+    xauth \
+    xvfb \
+    xz-utils \
+    zip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \
+    && wget -q https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_CMDLINE_TOOLS_VERSION}_latest.zip -O /tmp/cmdline-tools.zip \
+    && unzip -q /tmp/cmdline-tools.zip -d ${ANDROID_HOME}/cmdline-tools \
+    && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest \
+    && rm -f /tmp/cmdline-tools.zip
+
+RUN yes | sdkmanager --licenses \
+    && sdkmanager --install \
+    "platform-tools" \
+    "emulator" \
+    "build-tools;35.0.0" \
+    "platforms;android-35" \
+    "system-images;android-35;google_apis;x86_64"
+
+RUN mkdir -p /root/.android \
+    && touch /root/.android/repositories.cfg \
+    && echo "no" | avdmanager create avd \
+       --name expo-emulator \
+       --package "system-images;android-35;google_apis;x86_64" \
+       --device "pixel_6"
+
+# Download Expo Go APK for the SDK version used by the project.
+# The Expo versions API returns a JSON map of sdkVersions each with an androidClientUrl.
+# node -pe expression must be a single line to avoid Dockerfile parser treating
+# continuation lines as instructions.
+ARG EXPO_SDK_VERSION=55
+RUN curl -fsSL "https://exp.host/--/api/v2/versions" -o /tmp/expo-versions.json \
+    && APK_URL=$(node -pe "const d=require('/tmp/expo-versions.json'),sdk='$EXPO_SDK_VERSION';const vs=Object.keys(d.sdkVersions||{}).filter(k=>k.startsWith(sdk+'.')).sort();const v=vs[vs.length-1];(v&&d.sdkVersions[v].androidClientUrl)||''" 2>/dev/null) \
+    && rm /tmp/expo-versions.json \
+    && if [ -n "$APK_URL" ] && [ "$APK_URL" != "undefined" ]; then \
+         echo "Downloading Expo Go from: $APK_URL"; \
+         curl -fL "$APK_URL" -o /opt/expo-go.apk; \
+       else \
+         echo "Warning: Could not resolve Expo Go APK URL for SDK $EXPO_SDK_VERSION. Expo Go will not be auto-installed."; \
+       fi
+
+EXPOSE 5554 5555 5900 6080
+
+COPY scripts/docker-entrypoint.android.sh /usr/local/bin/docker-entrypoint-android.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint-android.sh
+
+CMD ["/usr/local/bin/docker-entrypoint-android.sh"]

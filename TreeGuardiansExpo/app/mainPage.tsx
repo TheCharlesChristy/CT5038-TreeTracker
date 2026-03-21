@@ -1,519 +1,842 @@
-import { View, StyleSheet, Alert } from 'react-native';
 import React, { useState, useEffect, useCallback } from 'react';
-import * as Location from 'expo-location';
-import MapComponent from '@/components/base/MapComponent';
-import { router, useFocusEffect } from 'expo-router';
-import { NavigationButton } from '@/components/base/NavigationButton';
-import { AppContainer } from '@/components/base/AppContainer';
-import { AppButton } from '@/components/base/AppButton';
-import PlotDashboard from '@/components/base/AddTreeDashboard';
-import { Theme } from '@/styles';
-import { Tree, TreeDetails } from '@/objects/TreeDetails';
-import TreeDetailsDashboard from '@/components/base/TreeDashboard';
+import {
+  Alert,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  useWindowDimensions,
+} from 'react-native';
+import { router } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
-import { API_BASE, ENDPOINTS } from '@/config/api';
-import { getItem } from '@/utilities/authStorage';
-import { showAlert } from '@/utilities/showAlert';
-import RoleDashboard from '@/components/base/Dashboard';
-import { logoutUser, validateSession } from "@/utilities/authHelper";
+
+import MapComponent from '@/components/base/MapComponent';
+import PlotDashboard from '@/components/base/AddTreeDashboard';
+import TreeDetailsDashboard from '@/components/base/TreeDashboard';
+import { AppContainer } from '@/components/base/AppContainer';
+import { AppText } from '@/components/base/AppText';
+import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
+import { DashboardPanel } from '@/components/map/DashboardPanel';
+import { FloatingActionBar } from '@/components/map/FloatingActionBar';
+import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
+import { Tree } from '@/objects/TreeDetails';
+import { Theme } from '@/styles';
+import { useTreeMapState } from '../hooks/useTreeMapState';
+import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
 
 export default function MainPage() {
-  type PlotMode = 'manual' | 'device' | null;
-  type UserRole = 'registered_user' | 'guardian' | 'admin'
-
-  interface LoggedInUser {
-    id: number;
-    username: string;
-    role: UserRole;
-  }
-
-  const [plotMode, setPlotMode] = useState<PlotMode>(null);
-
-  // For manual plotting
-  const [isPlotting, setIsPlotting] = useState(false);
-
-  // Dashboard Tree State (Before map Placement)
-  const [currentTree, setCurrentTree] = useState<TreeDetails | null>(null);
-
-  // Map Tree State (after sucessful tree placement)
-  const [plottedTrees, setPlottedTrees] = useState<Tree[]>([]);
-
-  // Dashboard and insertion of plotted trees
-  const [showAddTreeDashboard, setShowAddTreeDashboard] = useState(false);
-
-  // Selected tree
-  const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
-
-  // User states
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<LoggedInUser | null>(null);
-
-  // User Dashboard
-  const [showRoleDashboard, setShowRoleDashboard] = useState(false);
-
-  const plotWithDeviceLocation = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Location permission is required');
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({});
-
-      if (!currentTree) return;
-
-      const completeTree: Tree = {
-        ...currentTree,
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      } as Tree;
-
-      uploadTreeToServer(completeTree);
-
-      // Reset state
-      setCurrentTree(null);
-      setPlotMode(null);
-      setIsPlotting(false);
-
-    } catch (error) {
-      console.warn(error);
-    }
-  };
-
-  // Device trigger for plotting tree with location
-  useEffect(() => {
-    if (plotMode === 'device' && currentTree) {
-      plotWithDeviceLocation();
-    }
-  }, [plotMode, currentTree]);
-
-  // ===================================================================================================
-  // Uploading and fetching trees
-
-  const uploadPhotos = async (treeId: string, photos: string[]) => {
-  if (!photos || photos.length === 0) return;
-
-  const formData = new FormData();
-  formData.append("tree_id", treeId);
-
-  for (let i = 0; i < photos.length; i++) {
-    let uri = photos[i];
-
-    // Handle web blob URLs
-    if (uri.startsWith("blob:")) {
-      try {
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const file = new File([blob], `photo_${i}.jpg`, { type: blob.type });
-        formData.append("photos", file);
-      } catch (err) {
-        console.error("Failed to convert blob URL to file:", err);
-        continue; // skip this photo
-      }
-    } else { // Handle mobile file:// URIs
-      if (!uri.startsWith("file://")) uri = "file://" + uri;
-      formData.append("photos", {
-        uri,
-        name: `photo_${i}.jpg`,
-        type: "image/jpeg",
-      } as any);
-    }
-  }
-
-  try {
-    const response = await fetch(
-      API_BASE + ENDPOINTS.UPLOAD_PHOTOS,
-      {
-        method: "POST",
-        body: formData,
-        // Do NOT set Content-Type manually for FormData
-      }
-    );
-
-      // For debugging, parse as text first to catch HTML errors
-      const text = await response.text();
-      console.log("Upload response:", text);
-
-      // Try JSON parse if response is JSON
-      try {
-        const data = JSON.parse(text);
-        if (!response.ok || data.error) {
-          throw new Error(data.error || "Upload failed");
-        }
-        console.log("Photos uploaded successfully:", data);
-      } catch {
-        console.warn("Non-JSON response received from server.");
-      }
-    } catch (error) {
-      console.error("Photo upload error:", error);
-    }
-  };
-
-  // =================================================
-  // Authentication
-
-  const checkSession = async () => {
-    const auth = await validateSession();
-
-    setIsLoggedIn(auth.isLoggedIn);
-    setUser(auth.user);
-  };
+  const { width: windowWidth } = useWindowDimensions();
+  const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
+  const [loggedInUserRole, setLoggedInUserRole] = useState<AppUserRole>('user');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutStatus, setLogoutStatus] = useState<StatusMessage | null>(null);
+  const logoutTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetchTreesFromServer();
-    checkSession();
+    getCurrentUser().then((user) => {
+      setLoggedInUsername(user?.username ?? null);
+      setLoggedInUserRole(normalizeUserRole(user?.role));
+    });
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      checkSession();
-    }, [])
-  );
-
-  const uploadTreeToServer = async (tree: TreeDetails) => {
-    try {
-      const accessToken = await getItem("accessToken");
-
-      if (!accessToken) {
-        Alert.alert("Sign In Required", "You must be signed in to plot a tree.");
-        router.push("/login");
-        return;
-      }
-
-      const response = await fetch(API_BASE + ENDPOINTS.ADD_TREE_DATA, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(tree),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed");
-      }
-
-      const treeId = data.tree_id;
-
-      if (tree.photos?.length) {
-        await uploadPhotos(String(treeId), tree.photos);
-      }
-
-      await fetchTreesFromServer();
-      console.log("Tree saved successfully");
-    } catch (err) {
-      console.error("Tree upload failed:", err);
-      Alert.alert("Error", "Tree could not be saved");
+  const clearLogoutTimer = useCallback(() => {
+    if (logoutTimer.current) {
+      clearTimeout(logoutTimer.current);
+      logoutTimer.current = null;
     }
-  };
+  }, []);
 
-  const fetchTreesFromServer = async () => {
-    try {
-      const response = await fetch(
-        API_BASE + ENDPOINTS.GET_TREES
-      );
+  useEffect(() => () => {
+    clearLogoutTimer();
+  }, [clearLogoutTimer]);
 
-      const data = await response.json();
+  const {
+    mode,
+    plottedTrees,
+    selectedTree,
+    searchQuery,
+    distanceFilterKm,
+    healthFilter,
+    isLoadingTrees,
+    plotPointer,
+    showDimOverlay,
+    searchResults,
+    hasSearchFilters,
+    healthyCount,
+    treesNeedingAttention,
+    draftTreeDetails,
+    selectedDraftLocation,
+    isSelectingManualLocation,
+    addValidationError,
+    isSubmittingTree,
+    statusMessage,
+    closeAllOverlays,
+    openMode,
+    setSearchQuery,
+    setDistanceFilterKm,
+    setHealthFilter,
+    handleMapPointerMove,
+    handleMapTreeClick,
+    handleMapPress,
+    handleSelectManualPlacement,
+    handleCancelManualPlacement,
+    handleSelectDevicePlacement,
+    handleConfirmTreeAdd,
+    handleCloseTreeDetails,
+    handleSelectSearchResultTree,
+    clearSearchFilters,
+    clearStatusMessage,
+    getDistanceFromCenterKm,
+  } = useTreeMapState();
 
-      if (!response.ok) {
-        console.error("Server error:", data);
-        throw new Error("Failed to fetch trees");
-      }
+  const renderTreeIcon = useCallback((tree: Tree, { zoom }: { zoom: number }) => {
+    const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
+    return <TreeMarkerIcon selected={selected} zoomLevel={zoom} />;
+  }, [selectedTree?.id]);
 
-      if (!Array.isArray(data)) {
-        console.error("Unexpected response:", data);
-        return;
-      }
+  const visibleTrees = hasSearchFilters ? searchResults : plottedTrees;
+  const activeFilterLabels = [
+    searchQuery.trim() ? `Query: ${searchQuery.trim()}` : null,
+    distanceFilterKm !== null ? `Distance: ${distanceFilterKm.toFixed(1)} km` : null,
+    healthFilter !== 'all'
+      ? `Health: ${healthFilter === 'healthy' ? 'Healthy' : 'Needs Attention'}`
+      : null,
+  ].filter((value): value is string => Boolean(value));
 
-      // Map server response to TreeDisplay type
-      const mappedTrees = data.map((t: any) => ({
-        notes: t.notes || "", 
-        wildlife: t.wildlife || undefined,
-        disease: t.disease || undefined,
-        diameter: t.diameter || undefined,
-        height: t.height || undefined,
-        circumference: t.circumference || undefined,
-        photos: t.photos || [],
-        latitude: t.latitude,
-        longitude: t.longitude,
-        id: t.id,
-      }));
+  const executeLogout = useCallback(async () => {
+    clearLogoutTimer();
+    const didLogout = await logoutUser();
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch trees");
-      }
-
-      setPlottedTrees(mappedTrees);
-    } catch (error) {
-      console.error("Fetch error:", error);
-    }
-  };
-
-  const handleLogout = async () => {
-    const success = await logoutUser();
-
-    setIsLoggedIn(false);
-    setUser(null);
-    setShowRoleDashboard(false);
-
-    if (success) {
-      showAlert("Logged Out", "You have been logged out.");
+    if (!didLogout) {
+      setLogoutStatus(null);
+      setIsLoggingOut(false);
+      Alert.alert('Logout Failed', 'We could not log you out. Please try again.');
+      return;
     }
 
-    router.push("/");
-  };
+    setLogoutStatus(null);
+    setLoggedInUsername(null);
+    setIsLoggingOut(false);
+    router.replace('/');
+  }, [clearLogoutTimer]);
+
+  const cancelLogout = useCallback(() => {
+    clearLogoutTimer();
+    setLogoutStatus(null);
+    setIsLoggingOut(false);
+  }, [clearLogoutTimer]);
+
+  const handleLogout = useCallback(() => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    clearLogoutTimer();
+    closeAllOverlays();
+    setIsLoggingOut(true);
+    setLogoutStatus({
+      title: 'Logout Pending',
+      message: 'You will be logged out in 3 seconds unless you cancel.',
+      variant: 'error',
+      createdAt: Date.now(),
+    });
+    logoutTimer.current = setTimeout(() => {
+      void executeLogout();
+    }, 3000);
+  }, [clearLogoutTimer, closeAllOverlays, executeLogout, isLoggingOut]);
 
   return (
     <ActionSheetProvider>
-    <AppContainer noPadding>
-      <View style={{ flex: 1 }}>
-      <MapComponent
-        style={StyleSheet.absoluteFillObject}
-        isPlotting={isPlotting}
-        plottedTrees={plottedTrees}
-        onTreeClick={(tree) => setSelectedTree(tree)}
-
-        onPress={(coordinate) => {
-          if (!isPlotting || plotMode !== 'manual' || !currentTree) return;
-          
-          const completeTree: Tree = {
-            ...currentTree,
-            latitude: coordinate.latitude,
-            longitude: coordinate.longitude,
-            } as Tree;
-
-          uploadTreeToServer(completeTree);
-
-          setCurrentTree(null);
-          setIsPlotting(false);
-          setPlotMode(null);
-        }}
-
-        // This is needed because how the map is implemented, it is parsing html from string into leaflet to work on both mobile and web. See MapCompoenent.tsx
-        renderTreeIcon={(tree) => `
-          <div style="
-            width:30px;
-            height:30px;
-            border-radius:${Theme.Border.medium}px;
-            background:${Theme.Colours.primary};
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:22px;
-          ">
-            🌳
-          </div>
-        `}
-      />
-
-      {/* Adding background dim when a dashboard is open */}
-      {(showAddTreeDashboard || selectedTree !== null || showRoleDashboard) && (
-        <View
-        style={Theme.dimOverlay}
-        pointerEvents="auto"
-      /> 
-      )}
-
-      {/* Ensure the tree has values before opening, otherwise do not allow */}
-      {selectedTree !== null && (
-        <TreeDetailsDashboard
-        tree={selectedTree}
-        onClose={() => setSelectedTree(null)}
-        />
-      )}
-      
-      {showAddTreeDashboard && (
-      <PlotDashboard
-        onConfirm={(details) => {
-          setCurrentTree(details);
-          setShowAddTreeDashboard(false);
-        }}
-        
-        onCancel={() => {
-          setShowAddTreeDashboard(false);
-          setIsPlotting(false);
-        }}
-
-        onSelectManual={() => {
-          setPlotMode('manual');
-          setIsPlotting(true);
-          setShowAddTreeDashboard(false);
-        }}
-
-        onSelectDevice={() => {
-          setPlotMode('device');
-          setShowAddTreeDashboard(false);
-        }}
-      />
-      )}
-
-      {/* Top Left Back */}
-      {!isPlotting && (
-        <View style={styles.topLeft}>
-          <NavigationButton
-            onPress={() => {
-              setIsPlotting(false);
-              router.push('/');
-            }}
-          >
-            Home
-          </NavigationButton>
-        </View>
-      )}
-
-      {/* Closing Plot Mode Button */}
-      {isPlotting && (
-        <View style={styles.plotHeader}>
-          <AppButton
-            title="X"
-            variant="invisible"
-
-            onPress={() => {
-              setIsPlotting(false);
-              setPlotMode(null);
-            }}
-
-            style={styles.closeButton}
-            textStyle={{ color: Theme.Colours.error,
-              fontSize: 60,
-              fontWeight: 'bold',
-             }}
+      <AppContainer noPadding>
+        <View style={styles.page}>
+          <MapComponent
+            style={StyleSheet.absoluteFillObject}
+            isPlotting={mode === 'add' && isSelectingManualLocation}
+            plottedTrees={visibleTrees}
+            selectedLocation={selectedDraftLocation}
+            onPlotPointerMove={handleMapPointerMove}
+            onTreeClick={handleMapTreeClick}
+            onPress={handleMapPress}
+            renderTreeIcon={renderTreeIcon}
           />
-        </View>
-      )}
 
-      {/* Role dashboard */}
-        {showRoleDashboard && (
-          <RoleDashboard
-            role={user?.role}
-            onClose={() => setShowRoleDashboard(false)}
-            onLogout={handleLogout}
+          {showDimOverlay ? (
+            <TouchableOpacity style={styles.dimOverlay} onPress={closeAllOverlays} activeOpacity={1} />
+          ) : null}
+
+          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} />
+
+          <StatusMessageBox
+            status={logoutStatus}
+            redirectDuration={logoutStatus ? 3 : undefined}
+            countdownLabel="Logging out…"
+            closeLabel="Cancel"
+            showCopyButton={false}
+            onClose={cancelLogout}
           />
-      )}
 
-      {/* Bottom Buttons (hidden in plot mode) */}
-      {!isPlotting && (
-        <View style={styles.bottomBar}>
-        
-        {/* Change from plot to sign in if the user is not signed in */}
-        {isLoggedIn ? (
-          <>
-            <AppButton
-              title="Search"
-              variant="accent"
-              onPress={() => router.push('/')}
-              style={styles.sideButton}
+          <View style={styles.loggedInPill}>
+            <AppText style={styles.loggedInText}>
+              {loggedInUsername ? `Logged in as ${loggedInUsername}` : 'Browsing as Guest'}
+            </AppText>
+          </View>
+
+          {hasSearchFilters ? (
+            <View style={styles.activeFiltersCard}>
+              <View style={styles.activeFiltersHeader}>
+                <MaterialCommunityIcons name="filter-variant" size={14} color="#E9F3EA" />
+                <AppText style={styles.activeFiltersTitle}>Active Filters</AppText>
+              </View>
+              {activeFilterLabels.map((label) => (
+                <AppText key={label} style={styles.activeFiltersText}>
+                  {label}
+                </AppText>
+              ))}
+            </View>
+          ) : null}
+
+          {mode === 'add' && isSelectingManualLocation && plotPointer ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.cursorCoordinatePill,
+                {
+                  left: Math.min(plotPointer.screenX + 14, windowWidth - 200),
+                  top: Math.max(plotPointer.screenY - 56, 10),
+                },
+              ]}
+            >
+              <AppText style={styles.cursorCoordinateText}>
+                {plotPointer.latitude.toFixed(6)}
+              </AppText>
+              <AppText style={styles.cursorCoordinateText}>
+                {plotPointer.longitude.toFixed(6)}
+              </AppText>
+            </View>
+          ) : null}
+
+          {mode === 'add' && isSelectingManualLocation ? (
+            <TouchableOpacity
+              style={styles.exitMapSelectionButton}
+              activeOpacity={0.85}
+              onPress={handleCancelManualPlacement}
+            >
+              <MaterialCommunityIcons name="close-circle-outline" size={18} color="#FFF4F4" />
+              <AppText style={styles.exitMapSelectionText}>Exit Map Selection</AppText>
+            </TouchableOpacity>
+          ) : null}
+
+          {mode === 'add' && loggedInUsername !== null && !isSelectingManualLocation ? (
+            <PlotDashboard
+              onConfirmAdd={handleConfirmTreeAdd}
+              onCancel={closeAllOverlays}
+              onSelectManual={handleSelectManualPlacement}
+              onSelectDevice={handleSelectDevicePlacement}
+              initialDetails={draftTreeDetails}
+              selectedLocation={selectedDraftLocation}
+              isSelectingOnMap={isSelectingManualLocation}
+              locationError={addValidationError}
+              isSubmitting={isSubmittingTree}
             />
+          ) : null}
 
-            <AppButton
-              title="Dashboard"
-              variant="primary"
-              onPress={() => {                
-                setShowRoleDashboard(true);
+          {mode === 'view-tree' && selectedTree ? (
+            <TreeDetailsDashboard
+              tree={selectedTree}
+              onClose={handleCloseTreeDetails}
+            />
+          ) : null}
+
+          {mode === 'search' ? (
+            <SearchTreesPanel
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              healthFilter={healthFilter}
+              onHealthFilterChange={setHealthFilter}
+              distanceFilterKm={distanceFilterKm}
+              onDistanceFilterKmChange={setDistanceFilterKm}
+              searchResults={searchResults}
+              onClose={closeAllOverlays}
+              onClearFilters={clearSearchFilters}
+              onSelectTree={handleSelectSearchResultTree}
+              getDistanceKm={getDistanceFromCenterKm}
+            />
+          ) : null}
+
+          {mode === 'dashboard' && loggedInUsername !== null ? (
+            <DashboardPanel
+              userRole={loggedInUserRole}
+              totalTrees={plottedTrees.length}
+              healthyCount={healthyCount}
+              treesNeedingAttention={treesNeedingAttention}
+              onClose={closeAllOverlays}
+              onLogout={handleLogout}
+              isLoggingOut={isLoggingOut}
+            />
+          ) : null}
+
+          {!isSelectingManualLocation ? (
+            <FloatingActionBar
+              searchActive={mode === 'search'}
+              addActive={mode === 'add'}
+              dashboardActive={mode === 'dashboard'}
+              isGuest={loggedInUsername === null}
+              onSearchPress={() => {
+                if (mode === 'search') {
+                  closeAllOverlays();
+                  return;
+                }
+                openMode('search');
               }}
-              style={styles.middleButton}
+              onAddTreePress={() => openMode('add')}
+              onDashboardPress={() => {
+                if (mode === 'dashboard') {
+                  closeAllOverlays();
+                  return;
+                }
+                openMode('dashboard');
+              }}
             />
+          ) : null}
 
-            <AppButton
-              title="Plot"
-              variant="accent"
-              onPress={() => setShowAddTreeDashboard(true)}
-              style={styles.sideButton}
-            />
-          </>
-          ) : (
-            <>
-              {/* Placeholder button without function */}
-              <AppButton
-                title=""
-                variant="accent"
-                onPress={() => {}}
-                style={styles.sideButton}
-              />
-
-              <AppButton
-                title="Sign In"
-                variant="primary"
-                onPress={() => router.push('/login')}
-                style={styles.middleButton}
-              />
-
-              {/* Placeholder button without function */}
-              <AppButton
-                title=""
-                variant="accent"
-                onPress={() => {}}
-                style={styles.sideButton}
-              />
-            </>
-          )}
+          {isLoadingTrees ? (
+            <View style={styles.loadingPill}>
+              <ActivityIndicator color={Theme.Colours.white} size="small" />
+              <AppText style={styles.loadingText}>Syncing trees...</AppText>
+            </View>
+          ) : null}
         </View>
-      )}
-      </View>
-    </AppContainer>
+      </AppContainer>
     </ActionSheetProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  page: {
     flex: 1,
-    zIndex: 20,
-    elevation: 20,
   },
 
-  topLeft: {
+  loggedInPill: {
     position: 'absolute',
-    top: 15,
-    left: 20,
-    marginBottom: 10,
-    zIndex: 10,
+    top: 20,
+    alignSelf: 'center',
+    zIndex: 180,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
 
-  bottomBar: {
+  loggedInText: {
+    ...Theme.Typography.caption,
+    color: '#000',
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  activeFiltersCard: {
     position: 'absolute',
-    bottom: 30,
+    top: 46,
+    alignSelf: 'center',
+    zIndex: 180,
+    maxWidth: 260,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(17, 43, 24, 0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 235, 223, 0.24)',
+  },
+
+  activeFiltersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+
+  activeFiltersTitle: {
+    ...Theme.Typography.caption,
+    color: '#E9F3EA',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+
+  activeFiltersText: {
+    ...Theme.Typography.caption,
+    color: '#F2F6F2',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+
+  exitMapSelectionButton: {
+    position: 'absolute',
     left: 20,
     right: 20,
+    bottom: 28,
+    zIndex: 240,
+    minHeight: 56,
+    borderRadius: 20,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(160, 28, 28, 0.68)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 214, 214, 0.42)',
+    borderTopColor: 'rgba(255, 240, 240, 0.68)',
+    shadowColor: '#220909',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+
+  exitMapSelectionText: {
+    color: '#FFF6F6',
+    fontSize: 15,
+    fontFamily: 'Poppins_600SemiBold',
+    letterSpacing: 0.2,
+  },
+
+  dimOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(8, 14, 10, 0.38)',
+    zIndex: 160,
+  },
+
+  floatingActionBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 20,
+    zIndex: 190,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#D7E5D8',
+    backgroundColor: 'rgba(250, 253, 250, 0.97)',
+    shadowColor: '#0D1610',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 14,
   },
 
-  sideButton: {
-    width: 70,
-    height: 60,
-    borderRadius: Theme.Border.medium,
-    justifyContent: 'center',
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    marginBottom: 0,
-  },
-
-  middleButton: {
+  actionButtonWrap: {
     flex: 1,
-    marginHorizontal: 15,
-    borderRadius: Theme.Border.medium,
     marginBottom: 0,
   },
 
-  plotHeader: {
-    position: 'absolute',
-    top: 100,
-    right: 20,
-    zIndex: 20,
+  actionButtonWrapMain: {
+    flex: 1.25,
+    marginHorizontal: 8,
+    marginBottom: 0,
   },
 
-  closeButton: {
-    width: 50,
-    height: 50,
-    borderRadius: Theme.Border.medium,
-    paddingVertical: 0,
-    paddingHorizontal: 0,
+  actionButton: {
+    marginBottom: 0,
+    minHeight: 50,
+  },
+
+  actionButtonMain: {
+    marginBottom: 0,
+    minHeight: 52,
+  },
+
+  manualPlacementPanel: {
+    position: 'absolute',
+    zIndex: 210,
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: 'rgba(253, 255, 253, 0.95)',
+    borderWidth: 1,
+    borderColor: '#D6E5D7',
+    shadowColor: '#0D1610',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+
+  manualPlacementPanelWide: {
+    top: 84,
+    right: 16,
+    width: 320,
+  },
+
+  manualPlacementPanelBottom: {
+    left: 16,
+    right: 16,
+    bottom: 104,
+  },
+
+  manualPlacementTitle: {
+    ...Theme.Typography.subtitle,
+    fontSize: 18,
+    lineHeight: 24,
+    color: Theme.Colours.textPrimary,
+  },
+
+  manualPlacementBody: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginTop: 2,
+  },
+
+  manualPlacementCoords: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#D5E4D5',
+    backgroundColor: Theme.Colours.white,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+
+  manualPlacementCoordsLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+  },
+
+  manualPlacementCoordsText: {
+    ...Theme.Typography.body,
+    marginTop: 2,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  manualPlacementCancelButton: {
+    marginTop: 8,
+    marginBottom: 0,
+  },
+
+  cursorCoordinatePill: {
+    position: 'absolute',
+    zIndex: 260,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(15, 25, 18, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 235, 223, 0.35)',
+    minWidth: 164,
+  },
+
+  cursorCoordinateText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.white,
+    fontFamily: 'Poppins_600SemiBold',
+    lineHeight: 16,
+  },
+
+  searchPanelWrap: {
+    position: 'absolute',
+    top: 12,
+    left: 0,
+    bottom: 104,
+    zIndex: 220,
+    width: '90%',
+    maxWidth: 440,
+    padding: 14,
+  },
+
+  searchPanel: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: '#F9FCF9',
+    borderWidth: 1,
+    borderColor: '#D5E1D5',
+    padding: 14,
+    shadowColor: '#0F1711',
+    shadowOffset: { width: 2, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 14,
+  },
+
+  dashboardWrap: {
+    position: 'absolute',
+    top: 12,
+    left: 0,
+    right: 0,
+    bottom: 104,
+    zIndex: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+
+  dashboardPanel: {
+    width: '100%',
+    maxWidth: 720,
+    maxHeight: '100%',
+    borderRadius: 18,
+    backgroundColor: '#F9FCF9',
+    borderWidth: 1,
+    borderColor: '#D5E1D5',
+    padding: 18,
+    shadowColor: '#0F1711',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.24,
+    shadowRadius: 22,
+    elevation: 18,
+  },
+
+  panelHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  panelTitle: {
+    ...Theme.Typography.subtitle,
+    color: Theme.Colours.textPrimary,
+  },
+
+  dashboardSubtitle: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginBottom: 12,
+  },
+
+  panelCloseWrap: {
+    marginBottom: 0,
+  },
+
+  panelCloseButton: {
+    marginBottom: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+
+  searchInput: {
+    minHeight: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C9D8C9',
+    backgroundColor: Theme.Colours.white,
+    paddingHorizontal: 12,
+    ...Theme.Typography.body,
+    color: Theme.Colours.textPrimary,
+  },
+
+  filterSection: {
+    marginTop: 12,
+  },
+
+  filterLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginBottom: 8,
+  },
+
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  filterChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#BFD0C0',
+    backgroundColor: '#F2F7F2',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+
+  filterChipActive: {
+    backgroundColor: Theme.Colours.primary,
+    borderColor: Theme.Colours.primary,
+  },
+
+  filterChipText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+  },
+
+  filterChipTextActive: {
+    color: Theme.Colours.white,
+  },
+
+  searchResultList: {
+    marginTop: 14,
+  },
+
+  searchResultCard: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D8E4D8',
+    backgroundColor: Theme.Colours.white,
+    marginBottom: 8,
+  },
+
+  searchResultTitle: {
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    color: Theme.Colours.textPrimary,
+  },
+
+  searchResultMeta: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.secondary,
+    marginTop: 2,
+  },
+
+  searchResultBody: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginTop: 4,
+  },
+
+  emptyStateCard: {
+    borderWidth: 1,
+    borderColor: '#D9E4D9',
+    borderRadius: 12,
+    backgroundColor: Theme.Colours.white,
+    padding: 12,
+  },
+
+  emptyStateTitle: {
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    color: Theme.Colours.textPrimary,
+  },
+
+  emptyStateBody: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginTop: 4,
+  },
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+
+  statCard: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: Theme.Colours.white,
+    borderWidth: 1,
+    borderColor: '#D7E4D7',
+    padding: 12,
+  },
+
+  statValue: {
+    ...Theme.Typography.title,
+    fontSize: 28,
+    lineHeight: 34,
+    color: Theme.Colours.primary,
+  },
+
+  statLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+  },
+
+  dashboardList: {
+    marginTop: 4,
+  },
+
+  dashboardListContent: {
+    paddingBottom: 10,
+  },
+
+  dashboardActionButton: {
+    marginBottom: 8,
+  },
+
+  dashboardStatsRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  statCardCompact: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: Theme.Colours.white,
+    borderWidth: 1,
+    borderColor: '#D7E4D7',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+
+  statValueCompact: {
+    ...Theme.Typography.subtitle,
+    color: Theme.Colours.primary,
+  },
+
+  statLabelCompact: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+  },
+
+  dashboardItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D8E4D8',
+    backgroundColor: Theme.Colours.white,
+    marginBottom: 8,
+  },
+
+  dashboardItemTitle: {
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    color: Theme.Colours.textPrimary,
+  },
+
+  dashboardItemText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginTop: 2,
+  },
+
+  dashboardItemAction: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.primary,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+
+  loadingPill: {
+    position: 'absolute',
+    left: 16,
+    bottom: 96,
+    zIndex: 230,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  loadingText: {
+    ...Theme.Typography.caption,
+    color: '#E9EDE9',
+    fontSize: 11,
+    lineHeight: 14,
+    fontFamily: 'Poppins_600SemiBold',
   },
 });

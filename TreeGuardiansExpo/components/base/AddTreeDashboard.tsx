@@ -1,73 +1,178 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
   Image,
   Platform,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
-import { Theme, Typography } from '@/styles';
+import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppInput } from './AppInput';
 import { AppText } from './AppText';
 import { TreeDetails } from '@/objects/TreeDetails';
+import type { MapCoordinate } from './MapComponent.types';
+import { TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
 import * as ImagePicker from 'expo-image-picker';
 import { useActionSheet } from '@expo/react-native-action-sheet';
+import { ErrorMessageBox } from './ErrorMessageBox';
 
-const { height: windowHeight } = Dimensions.get('window');
+type NumericField = 'diameter' | 'height' | 'circumference';
 
-type ActiveInput =
-  | 'notes'
-  | 'wildlife'
-  | 'disease'
-  | 'diameter'
-  | 'height'
-  | 'circumference'
-  | null;
-
-interface PlotDashBoardProps {
-  onConfirm: (details: TreeDetails) => void;
+interface PlotDashboardProps {
+  onConfirmAdd: (details: TreeDetails) => void;
   onCancel: () => void;
-  onSelectManual: () => void;
-  onSelectDevice: () => void;
+  onSelectManual: (details: TreeDetails) => void;
+  onSelectDevice: (details: TreeDetails) => void;
+  initialDetails?: TreeDetails | null;
+  selectedLocation: MapCoordinate | null;
+  isSelectingOnMap: boolean;
+  locationError?: string | null;
+  isSubmitting?: boolean;
 }
 
+const MAX_PHOTOS = 5;
+
 export default function PlotDashboard({
-  onConfirm,
+  onConfirmAdd,
   onCancel,
   onSelectManual,
   onSelectDevice,
-}: PlotDashBoardProps) {
+  initialDetails = null,
+  selectedLocation,
+  isSelectingOnMap,
+  locationError,
+  isSubmitting = false,
+}: PlotDashboardProps) {
+  const [species, setSpecies] = useState('');
+  const [health, setHealth] = useState<TreeHealth>('ok');
+  const [wildlifeList, setWildlifeList] = useState<string[]>([]);
+  const [diseaseList, setDiseaseList] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
-  const [wildlife, setWildlife] = useState('');
-  const [disease, setDisease] = useState('');
   const [diameter, setDiameter] = useState('');
   const [height, setHeight] = useState('');
   const [circumference, setCircumference] = useState('');
-  const [activeInput, setActiveInput] = useState<ActiveInput>('notes');
-  const [addDisease, setAddDisease] = useState(false);
+
+  const [errors, setErrors] = useState<Record<NumericField, string>>({
+    diameter: '',
+    height: '',
+    circumference: '',
+  });
+
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const { width } = useWindowDimensions();
-  const isMobile = width < 768;
-
-  const [photos, setPhotos] = useState<(string | null)[]>([
-    null,
-    null,
-    null,
-    null,
-  ]);
-
+  const isMobile = width < 900;
   const { showActionSheetWithOptions } = useActionSheet();
 
-  const showImageOptions = (index: number) => {
-    const isWeb = Platform.OS === 'web';
+  useEffect(() => {
+    setSpecies(initialDetails?.species ?? '');
+    setHealth(initialDetails?.health ?? 'ok');
+    setNotes(initialDetails?.notes ?? '');
+    setWildlifeList(
+      initialDetails?.wildlifeList ??
+      (initialDetails?.wildlife ? [initialDetails.wildlife] : [])
+    );
+    setDiseaseList(
+      initialDetails?.diseaseList ??
+      (initialDetails?.disease ? [initialDetails.disease] : [])
+    );
+    setDiameter(
+      initialDetails?.diameter === undefined || initialDetails.diameter === null
+        ? ''
+        : String(initialDetails.diameter)
+    );
+    setHeight(
+      initialDetails?.height === undefined || initialDetails.height === null
+        ? ''
+        : String(initialDetails.height)
+    );
+    setCircumference(
+      initialDetails?.circumference === undefined || initialDetails.circumference === null
+        ? ''
+        : String(initialDetails.circumference)
+    );
+    setPhotos(initialDetails?.photos ?? []);
+  }, [initialDetails]);
 
+  const isNumeric = (value: string) => /^(\d+)?([.]\d*)?$/.test(value);
+
+  const handleNumericChange = (
+    value: string,
+    field: NumericField,
+    setter: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    setter(value);
+    setErrors((prev) => ({
+      ...prev,
+      [field]: value.trim() === '' || isNumeric(value) ? '' : 'Enter a valid number',
+    }));
+  };
+
+  const validate = () => {
+    const nextErrors: Record<NumericField, string> = {
+      diameter: diameter.trim() && !isNumeric(diameter) ? 'Enter a valid number' : '',
+      height: height.trim() && !isNumeric(height) ? 'Enter a valid number' : '',
+      circumference:
+        circumference.trim() && !isNumeric(circumference) ? 'Enter a valid number' : '',
+    };
+
+    setErrors(nextErrors);
+    return Object.values(nextErrors).every((value) => value === '');
+  };
+
+  const buildTreeDetails = (): TreeDetails => {
+    return {
+      species: species.trim() || undefined,
+      health,
+      notes: notes.trim() || undefined,
+      wildlifeList: wildlifeList
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0),
+      diseaseList: diseaseList
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0),
+      diameter: diameter.trim() ? Number(diameter) : undefined,
+      height: height.trim() ? Number(height) : undefined,
+      circumference: circumference.trim() ? Number(circumference) : undefined,
+      photos,
+    };
+  };
+
+  const updateListItem = (
+    list: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number,
+    value: string
+  ) => {
+    const nextList = [...list];
+    nextList[index] = value;
+    setter(nextList);
+  };
+
+  const removeListItem = (
+    list: string[],
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number
+  ) => {
+    setter(list.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const locationSummary = useMemo(() => {
+    if (!selectedLocation) {
+      return 'No location selected yet.';
+    }
+
+    return `${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}`;
+  }, [selectedLocation]);
+
+  const chooseImageSource = (slotIndex: number) => {
+    const isWeb = Platform.OS === 'web';
     const options = isWeb
-      ? ['Choose from Gallery', 'Cancel']
-      : ['Take Photo', 'Choose from Gallery', 'Cancel'];
+      ? ['Choose from Gallery', 'Remove Photo', 'Cancel']
+      : ['Take Photo', 'Choose from Gallery', 'Remove Photo', 'Cancel'];
 
     const cancelButtonIndex = options.length - 1;
 
@@ -76,30 +181,34 @@ export default function PlotDashboard({
         options,
         cancelButtonIndex,
       },
-      (selectedIndex) => {
-        if (selectedIndex === cancelButtonIndex) return;
+      async (selectedIndex) => {
+        if (selectedIndex === undefined || selectedIndex === cancelButtonIndex) {
+          return;
+        }
+
+        const removeIndex = isWeb ? 1 : 2;
+        if (selectedIndex === removeIndex) {
+          setPhotos((prev) => prev.filter((_, index) => index !== slotIndex));
+          return;
+        }
 
         if (!isWeb && selectedIndex === 0) {
-          takePhoto(index);
-        } else {
-          pickImage(index);
+          await takePhoto();
+          return;
         }
+
+        await pickImage();
       }
     );
   };
 
-  const removePhoto = (index: number) => {
-    const updated = [...photos];
-    updated[index] = null;
-    setPhotos(updated);
-  };
+  const canAddPhoto = photos.length < MAX_PHOTOS;
 
-  const pickImage = async (index: number) => {
-    const permisisonResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if (!permisisonResult.granted) {
-      alert('Permission to access photos is required!');
+    if (!permissionResult.granted) {
+      alert('Permission to access photos is required.');
       return;
     }
 
@@ -109,25 +218,25 @@ export default function PlotDashboard({
       quality: 0.7,
     });
 
-    if (!result.canceled) {
-      const asset = result.assets[0];
-
-      if (asset.mimeType === 'image/gif') {
-        alert('GIF files are not supported. Please select a static Image');
-        return;
-      }
-
-      const updated = [...photos];
-      updated[index] = result.assets[0].uri;
-      setPhotos(updated);
+    if (result.canceled) {
+      return;
     }
+
+    const selected = result.assets[0];
+
+    if (selected.mimeType === 'image/gif') {
+      alert('GIF files are not supported. Please choose a static image.');
+      return;
+    }
+
+    setPhotos((prev) => [...prev.slice(0, MAX_PHOTOS - 1), selected.uri]);
   };
 
-  const takePhoto = async (index: number) => {
-    const permisisonResult = await ImagePicker.requestCameraPermissionsAsync();
+  const takePhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
-    if (!permisisonResult.granted) {
-      alert('Camera permission is required!');
+    if (!permissionResult.granted) {
+      alert('Camera permission is required.');
       return;
     }
 
@@ -136,350 +245,282 @@ export default function PlotDashboard({
       quality: 0.7,
     });
 
-    if (!result.canceled) {
-      const updated = [...photos];
-      updated[index] = result.assets[0].uri;
-      setPhotos(updated);
-    }
-  };
-
-  const [errors, setErrors] = useState({
-    diameter: '',
-    height: '',
-    circumference: '',
-  });
-
-  const isNumeric = (value: string) => /^(\d+)?([.]\d*)?$/.test(value);
-
-  const handleNumericChange = (
-    value: string,
-    field: 'diameter' | 'height' | 'circumference',
-    setter: React.Dispatch<React.SetStateAction<string>>
-  ) => {
-    setter(value);
-
-    setErrors((prev) => ({
-      ...prev,
-      [field]: value.trim() === '' || isNumeric(value) ? '' : 'Invalid input',
-    }));
-  };
-
-  const validate = () => {
-    const newErrors = {
-      diameter: '',
-      height: '',
-      circumference: '',
-    };
-
-    let isValid = true;
-
-    if (diameter.trim() !== '' && !isNumeric(diameter)) {
-      newErrors.diameter = 'Invalid input';
-      isValid = false;
+    if (result.canceled) {
+      return;
     }
 
-    if (height.trim() !== '' && !isNumeric(height)) {
-      newErrors.height = 'Invalid input';
-      isValid = false;
-    }
-
-    if (circumference.trim() !== '' && !isNumeric(circumference)) {
-      newErrors.circumference = 'Invalid input';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
+    setPhotos((prev) => [...prev.slice(0, MAX_PHOTOS - 1), result.assets[0].uri]);
   };
 
-  const handleSubmit = () => {
-    onConfirm({
-      notes: notes.trim() || undefined,
-      wildlife: wildlife.trim() || undefined,
-      disease: addDisease ? disease.trim() || undefined : undefined,
-      diameter: diameter.trim() ? Number(diameter) : undefined,
-      height: height.trim() ? Number(height) : undefined,
-      circumference: circumference.trim() ? Number(circumference) : undefined,
-      photos: photos.filter((p): p is string => p !== null),
-    });
-  };
-
-  const hasError = (field: ActiveInput) => {
-    if (!field) return false;
-    return errors[field as keyof typeof errors] !== '';
-  };
+  const summaryText = useMemo(() => {
+    return `${photos.length}/${MAX_PHOTOS} photo${photos.length === 1 ? '' : 's'} selected`;
+  }, [photos.length]);
 
   return (
-    <View style={styles.overlay}>
-      <View
-        style={[
-          styles.card,
-          isMobile ? styles.cardMobile : styles.cardDesktop,
-        ]}
-      >
+    <View style={styles.overlay} pointerEvents="box-none">
+      <View style={[styles.panel, isMobile ? styles.panelMobile : styles.panelDesktop]}>
         <ScrollView
-          contentContainerStyle={[
-            styles.cardContent,
-            isMobile ? styles.cardContentMobile : styles.cardContentDesktop,
-          ]}
+          contentContainerStyle={styles.panelContent}
           showsVerticalScrollIndicator={true}
         >
-          <AppText style={Theme.Typography.title}>Plot Tree</AppText>
+          <View style={styles.headerRow}>
+            <View>
+              <AppText style={styles.eyebrow}>Add Tree</AppText>
+              <AppText style={styles.title}>Tree Details</AppText>
+              <AppText style={styles.subtitle}>Complete details, pick a location, then confirm to submit.</AppText>
+            </View>
 
-          <View style={styles.selectorRow}>
-            <TouchableOpacity
-              onPress={() => setActiveInput('notes')}
-              style={[
-                styles.selectorButton,
-                isMobile
-                  ? styles.selectorButtonMobile
-                  : styles.selectorButtonDesktop,
-                activeInput === 'notes' && styles.selectorActive,
-              ]}
-            >
-              <AppText style={styles.selectorText}>Notes</AppText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setActiveInput('wildlife')}
-              style={[
-                styles.selectorButton,
-                isMobile
-                  ? styles.selectorButtonMobile
-                  : styles.selectorButtonDesktop,
-                activeInput === 'wildlife' && styles.selectorActive,
-              ]}
-            >
-              <AppText style={styles.selectorText}>Wildlife</AppText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                setActiveInput('disease');
-                setAddDisease(true);
-              }}
-              style={[
-                styles.selectorButton,
-                isMobile
-                  ? styles.selectorButtonMobile
-                  : styles.selectorButtonDesktop,
-                activeInput === 'disease' && styles.selectorActive,
-              ]}
-            >
-              <AppText style={styles.selectorText}>Disease</AppText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setActiveInput('diameter')}
-              style={[
-                styles.selectorButton,
-                isMobile
-                  ? styles.selectorButtonMobile
-                  : styles.selectorButtonDesktop,
-                activeInput === 'diameter' && styles.selectorActive,
-                hasError('diameter') && styles.selectorError,
-              ]}
-            >
-              <AppText style={styles.selectorText}>Diameter</AppText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setActiveInput('height')}
-              style={[
-                styles.selectorButton,
-                isMobile
-                  ? styles.selectorButtonMobile
-                  : styles.selectorButtonDesktop,
-                activeInput === 'height' && styles.selectorActive,
-                hasError('height') && styles.selectorError,
-              ]}
-            >
-              <AppText style={styles.selectorText}>Height</AppText>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setActiveInput('circumference')}
-              style={[
-                styles.selectorButton,
-                isMobile
-                  ? styles.selectorButtonMobile
-                  : styles.selectorButtonDesktop,
-                activeInput === 'circumference' && styles.selectorActive,
-                hasError('circumference') && styles.selectorError,
-              ]}
-            >
-              <AppText style={styles.selectorText}>Circumference</AppText>
-            </TouchableOpacity>
+            <AppButton
+              title="Close"
+              variant="tertiary"
+              onPress={onCancel}
+              style={styles.closeButtonWrap}
+              buttonStyle={styles.closeButton}
+            />
           </View>
 
-          <View style={styles.dynamicInputArea}>
-            {activeInput === 'notes' && (
-              <View style={styles.inputBlock}>
-                <AppInput
-                  placeholder="Notes / Seen Observations"
-                  value={notes}
-                  onChangeText={setNotes}
-                  style={styles.input}
-                />
-                <View style={styles.errorContainer}>
-                  <AppText style={styles.errorMessage}>{' '}</AppText>
-                </View>
-              </View>
-            )}
+          <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>Observations</AppText>
 
-            {activeInput === 'wildlife' && (
-              <View style={styles.inputBlock}>
-                <AppInput
-                  placeholder="Wildlife"
-                  value={wildlife}
-                  onChangeText={setWildlife}
-                  style={styles.input}
-                />
-                <View style={styles.errorContainer}>
-                  <AppText style={styles.errorMessage}>{' '}</AppText>
-                </View>
-              </View>
-            )}
+            <AppInput
+              placeholder="Tree Species"
+              value={species}
+              onChangeText={setSpecies}
+              style={styles.input}
+            />
 
-            {activeInput === 'disease' && (
-              <View style={styles.inputBlock}>
-                <AppInput
-                  placeholder="Disease"
-                  value={disease}
-                  onChangeText={setDisease}
-                  style={styles.input}
-                />
-                <View style={styles.errorContainer}>
-                  <AppText style={styles.errorMessage}>{' '}</AppText>
-                </View>
-              </View>
-            )}
+            <TreeHealthSelect value={health} onChange={setHealth} />
 
-            {activeInput === 'diameter' && (
-              <View style={styles.inputBlock}>
+            <View style={styles.dynamicListSection}>
+              <View style={styles.dynamicListHeader}>
+                <AppText style={styles.dynamicListTitle}>Wildlife Seen</AppText>
+              </View>
+
+              {wildlifeList.length === 0 ? (
+                <AppText style={styles.emptyListText}>No wildlife added yet.</AppText>
+              ) : (
+                wildlifeList.map((entry, index) => (
+                  <View key={`wildlife-${index}`} style={styles.dynamicListRow}>
+                    <AppInput
+                      placeholder={`Wildlife ${index + 1}`}
+                      value={entry}
+                      onChangeText={(value) => updateListItem(wildlifeList, setWildlifeList, index, value)}
+                      containerStyle={styles.dynamicListInputContainer}
+                      style={styles.dynamicListInput}
+                    />
+                    <AppButton
+                      title="Remove"
+                      variant="primary"
+                      onPress={() => removeListItem(wildlifeList, setWildlifeList, index)}
+                      style={styles.removeActionWrap}
+                      buttonStyle={styles.removeActionButton}
+                      textStyle={styles.removeActionText}
+                    />
+                  </View>
+                ))
+              )}
+
+              <AppButton
+                title="Add Wildlife"
+                variant="outline"
+                onPress={() => setWildlifeList((current) => [...current, ''])}
+                style={styles.fullWidthActionWrap}
+                buttonStyle={styles.fullWidthActionButton}
+                textStyle={styles.inlineActionText}
+              />
+            </View>
+
+            <View style={styles.dynamicListSection}>
+              <View style={styles.dynamicListHeader}>
+                <AppText style={styles.dynamicListTitle}>Diseases</AppText>
+              </View>
+
+              {diseaseList.length === 0 ? (
+                <AppText style={styles.emptyListText}>No diseases added yet.</AppText>
+              ) : (
+                diseaseList.map((entry, index) => (
+                  <View key={`disease-${index}`} style={styles.dynamicListRow}>
+                    <AppInput
+                      placeholder={`Disease ${index + 1}`}
+                      value={entry}
+                      onChangeText={(value) => updateListItem(diseaseList, setDiseaseList, index, value)}
+                      containerStyle={styles.dynamicListInputContainer}
+                      style={styles.dynamicListInput}
+                    />
+                    <AppButton
+                      title="Remove"
+                      variant="primary"
+                      onPress={() => removeListItem(diseaseList, setDiseaseList, index)}
+                      style={styles.removeActionWrap}
+                      buttonStyle={styles.removeActionButton}
+                      textStyle={styles.removeActionText}
+                    />
+                  </View>
+                ))
+              )}
+
+              <AppButton
+                title="Add Disease"
+                variant="outline"
+                onPress={() => setDiseaseList((current) => [...current, ''])}
+                style={styles.fullWidthActionWrap}
+                buttonStyle={styles.fullWidthActionButton}
+                textStyle={styles.inlineActionText}
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>Measurements</AppText>
+
+            <View style={styles.metricsRow}>
+              <View style={styles.metricField}>
                 <AppInput
                   placeholder="Diameter (cm)"
                   value={diameter}
-                  onChangeText={(value) =>
-                    handleNumericChange(value, 'diameter', setDiameter)
-                  }
-                  style={[styles.input, errors.diameter ? styles.inputError : null]}
+                  onChangeText={(value) => handleNumericChange(value, 'diameter', setDiameter)}
                   keyboardType="numeric"
+                  invalid={!!errors.diameter}
+                  style={styles.input}
                 />
-                <View style={styles.errorContainer}>
-                  <AppText style={styles.errorMessage}>
-                    {errors.diameter || ' '}
-                  </AppText>
-                </View>
+                {errors.diameter ? <AppText style={styles.errorText}>{errors.diameter}</AppText> : null}
               </View>
-            )}
 
-            {activeInput === 'height' && (
-              <View style={styles.inputBlock}>
+              <View style={styles.metricField}>
                 <AppInput
                   placeholder="Height (m)"
                   value={height}
-                  onChangeText={(value) =>
-                    handleNumericChange(value, 'height', setHeight)
-                  }
-                  style={[styles.input, errors.height ? styles.inputError : null]}
+                  onChangeText={(value) => handleNumericChange(value, 'height', setHeight)}
                   keyboardType="numeric"
+                  invalid={!!errors.height}
+                  style={styles.input}
                 />
-                <View style={styles.errorContainer}>
-                  <AppText style={styles.errorMessage}>
-                    {errors.height || ' '}
-                  </AppText>
-                </View>
+                {errors.height ? <AppText style={styles.errorText}>{errors.height}</AppText> : null}
               </View>
-            )}
+            </View>
 
-            {activeInput === 'circumference' && (
-              <View style={styles.inputBlock}>
-                <AppInput
-                  placeholder="Circumference (cm)"
-                  value={circumference}
-                  onChangeText={(value) =>
-                    handleNumericChange(value, 'circumference', setCircumference)
-                  }
-                  style={[
-                    styles.input,
-                    errors.circumference ? styles.inputError : null,
-                  ]}
-                  keyboardType="numeric"
-                />
-                <View style={styles.errorContainer}>
-                  <AppText style={styles.errorMessage}>
-                    {errors.circumference || ' '}
-                  </AppText>
-                </View>
-              </View>
-            )}
+            <View style={styles.metricField}>
+              <AppInput
+                placeholder="Circumference (cm)"
+                value={circumference}
+                onChangeText={(value) =>
+                  handleNumericChange(value, 'circumference', setCircumference)
+                }
+                keyboardType="numeric"
+                invalid={!!errors.circumference}
+                style={styles.input}
+              />
+              {errors.circumference ? (
+                <AppText style={styles.errorText}>{errors.circumference}</AppText>
+              ) : null}
+            </View>
           </View>
 
-          <AppText style={Theme.Typography.title}>Upload Photos</AppText>
+          <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>Location</AppText>
+            <AppText style={styles.locationText}>{locationSummary}</AppText>
+            {isSelectingOnMap ? (
+              <AppText style={styles.locationHint}>Click on the map to store a location.</AppText>
+            ) : null}
+            <ErrorMessageBox message={locationError || ''} visible={Boolean(locationError)} />
 
-          <View style={styles.photoGrid}>
-            {photos.map((photo, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.photoBox,
-                  isMobile ? styles.photoBoxMobile : styles.photoBoxDesktop,
-                ]}
+            <View style={styles.locationActionRow}>
+              <AppButton
+                title="Use My Location"
+                variant="outline"
                 onPress={() => {
-                  if (!photo) {
-                    showImageOptions(index);
+                  if (!validate()) {
+                    return;
                   }
+
+                  onSelectDevice(buildTreeDetails());
                 }}
-                activeOpacity={0.8}
-              >
-                {photo ? (
-                  <>
-                    <Image source={{ uri: photo }} style={styles.image} />
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => removePhoto(index)}
-                    >
-                      <AppText style={styles.deleteText}>x</AppText>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <View style={styles.plusContainer}>
-                    <AppText style={styles.plusText}>+</AppText>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+                style={styles.locationButton}
+              />
+
+              <AppButton
+                title="Select On Map"
+                variant="primary"
+                onPress={() => {
+                  if (!validate()) {
+                    return;
+                  }
+
+                  onSelectManual(buildTreeDetails());
+                }}
+                style={styles.locationButton}
+              />
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>Photos</AppText>
+            <AppText style={styles.photoHint}>Upload up to 5 photos</AppText>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (canAddPhoto) {
+                  chooseImageSource(photos.length);
+                }
+              }}
+              activeOpacity={0.85}
+              style={[styles.uploadDropZone, !canAddPhoto && styles.uploadDropZoneDisabled]}
+            >
+              <AppText style={styles.cameraEmoji}>📷</AppText>
+              <AppText style={styles.uploadTitle}>Tap to add a photo</AppText>
+              <AppText style={styles.uploadSummary}>{summaryText}</AppText>
+            </TouchableOpacity>
+
+            {photos.length > 0 ? (
+              <View style={styles.photoGrid}>
+                {photos.map((photo, index) => (
+                  <TouchableOpacity
+                    key={`${photo}-${index}`}
+                    onPress={() => chooseImageSource(index)}
+                    style={styles.photoCard}
+                    activeOpacity={0.85}
+                  >
+                    <Image source={{ uri: photo }} style={styles.photoImage} />
+                    <View style={styles.photoBadge}>
+                      <AppText style={styles.photoBadgeText}>Edit</AppText>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.section}>
+            <AppText style={styles.sectionTitle}>Notes</AppText>
+            <AppInput
+              placeholder="Additional notes"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              style={styles.input}
+            />
           </View>
 
           <View style={[styles.footer, isMobile && styles.footerMobile]}>
             <AppButton
-              title="Select on Map"
-              variant="primary"
-              onPress={() => {
-                if (!validate()) return;
-                handleSubmit();
-                onSelectManual();
-              }}
-              style={[styles.button, isMobile && styles.buttonMobile]}
-            />
-
-            <AppButton
-              title="Use my Location"
-              variant="accent"
-              onPress={() => {
-                if (!validate()) return;
-                handleSubmit();
-                onSelectDevice();
-              }}
-              style={[styles.button, isMobile && styles.buttonMobile]}
-            />
-
-            <AppButton
               title="Cancel"
               variant="secondary"
               onPress={onCancel}
-              style={[styles.button, isMobile && styles.buttonMobile]}
+              style={[styles.footerButton, isMobile && styles.footerButtonMobile]}
+            />
+
+            <AppButton
+              title={isSubmitting ? 'Submitting...' : 'Confirm Add Tree'}
+              variant="primary"
+              disabled={isSubmitting}
+              onPress={() => {
+                if (!validate()) {
+                  return;
+                }
+
+                onConfirmAdd(buildTreeDetails());
+              }}
+              style={[styles.footerButton, isMobile && styles.footerButtonMobile]}
             />
           </View>
         </ScrollView>
@@ -491,209 +532,331 @@ export default function PlotDashboard({
 const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
+    top: 12,
     right: 0,
-    bottom: 0,
+    bottom: 104,
+    left: 0,
+    zIndex: 220,
+    alignItems: 'flex-end',
     justifyContent: 'center',
+    padding: 14,
+  },
+
+  panel: {
+    height: '100%',
+    borderRadius: 16,
+    backgroundColor: '#F7FAF6',
+    borderWidth: 1,
+    borderColor: '#D5E0D4',
+    shadowColor: '#101A12',
+    shadowOffset: { width: -2, height: 10 },
+    shadowOpacity: 0.24,
+    shadowRadius: 20,
+    elevation: 18,
+  },
+
+  panelDesktop: {
+    width: '42%',
+    maxWidth: 560,
+    minWidth: 430,
+  },
+
+  panelMobile: {
+    width: '100%',
+  },
+
+  panelContent: {
+    padding: 18,
+    paddingBottom: 30,
+  },
+
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+
+  eyebrow: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+
+  title: {
+    ...Theme.Typography.subtitle,
+    color: Theme.Colours.textPrimary,
+  },
+
+  subtitle: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginTop: 3,
+    maxWidth: 300,
+  },
+
+  closeButtonWrap: {
+    marginBottom: 0,
+  },
+
+  closeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 0,
+  },
+
+  section: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DBE5DB',
+    backgroundColor: Theme.Colours.white,
+  },
+
+  sectionTitle: {
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    color: Theme.Colours.textPrimary,
+    marginBottom: 10,
+  },
+
+  dynamicListSection: {
+    marginTop: 8,
+  },
+
+  dynamicListHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 999,
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 8,
   },
 
-  card: {
-    borderRadius: Theme.Radius.medium,
+  dynamicListTitle: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
   },
 
-  cardMobile: {
-    width: '94%',
-    height: windowHeight * 0.9,
-    padding: 16,
+  inlineActionWrap: {
+    marginBottom: 0,
   },
 
-  cardDesktop: {
-    width: '90%',
-    maxHeight: windowHeight * 0.91,
-    padding: 20,
-    borderRadius: Theme.Radius.medium,
+  inlineActionButton: {
+    marginBottom: 0,
+    minHeight: 36,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
 
-  cardContent: {
-    paddingBottom: 12,
-    paddingRight: 6,
+  inlineActionText: {
+    fontSize: 13,
   },
 
-  cardContentMobile: {
-    // Nothing needed here, but different styling placeholder
+  fullWidthActionWrap: {
+    marginBottom: 0,
   },
 
-  cardContentDesktop: {
-    paddingBottom: 20,
+  fullWidthActionButton: {
+    width: '100%',
+    marginBottom: 0,
+    minHeight: 42,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+
+  emptyListText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginBottom: 8,
+  },
+
+  dynamicListRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+
+  dynamicListInput: {
+    flex: 1,
+  },
+
+  dynamicListInputContainer: {
+    flex: 1,
+    marginBottom: 8,
+  },
+
+  removeActionWrap: {
+    width: 108,
+    alignSelf: 'stretch',
+    marginBottom: 8,
+  },
+
+  removeActionButton: {
+    flex: 1,
+    minHeight: 0,
+    height: '100%',
+    marginBottom: 0,
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 0,
+    backgroundColor: 'rgba(160, 28, 28, 0.58)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 214, 214, 0.42)',
+    borderTopColor: 'rgba(255, 240, 240, 0.68)',
+    shadowColor: '#220909',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  removeActionText: {
+    color: Theme.Colours.white,
+    fontSize: 13,
   },
 
   input: {
-    borderWidth: Theme.Border.extraSmall,
-    borderColor: Theme.Colours.gray,
-    borderRadius: Theme.Radius.small,
-    padding: 10,
-  },
-
-  inputError: {
-    borderColor: Theme.Colours.error,
-  },
-
-  errorMessage: {
-    ...Typography.body,
-    color: Theme.Colours.error,
-    marginTop: 4,
     marginBottom: 8,
-    fontWeight: 'bold',
   },
 
-  dynamicInputArea: {
-    minHeight: 80,
-    marginBottom: 14,
-  },
-
-  inputBlock: {
-    width: '100%',
-  },
-
-  errorContainer: {
-    minHeight: 20,
-    justifyContent: 'center',
-  },
-
-  selectorRow: {
+  metricsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginVertical: 12,
+    gap: 10,
   },
 
-  selectorButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: Theme.Radius.small,
-    borderWidth: 1,
-    borderColor: Theme.Colours.gray,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-
-  selectorButtonMobile: {
-    width: '48%', // to allow space for "circumference"
-  },
-
-  selectorButtonDesktop: {
+  metricField: {
     flex: 1,
   },
 
-  selectorText: {
-    textAlign: 'center',
-    flexShrink: 1,
-    fontWeight: 'bold',
+  errorText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.error,
+    marginTop: -4,
+    marginBottom: 8,
   },
 
-  selectorActive: {
-    backgroundColor: Theme.Colours.accent,
-    borderColor: Theme.Colours.accent,
+  photoHint: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textMuted,
+    marginBottom: 8,
   },
 
-  selectorError: {
-    borderColor: Theme.Colours.error,
-    backgroundColor: '#ffe6e6',
+  locationText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+  },
+
+  locationHint: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.secondary,
+    marginTop: 6,
+  },
+
+  locationActionRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  locationButton: {
+    flex: 1,
+    marginBottom: 0,
+  },
+
+  uploadDropZone: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#9AB89A',
+    borderRadius: 14,
+    paddingVertical: 22,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6EF',
+  },
+
+  uploadDropZoneDisabled: {
+    opacity: 0.64,
+  },
+
+  cameraEmoji: {
+    fontSize: 26,
+    marginBottom: 4,
+  },
+
+  uploadTitle: {
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    color: Theme.Colours.textPrimary,
+  },
+
+  uploadSummary: {
+    ...Theme.Typography.caption,
+    marginTop: 4,
+    color: Theme.Colours.textMuted,
   },
 
   photoGrid: {
+    marginTop: 12,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    gap: 8,
   },
 
-  photoBox: {
-    aspectRatio: 1,
-    borderRadius: Theme.Radius.small,
-    borderWidth: 2,
-    borderColor: Theme.Colours.black,
-    marginBottom: 10,
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderStyle: 'dashed',
+  photoCard: {
+    width: 88,
+    height: 88,
+    borderRadius: 10,
     overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#D4DED4',
   },
 
-  photoBoxMobile: {
-    width: '48%',
-  },
-
-  photoBoxDesktop: {
-    width: '23%',
-  },
-
-  image: {
-    width: '100%',
-    height: '100%',
-    borderRadius: Theme.Radius.small,
-  },
-
-  plusContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1,
+  photoImage: {
     width: '100%',
     height: '100%',
   },
 
-  plusText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    opacity: 0.5,
-    textAlign: 'center',
-    lineHeight: 40,
-  },
-
-  deleteButton: {
+  photoBadge: {
     position: 'absolute',
-    top: 4,
+    bottom: 4,
     right: 4,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: Theme.Colours.error,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: 'rgba(14, 23, 16, 0.78)',
   },
 
-  deleteText: {
+  photoBadgeText: {
+    ...Theme.Typography.caption,
     color: Theme.Colours.white,
-    fontSize: 18,
-    fontWeight: 'bold',
-    lineHeight: 20,
-    textAlign: 'center',
+    lineHeight: 14,
+    fontSize: 11,
   },
 
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 10,
-    gap: 10,
+    gap: 8,
+    marginTop: 16,
   },
 
   footerMobile: {
-    flexDirection: 'column',
+    flexDirection: 'column-reverse',
   },
 
-  button: {
+  footerButton: {
     flex: 1,
+    marginBottom: 0,
   },
 
-  buttonMobile: {
+  footerButtonMobile: {
     width: '100%',
-    marginHorizontal: 0,
   },
 });

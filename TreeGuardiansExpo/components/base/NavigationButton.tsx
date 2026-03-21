@@ -1,7 +1,7 @@
 import { TouchableOpacity, GestureResponderEvent} from 'react-native';
 import { ReactNode } from 'react';
 import { AppText } from './AppText';
-import { Theme } from '@/styles';
+import { Theme } from '../../styles';
 
 interface NavigationButtonProps {
   onPress: (event: GestureResponderEvent) => void;
@@ -12,7 +12,7 @@ interface NavigationButtonProps {
 export const NavigationButton = ({ onPress, children, color }: NavigationButtonProps) => {
   return (
     <TouchableOpacity onPress={onPress}>
-      <AppText style={[ { color: Theme.Colours.primary, fontWeight: 'bold', marginBottom: 10 }, color && { color }]}> 
+      <AppText style={[ { color: Theme.Colours.primary }, ...(color ? [{ color }] : [])]}> 
         {children ?? 'Back'}
       </AppText>
     </TouchableOpacity>
