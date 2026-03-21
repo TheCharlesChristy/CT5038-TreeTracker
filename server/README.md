@@ -16,7 +16,7 @@ The canonical server requirements are in `ServerRequirements.md` at the reposito
 - Table groups: `users`, `userPasswords`, `admins`, `userSessions`, `trees`, `treeCreationData`, `treeData`, `guardians`, `photos`, `treePhotos`, `comments`, `commentPhotos`, `commentsTree`, `commentReplies`, `wildlifeObservations`, `diseaseObservations`, `seenObservations`.
 - Workflow groups: `workflows.auth`, `workflows.trees`, `workflows.photos`, `workflows.comments`, `workflows.observations`, `workflows.users`.
 
-The lock is enforced in software by `server/src/db/runtime-lock.js`, and verified in CI by `server/scripts/enforce-db-lock.js` (`npm run db-lock:check`).
+The lock is enforced in software by `server/src/db/runtime-lock.js`, and verified by the backend lock tests in `server/test/db.lock.test.js`.
 
 ## Boot Flow
 

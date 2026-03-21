@@ -162,7 +162,7 @@ The repository now includes a Node backend in `server/` that follows the canonic
 
 - All database operations must go through the database middleware endpoint surface in `server/src/db/index.js`.
 - Only `server/src/db/**` is allowed to import SQL client libraries.
-- Raw SQL usage (`.query(`) is blocked outside middleware by `server/scripts/enforce-db-lock.js`.
+- Raw SQL usage (`.query(`) is blocked outside middleware by the runtime DB lock and covered by backend tests.
 
 ### Endpoint Groups
 

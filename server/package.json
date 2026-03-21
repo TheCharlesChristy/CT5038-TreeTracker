@@ -11,11 +11,9 @@
     "dev": "node server.js",
     "dev:watch": "nodemon server.js",
     "start": "node server.js",
-    "lint": "npm run db-lock:check",
-    "db-lock:check": "node scripts/enforce-db-lock.js",
     "test": "node --test",
     "test:integration": "RUN_DB_TESTS=true node --test test/integration.db.test.js",
-    "check": "npm run lint && npm test"
+    "check": "npm test"
   },
   "dependencies": {
     "express": "^4.21.2",
