@@ -193,11 +193,11 @@ export default function PlotDashboard({
         }
 
         if (!isWeb && selectedIndex === 0) {
-          await takePhoto();
+          await takePhoto(slotIndex);
           return;
         }
 
-        await pickImage();
+        await pickImage(slotIndex);
       }
     );
   };
