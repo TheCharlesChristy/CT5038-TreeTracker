@@ -15,6 +15,8 @@ jobs:
   lint-js:
     name: JS / React Native / Expo Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./TreeGuardiansExpo
@@ -45,6 +47,8 @@ jobs:
   lint-sql:
     name: SQL Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repo
@@ -62,6 +66,8 @@ jobs:
   lint-php:
     name: PHP Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repo
