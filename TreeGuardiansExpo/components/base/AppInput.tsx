@@ -32,7 +32,7 @@ const TEXT_STYLE_KEYS = new Set([
   'writingDirection',
 ]);
 
-const splitInputStyles = (style?: StyleProp<TextStyle>) => {
+const splitInputStyles = (style?: StyleProp<TextStyle | ViewStyle>) => {
   const flattenedStyle = StyleSheet.flatten(style);
 
   if (!flattenedStyle) {
