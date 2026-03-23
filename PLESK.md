@@ -54,7 +54,7 @@ SSH into the server:
 
 ```bash
 cd /tree_guardians
-nodenv local 16.20.2
+nodenv local 20.0.0
 ```
 
 This creates:
