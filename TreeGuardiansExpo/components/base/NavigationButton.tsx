@@ -1,7 +1,7 @@
 import { TouchableOpacity, GestureResponderEvent} from 'react-native';
 import { ReactNode } from 'react';
 import { AppText } from './AppText';
-import { Theme } from '../../styles';
+import { Theme } from '@/styles';
 
 interface NavigationButtonProps {
   onPress: (event: GestureResponderEvent) => void;
