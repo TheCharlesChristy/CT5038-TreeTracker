@@ -111,8 +111,8 @@ export default function MyTreesPage() {
 			{loadError ? <AppText style={styles.errorText}>{loadError}</AppText> : null}
 
 			<View style={styles.list}>
-				{trees.map((tree) => (
-					<View key={tree.id} style={styles.row}>
+				{trees.map((tree, index) => (
+					<View key={tree.id ?? `${tree.latitude}-${tree.longitude}-${index}`} style={styles.row}>
 						<AppText style={styles.rowTitle}>Tree #{tree.id ?? 'Unknown'}</AppText>
 						<AppText style={styles.rowMeta}>
 							{tree.latitude.toFixed(4)}, {tree.longitude.toFixed(4)}
