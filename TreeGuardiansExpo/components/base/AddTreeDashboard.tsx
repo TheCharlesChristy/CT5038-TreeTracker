@@ -193,18 +193,18 @@ export default function PlotDashboard({
         }
 
         if (!isWeb && selectedIndex === 0) {
-          await takePhoto();
+          await takePhoto(slotIndex);
           return;
         }
 
-        await pickImage();
+        await pickImage(slotIndex);
       }
     );
   };
 
   const canAddPhoto = photos.length < MAX_PHOTOS;
 
-  const pickImage = async () => {
+  const pickImage = async (slotIndex: number) => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
@@ -229,10 +229,10 @@ export default function PlotDashboard({
       return;
     }
 
-    setPhotos((prev) => [...prev.slice(0, MAX_PHOTOS - 1), selected.uri]);
+    upsertPhotoAtIndex(selected.uri, slotIndex);
   };
 
-  const takePhoto = async () => {
+  const takePhoto = async (slotIndex: number) => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
     if (!permissionResult.granted) {
@@ -249,7 +249,22 @@ export default function PlotDashboard({
       return;
     }
 
-    setPhotos((prev) => [...prev.slice(0, MAX_PHOTOS - 1), result.assets[0].uri]);
+    upsertPhotoAtIndex(result.assets[0].uri, slotIndex);
+  };
+
+  // helper for updating photos
+  const upsertPhotoAtIndex = (uri: string, slotIndex: number) => {
+    setPhotos((prev) => {
+      const next = [...prev];
+
+      if (slotIndex < next.length) {
+        next[slotIndex] = uri; // replace existing
+      } else if (next.length < MAX_PHOTOS) {
+        next.push(uri); // add new
+      }
+
+      return next;
+    });
   };
 
   const summaryText = useMemo(() => {
