@@ -1,0 +1,103 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { createWorkflows } = require("../src/db/modules/workflows");
+const { NotFoundError } = require("../src/errors");
+const validators = require("../src/db/validation");
+
+function createCtx(overrides = {}) {
+  return {
+    transaction: async (fn) => fn({}),
+    run: async () => [],
+    runtimeExecutor: () => ({}),
+    toDateInput: (_n, v) => (v ? new Date(v) : undefined),
+    validators,
+    NotFoundError,
+    users: { getById: async () => ({ id: 1 }) },
+    userPasswords: {},
+    admins: { isAdmin: async () => true },
+    userSessions: { getByToken: async () => null },
+    trees: { getById: async () => ({ id: 1 }) },
+    treeCreationData: { getByTreeId: async () => ({ tree_id: 1 }) },
+    treeData: {
+      getByTreeId: async () => null,
+      updateByTreeId: async () => {},
+      create: async () => {}
+    },
+    guardians: {
+      listByTree: async () => [],
+      listByUser: async () => []
+    },
+    photos: {},
+    treePhotos: { listPhotoIdsByTree: async () => [] },
+    comments: {},
+    commentPhotos: {},
+    commentsTree: {},
+    commentReplies: {},
+    wildlifeObservations: {},
+    diseaseObservations: {},
+    seenObservations: {},
+    ...overrides
+  };
+}
+
+test("setTreeData updates existing row and creates when missing", async () => {
+  const calls = [];
+  const ctx = createCtx({
+    treeData: {
+      getByTreeId: async () => ({ id: 1 }),
+      updateByTreeId: async (...args) => calls.push(["update", ...args]),
+      create: async (...args) => calls.push(["create", ...args])
+    }
+  });
+  const workflows = createWorkflows(ctx);
+  await workflows.trees.setTreeData({ treeId: 1, treeDataFields: { treeHeight: 3 } });
+  assert.equal(calls[0][0], "update");
+
+  calls.length = 0;
+  ctx.treeData.getByTreeId = async () => null;
+  await workflows.trees.setTreeData({ treeId: 1, treeDataFields: { treeHeight: 3 } });
+  assert.equal(calls[0][0], "create");
+});
+
+test("getTreeDetails throws not found and users profile aggregates", async () => {
+  const missingCtx = createCtx({ trees: { getById: async () => null } });
+  const missingWf = createWorkflows(missingCtx);
+  await assert.rejects(() => missingWf.trees.getTreeDetails(9), /not found/);
+
+  const profileCtx = createCtx({
+    users: { getById: async () => ({ id: 2, username: "x" }) },
+    admins: { isAdmin: async () => false },
+    guardians: { listByTree: async () => [], listByUser: async () => [3, 4] }
+  });
+  const profileWf = createWorkflows(profileCtx);
+  const result = await profileWf.users.getUserProfile(2);
+  assert.deepEqual(result, {
+    user: { id: 2, username: "x" },
+    isAdmin: false,
+    guardianTreeIds: [3, 4]
+  });
+});
+
+test("validateSession handles valid invalid and expired", async () => {
+  const workflowsInvalid = createWorkflows(createCtx({ userSessions: { getByToken: async () => null } }));
+  const invalid = await workflowsInvalid.auth.validateSession({ sessionToken: "a".repeat(64) });
+  assert.deepEqual(invalid, { valid: false });
+
+  const workflowsExpired = createWorkflows(
+    createCtx({ userSessions: { getByToken: async () => ({ user_id: 1, expires_at: "2001-01-01T00:00:00.000Z" }) } })
+  );
+  const expired = await workflowsExpired.auth.validateSession({
+    sessionToken: "a".repeat(64),
+    now: "2002-01-01T00:00:00.000Z"
+  });
+  assert.deepEqual(expired, { valid: false });
+
+  const workflowsValid = createWorkflows(
+    createCtx({ userSessions: { getByToken: async () => ({ user_id: 7, expires_at: "2099-01-01T00:00:00.000Z" }) } })
+  );
+  const valid = await workflowsValid.auth.validateSession({
+    sessionToken: "a".repeat(64),
+    now: "2002-01-01T00:00:00.000Z"
+  });
+  assert.deepEqual(valid, { valid: true, userId: 7 });
+});

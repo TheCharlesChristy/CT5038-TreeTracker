@@ -1,13 +1,13 @@
 import React from 'react';
-import { StyleSheet, ViewStyle, ScrollView, ImageBackground, View } from 'react-native';
+import { StyleSheet, StyleProp, ViewStyle, ScrollView, ImageBackground, View, ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '@/styles/theme';
 
 interface AppContainerProps {
   children: React.ReactNode;
   scrollable?: boolean;
-  backgroundImage?: any;
-  style?: ViewStyle;
+  backgroundImage?: ImageSourcePropType;
+  style?: StyleProp<ViewStyle>;
   noPadding?: boolean;
 }
 
@@ -17,29 +17,27 @@ export const AppContainer = ({
   backgroundImage,
   style,
   noPadding,
-
 }: AppContainerProps) => {
+  const containerPaddingStyle = noPadding ? null : styles.padding;
   const content = scrollable ? (
     <ScrollView
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[styles.scrollContent, containerPaddingStyle]}
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={styles.inner}>{children}</View>
+    <View style={[styles.inner, containerPaddingStyle]}>{children}</View>
   );
 
-  // If background image exists
   if (backgroundImage) {
     return (
       <ImageBackground
         source={backgroundImage}
         style={styles.background}
         resizeMode="cover"
-        blurRadius={4} // Optional blur
+        blurRadius={4}
       >
-        { /* Optional overlay for readability */ }
         <View style={styles.overlay}>
           <SafeAreaView style={[styles.containerTransparent, style]}>
             {content}
@@ -49,10 +47,8 @@ export const AppContainer = ({
     );
   }
 
-  // Default container (no background image)
   return (
-    // Setting background image overrides no padding setting it true (effectively)
-    <SafeAreaView style={[styles.container, !noPadding && { padding: Theme.Spacing.medium }, style]}>
+    <SafeAreaView style={[styles.container, style]}>
       {content}
     </SafeAreaView>
   );
@@ -67,6 +63,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.38)',
   },
 
   container: {
@@ -80,7 +77,6 @@ const styles = StyleSheet.create({
 
   containerTransparent: {
     flex: 1,
-    padding: Theme.Spacing.medium,
   },
 
   scrollContent: {

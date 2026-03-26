@@ -1,0 +1,26 @@
+{
+  "name": "tree-tracker-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "engines": {
+    "node": "20.20.1"
+  },
+  "scripts": {
+    "dev": "node server.js",
+    "dev:watch": "nodemon server.js",
+    "start": "node server.js",
+    "test": "node --test",
+    "test:integration": "RUN_DB_TESTS=true node --test test/integration.db.test.js",
+    "check": "npm test"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.0.2",
+    "mysql2": "^3.14.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
