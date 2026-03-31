@@ -174,9 +174,9 @@ export default function Login() {
           >
             <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
               <View style={styles.topRow}>
-                <Pressable onPress={() => router.push('/mainPage')} style={styles.homeLink}>
+                <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                   <AppText variant="caption" style={styles.homeLinkText}>
-                    Back to Map
+                    Back
                   </AppText>
                 </Pressable>
               </View>

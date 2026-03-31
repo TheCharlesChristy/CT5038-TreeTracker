@@ -162,9 +162,9 @@ export default function CreateAccount() {
         <View style={[styles.shell, isMobileLayout && styles.shellMobile, isWideLayout ? styles.shellWide : styles.shellStacked]}>
           <View style={[styles.formColumn, isWideLayout ? styles.formColumnWide : styles.formColumnStacked]}>
             <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
-              <Pressable onPress={() => router.push('/mainPage')} style={styles.homeLink}>
+              <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                 <AppText variant="caption" style={styles.homeLinkText}>
-                  Back to Map
+                  Back
                 </AppText>
               </Pressable>
 
