@@ -1,20 +1,56 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './AppText';
 import { Theme } from '@/styles/theme';
+import { getCurrentUser, logoutUser } from '@/utilities/authHelper';
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   { label: 'Home', route: '/' },
   { label: 'Map', route: '/mainPage' },
   { label: 'About', route: '/about' },
   { label: 'Resources', route: '/resources' },
   { label: 'FAQs', route: '/faqs' },
-  { label: 'Sign In', route: '/login' },
 ] as const;
 
 export const NavBar = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSession = async () => {
+      const user = await getCurrentUser();
+      if (mounted) {
+        setIsLoggedIn(Boolean(user));
+      }
+    };
+
+    void loadSession();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const navItems = useMemo(
+    () => BASE_NAV_ITEMS.filter((item) => !(isLoggedIn && item.label === 'Home')),
+    [isLoggedIn],
+  );
+
+  const handleAuthAction = async () => {
+    if (isLoggedIn) {
+      const didLogout = await logoutUser();
+      if (didLogout) {
+        setIsLoggedIn(false);
+        router.replace('/');
+      }
+      return;
+    }
+
+    router.push('/login');
+  };
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.brand}>
@@ -28,23 +64,33 @@ export const NavBar = () => {
           contentContainerStyle={styles.linksRow}
           showsHorizontalScrollIndicator={false}
         >
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <TouchableOpacity
               key={item.label}
               onPress={() => router.push(item.route)}
-              style={item.label === 'Sign In' ? styles.signInButton : styles.linkButton}
+              style={styles.linkButton}
               activeOpacity={0.8}
             >
-              {item.label === 'Sign In' ? (
-                <View style={styles.signInContent}>
-                  <Ionicons name="person-outline" size={15} color={Theme.Colours.white} />
-                  <AppText style={styles.signInText}>{item.label}</AppText>
-                </View>
-              ) : (
-                <AppText style={styles.linkText}>{item.label}</AppText>
-              )}
+              <AppText style={styles.linkText}>{item.label}</AppText>
             </TouchableOpacity>
-          ))}
+          ))}          
+
+          <TouchableOpacity
+            onPress={() => {
+              void handleAuthAction();
+            }}
+            style={styles.signInButton}
+            activeOpacity={0.8}
+          >
+            <View style={styles.signInContent}>
+              <Ionicons
+                name={isLoggedIn ? 'log-out-outline' : 'person-outline'}
+                size={15}
+                color={Theme.Colours.white}
+              />
+              <AppText style={styles.signInText}>{isLoggedIn ? 'Sign Out' : 'Sign In'}</AppText>
+            </View>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     </View>
