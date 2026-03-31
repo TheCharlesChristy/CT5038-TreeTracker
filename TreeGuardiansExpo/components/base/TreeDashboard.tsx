@@ -27,7 +27,7 @@ import {
 import { showAlert } from '@/utilities/showAlert';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
-import { TreePhoto } from '@/objects/TreeDetails'
+import { TreePhoto } from '@/objects/TreeDetails';
 
 type PopupTab = 'overview' | 'photos' | 'activity';
 type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
@@ -48,7 +48,7 @@ interface TreeDetailsDashboardProps {
   onClose: () => void;
   currentUserId: number | null;
   isAdmin: boolean;
-  isGuardian: boolean
+  isGuardian: boolean;
 }
 
 const TABS: {
@@ -142,6 +142,44 @@ function mapFeedItemToActivity(item: TreeFeedItem): ActivityItem {
   }
 }
 
+function isCommentActivity(item: ActivityItem) {
+  return item.type === 'tree_comment' || item.type === 'reply';
+}
+
+function isObservationActivity(item: ActivityItem) {
+  return item.type === 'wildlife' || item.type === 'disease' || item.type === 'seen';
+}
+
+function ActivityTag({ item }: { item: ActivityItem }) {
+  const toneStyle =
+    item.type === 'wildlife'
+      ? styles.activityTagWildlife
+      : item.type === 'disease'
+        ? styles.activityTagDisease
+        : styles.activityTagSeen;
+
+  const toneTextStyle =
+    item.type === 'wildlife'
+      ? styles.activityTagTextWildlife
+      : item.type === 'disease'
+        ? styles.activityTagTextDisease
+        : styles.activityTagTextSeen;
+
+  const toneColor =
+    item.type === 'wildlife'
+      ? '#1B5E20'
+      : item.type === 'disease'
+        ? '#8C2D04'
+        : '#35505E';
+
+  return (
+    <View style={[styles.activityTag, toneStyle]}>
+      <MaterialCommunityIcons name={item.icon} size={13} color={toneColor} />
+      <AppText style={[styles.activityTagText, toneTextStyle]}>{item.title}</AppText>
+    </View>
+  );
+}
+
 function TreeOverview({
   tree,
   photos,
@@ -150,11 +188,7 @@ function TreeOverview({
   healthLabel,
   healthIcon,
   healthTone,
-  activityItems,
-  onAddPhoto,
-  canAddPhoto,
-  isPhotoLimitReached,
-  isUploadingPhotos,
+  observationItems,
 }: {
   tree: Tree;
   photos: TreePhoto[];
@@ -163,14 +197,10 @@ function TreeOverview({
   healthLabel: string;
   healthIcon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   healthTone: 'healthy' | 'attention';
-  activityItems: ActivityItem[];
-  onAddPhoto: () => void;
-  canAddPhoto: boolean;
-  isPhotoLimitReached: boolean;
-  isUploadingPhotos: boolean;
+  observationItems: ActivityItem[];
 }) {
   const primaryPhoto = photos[0]?.image_url;
-  const latestObservation = activityItems[0];
+  const latestObservation = observationItems[0];
 
   return (
     <View style={styles.sectionStack}>
@@ -247,32 +277,52 @@ function TreeOverview({
 
       <TreeDataStats tree={tree} />
 
-      <View style={styles.infoSection}>
-        <AppText style={styles.sectionTitle}>Latest Snapshot</AppText>
-        {latestObservation ? (
-          <>
-            <ActivityTag item={latestObservation} />
-            <AppText style={styles.snapshotTitle}>{latestObservation.title}</AppText>
-            <AppText style={styles.snapshotBody}>{latestObservation.content}</AppText>
-            <AppText style={styles.snapshotMeta}>{latestObservation.meta}</AppText>
-          </>
+      <View style={styles.sectionStack}>
+        <View style={styles.sectionHeaderRow}>
+          <AppText style={styles.sectionTitle}>Observations</AppText>
+          <AppText style={styles.sectionMeta}>{observationItems.length} recorded</AppText>
+        </View>
+
+        {observationItems.length === 0 ? (
+          <View style={styles.emptyStateCard}>
+            <MaterialCommunityIcons name="pine-tree" size={30} color="#4A4A4A" />
+            <AppText style={styles.emptyStateTitle}>No observations yet</AppText>
+            <AppText style={styles.emptyStateBody}>
+              Wildlife, disease, and sighting observations will appear here.
+            </AppText>
+          </View>
         ) : (
-          <AppText style={styles.emptySectionText}>
-            No observations have been logged for this tree yet.
-          </AppText>
+          observationItems.map((item) => (
+            <View key={item.key} style={styles.feedCard}>
+              <View
+                style={[
+                  styles.feedAvatar,
+                  item.type === 'wildlife'
+                    ? styles.feedAvatarWildlife
+                    : item.type === 'disease'
+                      ? styles.feedAvatarDisease
+                      : styles.feedAvatarSeen,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={18}
+                  color={item.type === 'disease' ? '#8C2D04' : '#165B2A'}
+                />
+              </View>
+
+              <View style={styles.feedBody}>
+                <View style={styles.feedTopRow}>
+                  <ActivityTag item={item} />
+                </View>
+
+                <AppText style={styles.feedText}>{item.content}</AppText>
+                <AppText style={styles.feedMeta}>{item.meta}</AppText>
+              </View>
+            </View>
+          ))
         )}
       </View>
-      
-      {canAddPhoto? (
-        <AppButton
-        title={isUploadingPhotos ? 'Uploading...' : isPhotoLimitReached ? 'Photo Limit Reached' : 'Add Photo'}
-        variant="secondary"
-        onPress={onAddPhoto}
-        disabled={isPhotoLimitReached}
-        style={styles.sectionActionWrap}
-        buttonStyle={styles.sectionActionButton}
-      />
-      ) : null}
     </View>
   );
 }
@@ -386,36 +436,6 @@ function TreePhotos({
   );
 }
 
-function ActivityTag({ item }: { item: ActivityItem }) {
-  const toneStyle =
-    item.type === 'wildlife'
-      ? styles.activityTagWildlife
-      : item.type === 'disease'
-        ? styles.activityTagDisease
-        : styles.activityTagSeen;
-
-  const toneTextStyle =
-    item.type === 'wildlife'
-      ? styles.activityTagTextWildlife
-      : item.type === 'disease'
-        ? styles.activityTagTextDisease
-        : styles.activityTagTextSeen;
-
-  const toneColor =
-    item.type === 'wildlife'
-      ? '#1B5E20'
-      : item.type === 'disease'
-        ? '#8C2D04'
-        : '#35505E';
-
-  return (
-    <View style={[styles.activityTag, toneStyle]}>
-      <MaterialCommunityIcons name={item.icon} size={13} color={toneColor} />
-      <AppText style={[styles.activityTagText, toneTextStyle]}>{item.title}</AppText>
-    </View>
-  );
-}
-
 function TreeActivity({
   items,
   onAddComment,
@@ -433,17 +453,21 @@ function TreeActivity({
 }) {
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
 
+  const commentItems = items.filter(
+    (item) => item.type === 'tree_comment' || item.type === 'reply'
+  );
+
   return (
     <View style={styles.sectionStack}>
       <View style={styles.sectionHeaderRow}>
         <AppText style={styles.sectionTitle}>Activity Feed</AppText>
-        <AppText style={styles.sectionMeta}>{items.length} updates</AppText>
+        <AppText style={styles.sectionMeta}>{commentItems.length} comments</AppText>
       </View>
 
       <View style={styles.infoSection}>
         <AppText style={styles.sectionTitle}>Community</AppText>
         <AppText style={styles.infoText}>
-          When commenting on a tree, make sure it is relevant to the Tree!
+          When commenting on a tree, make sure it is relevant to the tree.
         </AppText>
       </View>
 
@@ -460,38 +484,24 @@ function TreeActivity({
       {isLoadingActivity ? (
         <View style={styles.emptyStateCard}>
           <MaterialCommunityIcons name="loading" size={30} color="#4A4A4A" />
-          <AppText style={styles.emptyStateTitle}>Loading activity</AppText>
+          <AppText style={styles.emptyStateTitle}>Loading comments</AppText>
           <AppText style={styles.emptyStateBody}>
-            Fetching the latest comments and observations for this tree.
+            Fetching the latest community comments for this tree.
           </AppText>
         </View>
-      ) : items.length === 0 ? (
+      ) : commentItems.length === 0 ? (
         <View style={styles.emptyStateCard}>
           <MaterialCommunityIcons name="message-outline" size={30} color="#4A4A4A" />
-          <AppText style={styles.emptyStateTitle}>No activity yet</AppText>
+          <AppText style={styles.emptyStateTitle}>No comments yet</AppText>
           <AppText style={styles.emptyStateBody}>
-            Wildlife notes, health alerts, and sightings will collect here as the tree
-            gains updates.
+            Start the discussion by leaving the first comment for this tree.
           </AppText>
         </View>
       ) : (
-        items.map((item) => (
+        commentItems.map((item) => (
           <View key={item.key} style={styles.feedCard}>
-            <View
-              style={[
-                styles.feedAvatar,
-                item.type === 'wildlife'
-                  ? styles.feedAvatarWildlife
-                  : item.type === 'disease'
-                    ? styles.feedAvatarDisease
-                    : styles.feedAvatarSeen,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={item.icon}
-                size={18}
-                color={item.type === 'disease' ? '#8C2D04' : '#165B2A'}
-              />
+            <View style={[styles.feedAvatar, styles.feedAvatarSeen]}>
+              <MaterialCommunityIcons name={item.icon} size={18} color="#165B2A" />
             </View>
 
             <View style={styles.feedBody}>
@@ -600,7 +610,7 @@ export default function TreeDetailsDashboard({
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
-  const canManagePhotos = isGuardian || isAdmin
+  const canManagePhotos = isGuardian || isAdmin;
 
   useEffect(() => {
     setActiveTab('overview');
@@ -622,6 +632,9 @@ export default function TreeDetailsDashboard({
       : 'Healthy';
   const healthIcon = needsAttention ? 'alert-circle-outline' : 'check-decagram-outline';
   const healthTone = needsAttention ? 'attention' : 'healthy';
+
+  const commentItems = activityItems.filter(isCommentActivity);
+  const observationItems = activityItems.filter(isObservationActivity);
 
   const cardWidth = Math.min(width - 28, 520);
   const cardMaxHeight = Math.min(height * 0.78, 720);
@@ -814,7 +827,7 @@ export default function TreeDetailsDashboard({
       setIsUploadingPhotos(false);
     }
   };
-  
+
   const handleAddComment = () => {
     if (!isLoggedIn) {
       showAlert('Login Required', 'You need to sign in to add a comment.');
@@ -840,8 +853,6 @@ export default function TreeDetailsDashboard({
       'Delete Comment',
       'Are you sure you want to delete this comment?',
       async () => {
-        console.log('delete confirmed', item.commentId);
-
         try {
           await deleteTreeComment(item.commentId);
           await reloadActivity();
@@ -983,28 +994,25 @@ export default function TreeDetailsDashboard({
               healthLabel={healthLabel}
               healthIcon={healthIcon}
               healthTone={healthTone}
-              activityItems={activityItems}
+              observationItems={observationItems}
+            />
+          ) : null}
+
+          {activeTab === 'photos' ? (
+            <TreePhotos
+              photos={photos}
               onAddPhoto={handleAddPhoto}
+              onDeletePhoto={handleDeletePhoto}
               canAddPhoto={isLoggedIn}
+              canManagePhotos={canManagePhotos}
               isPhotoLimitReached={isPhotoLimitReached}
               isUploadingPhotos={isUploadingPhotos}
             />
           ) : null}
 
-          {activeTab === 'photos' ? (
-            <TreePhotos 
-            photos={photos} 
-            onAddPhoto={handleAddPhoto} 
-            onDeletePhoto={handleDeletePhoto} 
-            canAddPhoto={isLoggedIn} 
-            canManagePhotos={canManagePhotos} 
-            isPhotoLimitReached={isPhotoLimitReached}
-            isUploadingPhotos={isUploadingPhotos} />
-          ) : null}
-
           {activeTab === 'activity' ? (
             <TreeActivity
-              items={activityItems}
+              items={commentItems}
               onAddComment={handleAddComment}
               onDeleteComment={handleDeleteComment}
               isLoadingActivity={isLoadingActivity}
@@ -1032,7 +1040,7 @@ export default function TreeDetailsDashboard({
             setIsCommentModalVisible(false);
           }
         }}
-      > 
+      >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <AppText style={styles.modalTitle}>Add Comment</AppText>
