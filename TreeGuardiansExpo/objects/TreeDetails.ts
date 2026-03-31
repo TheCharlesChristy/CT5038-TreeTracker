@@ -1,3 +1,11 @@
+// Tree photos
+export type TreePhoto = {
+  id?: number;
+  image_url: string;
+  fileName?: string;
+  mimeType?: string;
+};
+
 // information filled in dashboard
 export type TreeDetails = {
     species?: string,
@@ -5,7 +13,7 @@ export type TreeDetails = {
     wildlifeList?: string[],
     disease?: string,
     diseaseList?: string[],
-    photos?: string[],  // array of image URL's
+    photos?: TreePhoto[],
     notes?: string, // "seen" obervations or additional notes
     diameter?: number,
     height?: number,

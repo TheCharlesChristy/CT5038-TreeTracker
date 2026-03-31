@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   View,
   useWindowDimensions,
@@ -14,12 +15,27 @@ import { AppButton } from './AppButton';
 import { AppText } from './AppText';
 import { TreeDataStats } from './TreeDataStats';
 import { Tree } from '@/objects/TreeDetails';
+import {
+  addTreeComment,
+  deleteTreeComment,
+  deleteTreePhoto,
+  fetchTreeFeed,
+  fetchTrees,
+  TreeFeedItem,
+  uploadTreePhotos,
+} from '@/lib/treeApi';
+import { showAlert } from '@/utilities/showAlert';
+import { showConfirm } from '@/utilities/showConfirm';
+import * as ImagePicker from 'expo-image-picker';
+import { TreePhoto } from '@/objects/TreeDetails'
 
 type PopupTab = 'overview' | 'photos' | 'activity';
-type ActivityType = 'wildlife' | 'disease' | 'seen';
+type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
 
 type ActivityItem = {
   key: string;
+  commentId: number;
+  userId: number | null;
   type: ActivityType;
   title: string;
   content: string;
@@ -30,9 +46,16 @@ type ActivityItem = {
 interface TreeDetailsDashboardProps {
   tree: Tree;
   onClose: () => void;
+  currentUserId: number | null;
+  isAdmin: boolean;
+  isGuardian: boolean
 }
 
-const TABS: { key: PopupTab; label: string; icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'] }[] = [
+const TABS: {
+  key: PopupTab;
+  label: string;
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+}[] = [
   { key: 'overview', label: 'Overview', icon: 'text-box-search-outline' },
   { key: 'photos', label: 'Photos', icon: 'image-multiple-outline' },
   { key: 'activity', label: 'Activity', icon: 'message-badge-outline' },
@@ -42,8 +65,86 @@ function cleanText(value: string | undefined) {
   return value?.trim() ?? '';
 }
 
+function formatFeedMeta(item: TreeFeedItem): string {
+  const username = item.username?.trim() || 'Unknown user';
+  const createdAt = item.created_at
+    ? new Date(item.created_at).toLocaleString()
+    : 'Unknown Time';
+
+  return `${username} | ${createdAt}`;
+}
+
+function mapFeedItemToActivity(item: TreeFeedItem): ActivityItem {
+  const commentId = Number(item.comment_id);
+  const userId = item.user_id != null ? Number(item.user_id) : null;
+
+  switch (item.item_type) {
+    case 'tree_comment':
+      return {
+        key: `tree-comment-${commentId}`,
+        commentId,
+        userId,
+        type: 'tree_comment',
+        title: 'Comment',
+        content: item.content?.trim() || 'No comment provided.',
+        meta: formatFeedMeta(item),
+        icon: 'message-text-outline',
+      };
+
+    case 'reply':
+      return {
+        key: `reply-${commentId}`,
+        commentId,
+        userId,
+        type: 'reply',
+        title: 'Reply',
+        content: item.content?.trim() || 'No reply provided.',
+        meta: formatFeedMeta(item),
+        icon: 'reply-outline',
+      };
+
+    case 'wildlife':
+      return {
+        key: `wildlife-${commentId}`,
+        commentId,
+        userId,
+        type: 'wildlife',
+        title: 'Wildlife',
+        content: item.content?.trim() || item.extra?.trim() || 'Wildlife observation.',
+        meta: formatFeedMeta(item),
+        icon: 'paw',
+      };
+
+    case 'disease':
+      return {
+        key: `disease-${commentId}`,
+        commentId,
+        userId,
+        type: 'disease',
+        title: 'Disease',
+        content: item.content?.trim() || item.extra?.trim() || 'Disease observation.',
+        meta: formatFeedMeta(item),
+        icon: 'biohazard',
+      };
+
+    case 'seen':
+    default:
+      return {
+        key: `seen-${commentId}`,
+        commentId,
+        userId,
+        type: 'seen',
+        title: 'Seen',
+        content: item.content?.trim() || 'General observation.',
+        meta: formatFeedMeta(item),
+        icon: 'eye-outline',
+      };
+  }
+}
+
 function TreeOverview({
   tree,
+  photos,
   photoCount,
   activityCount,
   healthLabel,
@@ -51,8 +152,12 @@ function TreeOverview({
   healthTone,
   activityItems,
   onAddPhoto,
+  canAddPhoto,
+  isPhotoLimitReached,
+  isUploadingPhotos,
 }: {
   tree: Tree;
+  photos: TreePhoto[];
   photoCount: number;
   activityCount: number;
   healthLabel: string;
@@ -60,9 +165,11 @@ function TreeOverview({
   healthTone: 'healthy' | 'attention';
   activityItems: ActivityItem[];
   onAddPhoto: () => void;
+  canAddPhoto: boolean;
+  isPhotoLimitReached: boolean;
+  isUploadingPhotos: boolean;
 }) {
-  const primaryPhoto = tree.photos?.[0];
-
+  const primaryPhoto = photos[0]?.image_url;
   const latestObservation = activityItems[0];
 
   return (
@@ -85,9 +192,27 @@ function TreeOverview({
             <AppText style={styles.heroLabelText}>Tree Overview</AppText>
           </View>
 
-          <View style={[styles.healthBadge, healthTone === 'attention' ? styles.healthBadgeAttention : styles.healthBadgeHealthy]}>
-            <MaterialCommunityIcons name={healthIcon} size={14} color={healthTone === 'attention' ? '#8C2D04' : '#165B2A'} />
-            <AppText style={[styles.healthBadgeText, healthTone === 'attention' ? styles.healthBadgeTextAttention : styles.healthBadgeTextHealthy]}>
+          <View
+            style={[
+              styles.healthBadge,
+              healthTone === 'attention'
+                ? styles.healthBadgeAttention
+                : styles.healthBadgeHealthy,
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={healthIcon}
+              size={14}
+              color={healthTone === 'attention' ? '#8C2D04' : '#165B2A'}
+            />
+            <AppText
+              style={[
+                styles.healthBadgeText,
+                healthTone === 'attention'
+                  ? styles.healthBadgeTextAttention
+                  : styles.healthBadgeTextHealthy,
+              ]}
+            >
               {healthLabel}
             </AppText>
           </View>
@@ -101,14 +226,17 @@ function TreeOverview({
             <AppText style={styles.summaryChipText}>{tree.species}</AppText>
           </View>
         ) : null}
+
         <View style={styles.summaryChip}>
           <MaterialCommunityIcons name="image-outline" size={14} color="#1B5E20" />
           <AppText style={styles.summaryChipText}>{photoCount} photos</AppText>
         </View>
+
         <View style={styles.summaryChip}>
           <MaterialCommunityIcons name="timeline-outline" size={14} color="#1B5E20" />
           <AppText style={styles.summaryChipText}>{activityCount} updates</AppText>
         </View>
+
         <View style={styles.summaryChip}>
           <MaterialCommunityIcons name="map-marker-outline" size={14} color="#1B5E20" />
           <AppText style={styles.summaryChipText}>
@@ -134,19 +262,38 @@ function TreeOverview({
           </AppText>
         )}
       </View>
-
-      <AppButton
-        title="Add Photo"
+      
+      {canAddPhoto? (
+        <AppButton
+        title={isUploadingPhotos ? 'Uploading...' : isPhotoLimitReached ? 'Photo Limit Reached' : 'Add Photo'}
         variant="secondary"
         onPress={onAddPhoto}
+        disabled={isPhotoLimitReached}
         style={styles.sectionActionWrap}
         buttonStyle={styles.sectionActionButton}
       />
+      ) : null}
     </View>
   );
 }
 
-function TreePhotos({ photos, onAddPhoto }: { photos: string[]; onAddPhoto: () => void }) {
+function TreePhotos({
+  photos,
+  onAddPhoto,
+  onDeletePhoto,
+  canAddPhoto,
+  canManagePhotos,
+  isPhotoLimitReached,
+  isUploadingPhotos,
+}: {
+  photos: TreePhoto[];
+  onAddPhoto: () => void;
+  onDeletePhoto: (photo: TreePhoto) => void;
+  canAddPhoto: boolean;
+  canManagePhotos: boolean;
+  isPhotoLimitReached: boolean;
+  isUploadingPhotos: boolean;
+}) {
   return (
     <View style={styles.sectionStack}>
       <View style={styles.sectionHeaderRow}>
@@ -157,23 +304,50 @@ function TreePhotos({ photos, onAddPhoto }: { photos: string[]; onAddPhoto: () =
       {photos.length > 0 ? (
         <ScrollView
           horizontal
-          showsHorizontalScrollIndicator={false}
+          showsHorizontalScrollIndicator={true}
           contentContainerStyle={styles.photoRail}
         >
           {photos.map((photo, index) => (
-            <View key={`${photo}-${index}`} style={styles.photoCard}>
-              <Image source={{ uri: photo }} style={styles.galleryPhoto} />
+            <View key={photo.id} style={styles.photoCard}>
+              <Image source={{ uri: photo.image_url }} style={styles.galleryPhoto} />
+
               <View style={styles.photoCaption}>
                 <AppText style={styles.photoCaptionText}>Photo {index + 1}</AppText>
+
+                {canManagePhotos ? (
+                  <TouchableOpacity
+                    onPress={() => onDeletePhoto(photo)}
+                    activeOpacity={0.8}
+                    style={styles.deletePhotoButton}
+                  >
+                    <MaterialCommunityIcons
+                      name="trash-can-outline"
+                      size={16}
+                      color="#8C2D04"
+                    />
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
           ))}
 
-          <View style={styles.addPhotoTile}>
-            <MaterialCommunityIcons name="camera-plus-outline" size={26} color="#1B5E20" />
-            <AppText style={styles.addPhotoTitle}>Add photo</AppText>
-            <AppText style={styles.addPhotoText}>Upload support can plug into this slot later.</AppText>
-          </View>
+          {canAddPhoto && !isPhotoLimitReached ? (
+            <TouchableOpacity
+              style={styles.addPhotoTile}
+              onPress={onAddPhoto}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons
+                name="camera-plus-outline"
+                size={26}
+                color="#1B5E20"
+              />
+              <AppText style={styles.addPhotoTitle}>Add photo</AppText>
+              <AppText style={styles.addPhotoText}>
+                You can upload up to 5 images for this tree.
+              </AppText>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       ) : (
         <View style={styles.emptyStateCard}>
@@ -188,17 +362,26 @@ function TreePhotos({ photos, onAddPhoto }: { photos: string[]; onAddPhoto: () =
       <View style={styles.infoSection}>
         <AppText style={styles.sectionTitle}>Photo Notes</AppText>
         <AppText style={styles.infoText}>
-          Keep this space focused on quick visual comparison, so a few strong images are more useful than a long wall of media.
+          Scroll horizontally to view more than two Photos!
         </AppText>
       </View>
 
-      <AppButton
-        title="Add Photo"
-        variant="secondary"
-        onPress={onAddPhoto}
-        style={styles.sectionActionWrap}
-        buttonStyle={styles.sectionActionButton}
-      />
+      {canAddPhoto ? (
+        <AppButton
+          title={
+            isUploadingPhotos
+              ? 'Uploading...'
+              : isPhotoLimitReached
+                ? 'Photo Limit Reached'
+                : 'Add Photo'
+          }
+          variant="secondary"
+          onPress={onAddPhoto}
+          disabled={isPhotoLimitReached || isUploadingPhotos}
+          style={styles.sectionActionWrap}
+          buttonStyle={styles.sectionActionButton}
+        />
+      ) : null}
     </View>
   );
 }
@@ -233,7 +416,23 @@ function ActivityTag({ item }: { item: ActivityItem }) {
   );
 }
 
-function TreeActivity({ items, onAddComment }: { items: ActivityItem[]; onAddComment: () => void }) {
+function TreeActivity({
+  items,
+  onAddComment,
+  onDeleteComment,
+  isLoadingActivity,
+  currentUserId,
+  isAdmin,
+}: {
+  items: ActivityItem[];
+  onAddComment: () => void;
+  onDeleteComment: (item: ActivityItem) => void;
+  isLoadingActivity: boolean;
+  currentUserId: number | null;
+  isAdmin: boolean;
+}) {
+  const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
+
   return (
     <View style={styles.sectionStack}>
       <View style={styles.sectionHeaderRow}>
@@ -241,25 +440,53 @@ function TreeActivity({ items, onAddComment }: { items: ActivityItem[]; onAddCom
         <AppText style={styles.sectionMeta}>{items.length} updates</AppText>
       </View>
 
-      {items.length === 0 ? (
+      <View style={styles.infoSection}>
+        <AppText style={styles.sectionTitle}>Community</AppText>
+        <AppText style={styles.infoText}>
+          When commenting on a tree, make sure it is relevant to the Tree!
+        </AppText>
+      </View>
+
+      {isLoggedIn ? (
+        <AppButton
+          title="Add Comment"
+          variant="secondary"
+          onPress={onAddComment}
+          style={styles.sectionActionWrap}
+          buttonStyle={styles.sectionActionButton}
+        />
+      ) : null}
+
+      {isLoadingActivity ? (
+        <View style={styles.emptyStateCard}>
+          <MaterialCommunityIcons name="loading" size={30} color="#4A4A4A" />
+          <AppText style={styles.emptyStateTitle}>Loading activity</AppText>
+          <AppText style={styles.emptyStateBody}>
+            Fetching the latest comments and observations for this tree.
+          </AppText>
+        </View>
+      ) : items.length === 0 ? (
         <View style={styles.emptyStateCard}>
           <MaterialCommunityIcons name="message-outline" size={30} color="#4A4A4A" />
           <AppText style={styles.emptyStateTitle}>No activity yet</AppText>
           <AppText style={styles.emptyStateBody}>
-            Wildlife notes, health alerts, and sightings will collect here as the tree gains updates.
+            Wildlife notes, health alerts, and sightings will collect here as the tree
+            gains updates.
           </AppText>
         </View>
       ) : (
         items.map((item) => (
           <View key={item.key} style={styles.feedCard}>
-            <View style={[
-              styles.feedAvatar,
-              item.type === 'wildlife'
-                ? styles.feedAvatarWildlife
-                : item.type === 'disease'
-                  ? styles.feedAvatarDisease
-                  : styles.feedAvatarSeen,
-            ]}>
+            <View
+              style={[
+                styles.feedAvatar,
+                item.type === 'wildlife'
+                  ? styles.feedAvatarWildlife
+                  : item.type === 'disease'
+                    ? styles.feedAvatarDisease
+                    : styles.feedAvatarSeen,
+              ]}
+            >
               <MaterialCommunityIcons
                 name={item.icon}
                 size={18}
@@ -268,33 +495,30 @@ function TreeActivity({ items, onAddComment }: { items: ActivityItem[]; onAddCom
             </View>
 
             <View style={styles.feedBody}>
-              <View style={styles.feedHeaderRow}>
-                <AppText style={styles.feedAuthor}>Community Log</AppText>
-                <AppText style={styles.feedTime}>Current record</AppText>
+              <View style={styles.feedTopRow}>
+                <ActivityTag item={item} />
+
+                {isLoggedIn && (item.userId === currentUserId || isAdmin) ? (
+                  <TouchableOpacity
+                    onPress={() => onDeleteComment(item)}
+                    activeOpacity={0.8}
+                    style={styles.deleteCommentButton}
+                  >
+                    <MaterialCommunityIcons
+                      name="trash-can-outline"
+                      size={16}
+                      color="#8C2D04"
+                    />
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
-              <ActivityTag item={item} />
               <AppText style={styles.feedText}>{item.content}</AppText>
               <AppText style={styles.feedMeta}>{item.meta}</AppText>
             </View>
           </View>
         ))
       )}
-
-      <View style={styles.infoSection}>
-        <AppText style={styles.sectionTitle}>Feed Structure</AppText>
-        <AppText style={styles.infoText}>
-          This panel is ready for richer comments and replies, while already separating wildlife, disease, and seen observations for faster scanning.
-        </AppText>
-      </View>
-
-      <AppButton
-        title="Add Comment"
-        variant="secondary"
-        onPress={onAddComment}
-        style={styles.sectionActionWrap}
-        buttonStyle={styles.sectionActionButton}
-      />
     </View>
   );
 }
@@ -358,58 +582,37 @@ function TreeFooter({
   );
 }
 
-export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashboardProps) {
+export default function TreeDetailsDashboard({
+  tree,
+  onClose,
+  currentUserId,
+  isAdmin,
+  isGuardian,
+}: TreeDetailsDashboardProps) {
   const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<PopupTab>('overview');
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [photos, setPhotos] = useState<TreePhoto[]>(tree.photos ?? []);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+
+  const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
+  const canManagePhotos = isGuardian || isAdmin
 
   useEffect(() => {
     setActiveTab('overview');
   }, [tree.id, tree.latitude, tree.longitude]);
 
-  const photos = tree.photos ?? [];
+  const maxPhotos = 5;
+  const remainingPhotoSlots = Math.max(0, maxPhotos - photos.length);
+  const isPhotoLimitReached = photos.length >= maxPhotos;
 
-  const activityItems = useMemo<ActivityItem[]>(() => {
-    const disease = cleanText(tree.disease);
-    const wildlife = cleanText(tree.wildlife);
-    const notes = cleanText(tree.notes);
-
-    const items: ActivityItem[] = [];
-
-    if (disease) {
-      items.push({
-        key: 'disease',
-        type: 'disease',
-        title: 'Disease',
-        content: disease,
-        meta: 'Health alert recorded for follow-up.',
-        icon: 'biohazard',
-      });
-    }
-
-    if (wildlife) {
-      items.push({
-        key: 'wildlife',
-        type: 'wildlife',
-        title: 'Wildlife',
-        content: wildlife,
-        meta: 'Biodiversity observation linked to this tree.',
-        icon: 'paw',
-      });
-    }
-
-    if (notes) {
-      items.push({
-        key: 'seen',
-        type: 'seen',
-        title: 'Seen',
-        content: notes,
-        meta: 'General tree note from the latest record.',
-        icon: 'eye-outline',
-      });
-    }
-
-    return items;
-  }, [tree.disease, tree.notes, tree.wildlife]);
+  useEffect(() => {
+    setPhotos(tree.photos ?? []);
+  }, [tree.id, tree.photos]);
 
   const needsAttention = cleanText(tree.disease).length > 0;
   const healthLabel = tree.health
@@ -422,12 +625,305 @@ export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashb
 
   const cardWidth = Math.min(width - 28, 520);
   const cardMaxHeight = Math.min(height * 0.78, 720);
-  const handleAddPhoto = () => {
-    Alert.alert('Add Photo', 'Photo uploads are not wired up yet.');
+
+  const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+
+  function getFileExtension(uri: string): string {
+    const cleanUri = uri.split('?')[0].split('#')[0];
+    const filename = cleanUri.split('/').pop() || '';
+    return filename.includes('.') ? filename.split('.').pop()!.toLowerCase() : '';
+  }
+
+  function getMimeTypeFromUri(uri: string): string | undefined {
+    const ext = getFileExtension(uri);
+
+    if (ext === 'jpg' || ext === 'jpeg') {
+      return 'image/jpeg';
+    }
+
+    if (ext === 'png') {
+      return 'image/png';
+    }
+
+    if (ext === 'webp') {
+      return 'image/webp';
+    }
+
+    if (ext === 'heic') {
+      return 'image/heic';
+    }
+
+    if (ext === 'heif') {
+      return 'image/heif';
+    }
+
+    return undefined;
+  }
+
+  function isSupportedImageAsset(asset: ImagePicker.ImagePickerAsset): boolean {
+    const mimeType = asset.mimeType ?? getMimeTypeFromUri(asset.uri);
+    const extension = getFileExtension(asset.uri);
+
+    return (
+      (mimeType ? SUPPORTED_IMAGE_TYPES.includes(mimeType) : false) ||
+      SUPPORTED_IMAGE_EXTENSIONS.includes(extension)
+    );
+  }
+
+  function getSupportedImageTypesMessage(): string {
+    return 'Supported image types: JPG, JPEG, PNG and WEBP.';
+  }
+
+  const handleDeletePhoto = (photo: TreePhoto) => {
+    const treeId = tree.id;
+
+    if (typeof treeId !== 'number') {
+      showAlert('Delete Failed', 'This tree does not have a valid ID.');
+      return;
+    }
+
+    if (typeof photo.id !== 'number') {
+      showAlert('Delete Failed', 'This photo does not have a valid backend ID.');
+      return;
+    }
+
+    const photoId = photo.id;
+
+    showConfirm(
+      'Delete Photo',
+      'Are you sure you want to delete this photo?',
+      async () => {
+        try {
+          await deleteTreePhoto(treeId, photoId);
+
+          const refreshedTrees = await fetchTrees();
+          const refreshedTree = refreshedTrees.find((item) => item.id === treeId);
+
+          if (refreshedTree?.photos) {
+            setPhotos(refreshedTree.photos);
+          } else {
+            setPhotos([]);
+          }
+        } catch (error) {
+          showAlert(
+            'Delete Failed',
+            error instanceof Error ? error.message : 'Unable to delete photo.'
+          );
+        }
+      }
+    );
   };
+
+  const handleAddPhoto = async () => {
+    const treeId = tree.id;
+
+    if (!isLoggedIn) {
+      showAlert('Login Required', 'You need to sign in to add photos.');
+      return;
+    }
+
+    if (typeof treeId !== 'number') {
+      showAlert('Photo Error', 'This tree does not have a valid ID.');
+      return;
+    }
+
+    if (isPhotoLimitReached) {
+      showAlert('Limit Reached', 'This tree already has the maximum of 5 photos.');
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      showAlert(
+        'Permission Required',
+        'Photo library permission is needed to upload tree photos.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: remainingPhotoSlots,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const selectedAssets = result.assets.slice(0, remainingPhotoSlots);
+
+    if (selectedAssets.length === 0) {
+      return;
+    }
+
+    const unsupportedAssets = selectedAssets.filter((asset) => !isSupportedImageAsset(asset));
+    const supportedAssets = selectedAssets.filter((asset) => isSupportedImageAsset(asset));
+
+    if (unsupportedAssets.length > 0) {
+      const unsupportedList = unsupportedAssets
+        .map((asset) => {
+          const extension = getFileExtension(asset.uri);
+          const mimeType = asset.mimeType || 'unknown mime';
+          const label = extension ? extension.toUpperCase() : 'NO_EXTENSION';
+          return `${label} (${mimeType})`;
+        })
+        .join(', ');
+
+      showAlert(
+        'Unsupported Image Type',
+        `${getSupportedImageTypesMessage()}\n\nUnsupported selection: ${unsupportedList}`
+      );
+    }
+
+    const selectedUploadAssets = supportedAssets.map((asset) => ({
+      uri: asset.uri,
+      fileName: asset.fileName ?? undefined,
+      mimeType: asset.mimeType ?? undefined,
+    }));
+
+    if (selectedUploadAssets.length === 0) {
+      return;
+    }
+
+    try {
+      setIsUploadingPhotos(true);
+
+      await uploadTreePhotos(treeId, selectedUploadAssets);
+
+      const refreshedTrees = await fetchTrees();
+      const refreshedTree = refreshedTrees.find((item) => item.id === treeId);
+
+      if (refreshedTree?.photos) {
+        setPhotos(refreshedTree.photos);
+      } else {
+        setPhotos([]);
+      }
+
+      showAlert('Success', 'Photo(s) uploaded successfully.');
+      setActiveTab('photos');
+    } catch (error) {
+      showAlert(
+        'Upload Failed',
+        error instanceof Error ? error.message : 'Unable to upload photos.'
+      );
+    } finally {
+      setIsUploadingPhotos(false);
+    }
+  };
+  
   const handleAddComment = () => {
-    Alert.alert('Add Comment', 'Comments are not wired up yet.');
+    if (!isLoggedIn) {
+      showAlert('Login Required', 'You need to sign in to add a comment.');
+      return;
+    }
+
+    setCommentText('');
+    setIsCommentModalVisible(true);
   };
+
+  const reloadActivity = async () => {
+    if (!tree.id) {
+      setActivityItems([]);
+      return;
+    }
+
+    const feed = await fetchTreeFeed(tree.id);
+    setActivityItems(feed.map(mapFeedItemToActivity));
+  };
+
+  const handleDeleteComment = (item: ActivityItem) => {
+    showConfirm(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      async () => {
+        console.log('delete confirmed', item.commentId);
+
+        try {
+          await deleteTreeComment(item.commentId);
+          await reloadActivity();
+        } catch (error) {
+          showAlert(
+            'Delete Failed',
+            error instanceof Error ? error.message : 'Unable to delete comment.'
+          );
+        }
+      }
+    );
+  };
+
+  const handleSubmitComment = async () => {
+    if (!isLoggedIn) {
+      showAlert('Login Required', 'You need to sign in to add a comment.');
+      return;
+    }
+
+    const trimmedComment = commentText.trim();
+
+    if (!tree.id) {
+      showAlert('Comment Error', 'This tree does not have a valid ID.');
+      return;
+    }
+
+    if (!trimmedComment) {
+      showAlert('Comment Required', 'Please enter a comment before submitting.');
+      return;
+    }
+
+    try {
+      setIsSubmittingComment(true);
+      await addTreeComment(tree.id, trimmedComment);
+      await reloadActivity();
+      setIsCommentModalVisible(false);
+      setCommentText('');
+      setActiveTab('activity');
+    } catch (error) {
+      showAlert(
+        'Add Comment Failed',
+        error instanceof Error ? error.message : 'Unable to add comment.',
+      );
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadActivity() {
+      if (!tree.id) {
+        setActivityItems([]);
+        return;
+      }
+
+      try {
+        setIsLoadingActivity(true);
+        const feed = await fetchTreeFeed(tree.id);
+        if (!cancelled) {
+          setActivityItems(feed.map(mapFeedItemToActivity));
+        }
+      } catch (error) {
+        console.error('Failed to load tree activity feed:', error);
+
+        if (!cancelled) {
+          setActivityItems([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingActivity(false);
+        }
+      }
+    }
+
+    loadActivity();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tree.id]);
 
   return (
     <View style={styles.wrapper} pointerEvents="box-none">
@@ -439,7 +935,8 @@ export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashb
               {tree.id !== undefined ? `Tree #${tree.id}` : 'Observed Tree'}
             </AppText>
             <AppText style={styles.subtitle}>
-              {tree.species ? `${tree.species} • ` : ''}{photos.length} photos • {activityItems.length} updates
+              {tree.species ? `${tree.species} • ` : ''}
+              {photos.length} photos • {activityItems.length} updates
             </AppText>
           </View>
 
@@ -480,6 +977,7 @@ export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashb
           {activeTab === 'overview' ? (
             <TreeOverview
               tree={tree}
+              photos={photos}
               photoCount={photos.length}
               activityCount={activityItems.length}
               healthLabel={healthLabel}
@@ -487,11 +985,33 @@ export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashb
               healthTone={healthTone}
               activityItems={activityItems}
               onAddPhoto={handleAddPhoto}
+              canAddPhoto={isLoggedIn}
+              isPhotoLimitReached={isPhotoLimitReached}
+              isUploadingPhotos={isUploadingPhotos}
             />
           ) : null}
 
-          {activeTab === 'photos' ? <TreePhotos photos={photos} onAddPhoto={handleAddPhoto} /> : null}
-          {activeTab === 'activity' ? <TreeActivity items={activityItems} onAddComment={handleAddComment} /> : null}
+          {activeTab === 'photos' ? (
+            <TreePhotos 
+            photos={photos} 
+            onAddPhoto={handleAddPhoto} 
+            onDeletePhoto={handleDeletePhoto} 
+            canAddPhoto={isLoggedIn} 
+            canManagePhotos={canManagePhotos} 
+            isPhotoLimitReached={isPhotoLimitReached}
+            isUploadingPhotos={isUploadingPhotos} />
+          ) : null}
+
+          {activeTab === 'activity' ? (
+            <TreeActivity
+              items={activityItems}
+              onAddComment={handleAddComment}
+              onDeleteComment={handleDeleteComment}
+              isLoadingActivity={isLoadingActivity}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+            />
+          ) : null}
         </ScrollView>
 
         <TreeFooter
@@ -502,6 +1022,52 @@ export default function TreeDetailsDashboard({ tree, onClose }: TreeDetailsDashb
           activityCount={activityItems.length}
         />
       </View>
+
+      <Modal
+        visible={isCommentModalVisible && isLoggedIn}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isSubmittingComment) {
+            setIsCommentModalVisible(false);
+          }
+        }}
+      > 
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <AppText style={styles.modalTitle}>Add Comment</AppText>
+            <AppText style={styles.modalSubtitle}>Tell us how the tree is!</AppText>
+
+            <TextInput
+              style={styles.commentInput}
+              value={commentText}
+              onChangeText={setCommentText}
+              placeholder="Write your comment here..."
+              placeholderTextColor="#6B7280"
+              multiline
+              textAlignVertical="top"
+              editable={!isSubmittingComment}
+            />
+
+            <View style={styles.modalButtonRow}>
+              <AppButton
+                title={isSubmittingComment ? 'Posting...' : 'Post Comment'}
+                variant="primary"
+                onPress={handleSubmitComment}
+                style={styles.modalButtonWrap}
+                buttonStyle={styles.modalButton}
+              />
+              <AppButton
+                title="Cancel"
+                variant="outline"
+                onPress={() => setIsCommentModalVisible(false)}
+                style={styles.modalButtonWrap}
+                buttonStyle={styles.modalButton}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -534,15 +1100,12 @@ const styles = StyleSheet.create({
   },
 
   header: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E3EBE3',
-    backgroundColor: 'rgba(246, 251, 246, 0.96)',
   },
 
   headerCopy: {
@@ -551,71 +1114,64 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    ...Theme.Typography.caption,
-    color: Theme.Colours.secondary,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 3,
+    color: '#55705B',
+    marginBottom: 4,
   },
 
   title: {
-    ...Theme.Typography.subtitle,
-    color: '#15361C',
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#183221',
   },
 
   subtitle: {
-    ...Theme.Typography.caption,
-    color: Theme.Colours.textMuted,
-    marginTop: 3,
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#526056',
   },
 
   closeButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
+    backgroundColor: '#E7F1E3',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAF4EA',
-    borderWidth: 1,
-    borderColor: '#D2E2D2',
   },
 
   tabBar: {
     flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8EFE8',
-    backgroundColor: '#F8FBF8',
+    marginHorizontal: 18,
+    marginBottom: 8,
+    backgroundColor: '#EAF3E6',
+    borderRadius: 18,
+    padding: 4,
+    gap: 6,
   },
 
   tabButton: {
     flex: 1,
     minHeight: 42,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#D8E4D8',
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
     gap: 6,
-    paddingHorizontal: 10,
   },
 
   tabButtonActive: {
-    backgroundColor: '#1F6A30',
-    borderColor: '#1F6A30',
+    backgroundColor: '#2F6A3E',
   },
 
   tabButtonText: {
-    ...Theme.Typography.caption,
+    fontSize: 13,
+    fontWeight: '700',
     color: '#31553A',
-    fontFamily: 'Poppins_600SemiBold',
   },
 
   tabButtonTextActive: {
@@ -628,7 +1184,7 @@ const styles = StyleSheet.create({
 
   contentContainer: {
     paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 18,
   },
 
@@ -637,89 +1193,86 @@ const styles = StyleSheet.create({
   },
 
   heroCard: {
-    position: 'relative',
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#D8E6D8',
-    backgroundColor: '#F2F7F2',
+    backgroundColor: '#DDEED9',
+    minHeight: 220,
   },
 
   heroPhoto: {
     width: '100%',
-    height: 188,
+    height: 240,
   },
 
   heroPlaceholder: {
-    minHeight: 188,
-    paddingHorizontal: 24,
-    paddingVertical: 26,
+    minHeight: 220,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAF4EA',
+    paddingHorizontal: 24,
+    paddingVertical: 28,
   },
 
   heroPlaceholderTitle: {
-    ...Theme.Typography.subtitle,
-    color: '#15361C',
-    marginTop: 10,
-    marginBottom: 6,
-    textAlign: 'center',
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#234229',
   },
 
   heroPlaceholderText: {
-    ...Theme.Typography.body,
-    color: Theme.Colours.textMuted,
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4E6352',
     textAlign: 'center',
   },
 
   heroOverlay: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    right: 12,
+    left: 14,
+    right: 14,
+    top: 14,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    alignItems: 'center',
   },
 
   heroLabel: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: 'rgba(10, 39, 16, 0.66)',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
   },
 
   heroLabelText: {
-    ...Theme.Typography.caption,
-    color: Theme.Colours.white,
-    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#234229',
   },
 
   healthBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 6,
     borderRadius: 999,
-    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
   },
 
   healthBadgeHealthy: {
-    backgroundColor: 'rgba(232, 248, 236, 0.95)',
-    borderColor: '#C7E4CD',
+    borderWidth: 1,
+    borderColor: '#B5D9BF',
   },
 
   healthBadgeAttention: {
-    backgroundColor: 'rgba(255, 244, 229, 0.97)',
-    borderColor: '#F3C48B',
+    borderWidth: 1,
+    borderColor: '#F3C6B3',
   },
 
   healthBadgeText: {
-    ...Theme.Typography.caption,
-    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   healthBadgeTextHealthy: {
@@ -733,174 +1286,117 @@ const styles = StyleSheet.create({
   summaryChipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
 
   summaryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#EDF6ED',
-    borderWidth: 1,
-    borderColor: '#D8E6D8',
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: '#E9F4E5',
   },
 
   summaryChipText: {
-    ...Theme.Typography.caption,
-    color: '#214B2A',
-    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#234229',
   },
 
   infoSection: {
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 16,
-    backgroundColor: '#F7FBF7',
+    backgroundColor: '#EEF6EB',
     borderWidth: 1,
-    borderColor: '#E0EAE0',
+    borderColor: '#D8E7D4',
   },
 
   sectionTitle: {
-    ...Theme.Typography.subtitle,
-    color: '#18371D',
-    fontSize: 17,
-    lineHeight: 23,
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#183221',
+  },
+
+  sectionMeta: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#5E6F61',
+  },
+
+  emptySectionText: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#57685A',
+  },
+
+  snapshotTitle: {
+    marginTop: 10,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#24402B',
+  },
+
+  snapshotBody: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#3C5141',
+  },
+
+  snapshotMeta: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#607264',
+  },
+
+  sectionActionWrap: {
+    width: '100%',
+  },
+
+  sectionActionButton: {
+    minHeight: 50,
   },
 
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
-  },
-
-  sectionMeta: {
-    ...Theme.Typography.caption,
-    color: Theme.Colours.textMuted,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-
-  emptySectionText: {
-    ...Theme.Typography.body,
-    color: Theme.Colours.textMuted,
-  },
-
-  snapshotTitle: {
-    ...Theme.Typography.body,
-    color: '#18371D',
-    fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 6,
-  },
-
-  snapshotBody: {
-    ...Theme.Typography.body,
-    color: Theme.Colours.textPrimary,
-    marginBottom: 6,
-  },
-
-  snapshotMeta: {
-    ...Theme.Typography.caption,
-    color: Theme.Colours.textMuted,
-  },
-
-  photoRail: {
-    paddingRight: 8,
-  },
-
-  photoCard: {
-    width: 156,
-    marginRight: 12,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: '#EEF6EE',
-    borderWidth: 1,
-    borderColor: '#DBE7DB',
-  },
-
-  galleryPhoto: {
-    width: '100%',
-    height: 132,
-  },
-
-  photoCaption: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-
-  photoCaptionText: {
-    ...Theme.Typography.caption,
-    color: '#214B2A',
-    fontFamily: 'Poppins_600SemiBold',
-  },
-
-  addPhotoTile: {
-    width: 156,
-    minHeight: 178,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#A8C5AC',
-    backgroundColor: '#F3FAF3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-
-  addPhotoTitle: {
-    ...Theme.Typography.subtitle,
-    color: '#18371D',
-    marginTop: 10,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-
-  addPhotoText: {
-    ...Theme.Typography.caption,
-    color: Theme.Colours.textMuted,
-    textAlign: 'center',
   },
 
   emptyStateCard: {
-    borderRadius: 18,
+    borderRadius: 22,
     paddingHorizontal: 20,
     paddingVertical: 24,
-    backgroundColor: '#F7FBF7',
+    backgroundColor: '#EEF4EB',
     borderWidth: 1,
-    borderColor: '#E0EAE0',
+    borderColor: '#D7E2D2',
     alignItems: 'center',
-    justifyContent: 'center',
   },
 
   emptyStateTitle: {
-    ...Theme.Typography.subtitle,
-    color: '#18371D',
-    marginTop: 10,
-    marginBottom: 6,
-    textAlign: 'center',
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2B4330',
   },
 
   emptyStateBody: {
-    ...Theme.Typography.body,
-    color: Theme.Colours.textMuted,
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
+    color: '#607264',
   },
 
   infoText: {
-    ...Theme.Typography.body,
-    color: Theme.Colours.textMuted,
-  },
-
-  sectionActionWrap: {
-    marginBottom: 0,
-  },
-
-  sectionActionButton: {
-    minHeight: 48,
-    marginBottom: 0,
-    borderRadius: 14,
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#55695A',
   },
 
   activityTag: {
@@ -912,27 +1408,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginBottom: 10,
-    borderWidth: 1,
   },
 
   activityTagWildlife: {
-    backgroundColor: '#EAF8EC',
-    borderColor: '#B9E1C1',
+    backgroundColor: '#DFF2E3',
   },
 
   activityTagDisease: {
-    backgroundColor: '#FFF4E6',
-    borderColor: '#F2C893',
+    backgroundColor: '#FBE6DD',
   },
 
   activityTagSeen: {
-    backgroundColor: '#EEF2F4',
-    borderColor: '#D0DAE0',
+    backgroundColor: '#E7EFF2',
   },
 
   activityTagText: {
-    ...Theme.Typography.caption,
-    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   activityTagTextWildlife: {
@@ -949,56 +1441,52 @@ const styles = StyleSheet.create({
 
   feedCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderRadius: 20,
+    gap: 12,
     padding: 16,
-    backgroundColor: '#FBFDFC',
+    borderRadius: 22,
+    backgroundColor: '#FAFDF8',
     borderWidth: 1,
-    borderColor: '#E0EAE0',
+    borderColor: '#DFE9DB',
   },
 
   feedAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
 
   feedAvatarWildlife: {
-    backgroundColor: '#EAF8EC',
+    backgroundColor: '#DFF2E3',
   },
 
   feedAvatarDisease: {
-    backgroundColor: '#FFF4E6',
+    backgroundColor: '#FBE6DD',
   },
 
   feedAvatarSeen: {
-    backgroundColor: '#EEF2F4',
+    backgroundColor: '#E7EFF2',
   },
 
   feedBody: {
     flex: 1,
   },
 
-  feedHeaderRow: {
+  feedTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 10,
+    marginBottom: 8,
   },
 
-  feedAuthor: {
-    ...Theme.Typography.body,
-    color: '#18371D',
-    fontFamily: 'Poppins_600SemiBold',
-  },
-
-  feedTime: {
-    ...Theme.Typography.caption,
-    color: Theme.Colours.textLight,
+  deleteCommentButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FBE6DD',
   },
 
   feedText: {
@@ -1031,7 +1519,7 @@ const styles = StyleSheet.create({
   },
 
   footerSecondaryButton: {
-    minHeight: 48,
+    minHeight: 50,
     marginBottom: 0,
     borderRadius: 14,
   },
@@ -1046,8 +1534,136 @@ const styles = StyleSheet.create({
   },
 
   footerPrimaryButton: {
-    minHeight: 48,
+    minHeight: 50,
     marginBottom: 0,
     borderRadius: 14,
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+
+  modalCard: {
+    width: '100%',
+    maxWidth: 460,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#DDE6D8',
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#183221',
+  },
+
+  modalSubtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#526056',
+  },
+
+  commentInput: {
+    minHeight: 130,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#CAD7C5',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#183221',
+    backgroundColor: '#F8FBF7',
+  },
+
+  modalButtonRow: {
+    flexDirection: 'column',
+    gap: 12,
+    marginTop: 16,
+  },
+
+  modalButtonWrap: {
+    width: '100%',
+  },
+
+  modalButton: {
+    minHeight: 48,
+  },
+
+  galleryHint: {
+  marginTop: 6,
+  marginBottom: 10,
+  color: '#4A4A4A',
+  fontSize: 13,
+  },
+
+  deletePhotoButton: {
+    marginLeft: 8,
+    padding: 4,
+    borderRadius: 999,
+    backgroundColor: '#FDECEC',
+  },
+
+  photoCaption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+
+  photoRail: {
+    paddingRight: 10,
+    gap: 14,
+  },
+
+  photoCard: {
+    width: 220,
+    flexShrink: 0,
+    borderRadius: 16,
+    backgroundColor: '#E8F0E5',
+  },
+
+  galleryPhoto: {
+    width: '100%',
+    height: 220,
+  },
+
+  photoCaptionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#31513A',
+  },
+
+  addPhotoTile: {
+    width: 220,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    backgroundColor: '#E4F0DF',
+    borderWidth: 1,
+    borderColor: '#CFE0CA',
+  },
+
+  addPhotoTitle: {
+    marginTop: 14,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#234229',
+  },
+
+  addPhotoText: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#56705C',
   },
 });

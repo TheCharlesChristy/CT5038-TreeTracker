@@ -3,6 +3,8 @@ const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { parsePositiveInt, parseListParams, requireJson } = require("./utils/http");
 const { requireAuthenticatedUser } = require("./utils/auth");
+const fs = require('fs');
+const path = require('path');
 
 const DEFAULT_TREE_DATA = {
   treeSpecies: "Unknown",
@@ -237,7 +239,11 @@ function createTreesRoute({ db }) {
         const photoRows = await Promise.all(photoIds.map((photoId) => db.photos.getById(photoId)));
         const photos = photoRows
           .filter((photo) => photo && typeof photo.image_url === "string")
-          .map((photo) => photo.image_url);
+          .map((photo) => ({
+            id: Number(photo.id),
+            image_url: photo.image_url,
+            mimeType: photo.mime_type || undefined
+          }));
 
         return mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos);
       })
@@ -304,6 +310,134 @@ function createTreesRoute({ db }) {
       await getTreeDetailsHandler(req, res, req.query.tree_id);
     })
   );
+
+  router.delete(
+    "/trees/:treeId/photos/:photoId",
+    asyncHandler(async (req, res) => {
+      const routeLog = getRouteLogger(req, { route: "delete-tree-photo" });
+      const auth = await requireAuthenticatedUser({ req, db, routeLog });
+
+      const treeId = Number(req.params.treeId);
+      const photoId = Number(req.params.photoId);
+      const userId = Number(auth.user.id);
+
+      if (!treeId || Number.isNaN(treeId) || !photoId || Number.isNaN(photoId)) {
+        res.status(400).json({ error: "Invalid tree ID or photo ID." });
+        return;
+      }
+
+      let deletedImageUrl = null;
+
+      await db.transaction(async (tx) => {
+        const photo = await db.photos.getById(photoId, tx);
+        const linkedToTree = await db.treePhotos.exists({ treeId, photoId }, tx);
+
+        if (!photo || !linkedToTree) {
+          const error = new Error("Photo not found for this tree.");
+          error.statusCode = 404;
+          throw error;
+        }
+
+        const [isAdmin, isGuardian] = await Promise.all([
+          db.admins.isAdmin(userId, tx),
+          db.guardians.exists({ userId, treeId }, tx)
+        ]);
+
+        if (!isAdmin && !isGuardian) {
+          const error = new Error("Only admins or guardians of this tree can delete its photos.");
+          error.statusCode = 403;
+          throw error;
+        }
+
+        await db.treePhotos.remove({ treeId, photoId }, tx);
+
+        const remainingCount = await db.treePhotos.countByPhotoId(photoId, tx);
+
+        if (remainingCount === 0) {
+          deletedImageUrl = photo.image_url;
+          await db.photos.deleteById(photoId, tx);
+        }
+
+        if (remainingCount.length === 0) {
+          deletedImageUrl = photo.image_url;
+          await db.photos.deleteById(photoId, tx);
+        }
+      });
+
+      if (deletedImageUrl) {
+        const relativePath = String(deletedImageUrl).replace(/^\/+/, "");
+        const absolutePath = path.join(process.cwd(), relativePath);
+
+        fs.unlink(absolutePath, (err) => {
+          if (err) {
+            console.warn("Could not delete photo file from disk:", err.message);
+          }
+        });
+      }
+
+      res.json({ success: true });
+    })
+  );
+
+  router.get(
+    "/trees/:treeId/feed",
+    asyncHandler(async (req, res) => {
+      const treeId = parsePositiveInt(req.params.treeId, "treeId");
+      const { limit, offset } = parseListParams(req.query);
+
+      const items = await db.workflows.trees.getTreeFeed(treeId, { limit, offset });
+      res.json(items);
+    })
+  );
+
+  router.delete(
+    "/comments/:commentId",
+    asyncHandler(async (req, res) => {
+      const commentId = parsePositiveInt(req.params.commentId, "commentId");
+
+      const auth = await requireAuthenticatedUser({
+        req,
+        db,
+        routeLog: getRouteLogger(req, { route: "delete-comment" }),
+      });
+
+      await db.workflows.comments.deleteTreeComment({
+        commentId,
+        userId: Number(auth.user.id),
+      });
+
+      res.json({ success: true });
+    })
+  );
+
+  router.post(
+    "/trees/:treeId/comments",
+    asyncHandler(async (req, res) => {
+      requireJson(req);
+
+      const treeId = parsePositiveInt(req.params.treeId, "treeId");
+      const auth = await requireAuthenticatedUser({ req, db, routeLog: getRouteLogger(req, { route: "add-tree-comment"}) });
+
+      const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
+      if (!content) {
+        const error = new Error("content is required");
+        error.name = "ValidationError";
+        throw error;
+      }
+
+      const result = await db.workflows.comments.addTreeComment({
+        treeId,
+        userId: Number(auth.user.id),
+        content,
+        photoIds: Array.isArray(req.body?.photoIds) ? req.body.photoIds : []
+      });
+
+      res.status(201).json({
+        success: true,
+        comment_id: result.commentId
+      });
+    })
+  )
 
   return router;
 }
