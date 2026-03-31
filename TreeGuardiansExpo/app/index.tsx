@@ -2,14 +2,12 @@ import { View, StyleSheet, Image } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
-import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
 
 export default function Index() {
   return (
     <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
-      <AuthenticatedRedirect />
       <View style={styles.screen}>
         <View style={styles.card}>
           <View style={styles.iconContainer}>
