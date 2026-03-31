@@ -1,5 +1,5 @@
 import { buildApiUrl, ENDPOINTS } from '@/config/api';
-import { Tree, TreeDetails } from '@/objects/TreeDetails';
+import { Tree, TreeDetails, TreePhoto } from '@/objects/TreeDetails';
 import { getAccessToken } from '@/utilities/authHelper';
 
 type ServerTreeItem = {
@@ -18,7 +18,7 @@ type ServerTreeItem = {
   leafArea?: number;
   evapotranspiration?: number;
   health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
-  photos?: string[];
+  photos?: ServerPhoto[];
   latitude?: number;
   longitude?: number;
   id?: number;
@@ -30,10 +30,23 @@ type AddTreeResponse = {
   error?: string;
 };
 
-type UploadedPhotoFile = {
+type ServerPhoto = {
+  id: number;
+  image_url: string;
+  fileName?: string;
+  mimeType?: string;
+};
+
+type UploadTreePhotosResponse = {
+  success?: boolean;
+  error?: string;
+  photos?: ServerPhoto[];
+};
+
+export type TreePhotoUploadAsset = {
   uri: string;
-  name: string;
-  type: string;
+  fileName?: string | null;
+  mimeType?: string | null;
 };
 
 const formatApiError = (prefix: string, response: Response, rawBody: string, explicitError?: string): string => {
@@ -68,6 +81,31 @@ const isServerTreeItem = (
   return isNumericValue(item.latitude) && isNumericValue(item.longitude);
 };
 
+function normalizePhoto(photo: ServerPhoto): TreePhoto | null {
+  const resolvedUrl = resolveTreePhotoUrl(photo.image_url);
+
+  if (!resolvedUrl || typeof photo.id !== 'number') {
+    return null;
+  }
+
+  return {
+    id: photo.id,
+    image_url: resolvedUrl,
+    fileName: photo.fileName,
+    mimeType: photo.mimeType,
+  };
+}
+
+function normalizePhotos(photos?: ServerPhoto[]): TreePhoto[] {
+  if (!Array.isArray(photos)) {
+    return [];
+  }
+
+  return photos
+    .map(normalizePhoto)
+    .filter((photo): photo is TreePhoto => photo !== null);
+}
+
 const normalizeTree = (treeItem: ServerTreeItem & { latitude: number | string; longitude: number | string }): Tree => ({
   species: treeItem.species ?? undefined,
   notes: treeItem.notes ?? '',
@@ -84,11 +122,35 @@ const normalizeTree = (treeItem: ServerTreeItem & { latitude: number | string; l
   leafArea: treeItem.leafArea ?? undefined,
   evapotranspiration: treeItem.evapotranspiration ?? undefined,
   health: treeItem.health ?? undefined,
-  photos: Array.isArray(treeItem.photos) ? treeItem.photos : [],
+  photos: normalizePhotos(treeItem.photos),
   latitude: Number(treeItem.latitude),
   longitude: Number(treeItem.longitude),
   id: treeItem.id,
 });
+
+const API_ORIGIN = buildApiUrl('').replace(/\/api\/?$/, '').replace(/\/$/, '');
+
+export function resolveTreePhotoUrl(photoPath?: string): string | undefined {
+  if (!photoPath) {
+    return undefined;
+  }
+
+  const trimmed = photoPath.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('/')) {
+    return `${API_ORIGIN}${trimmed}`;
+  }
+
+  return `${API_ORIGIN}/${trimmed}`;
+}
 
 export async function fetchTrees(): Promise<Tree[]> {
   const response = await fetch(buildApiUrl(ENDPOINTS.GET_TREES));
@@ -106,60 +168,177 @@ export async function fetchTrees(): Promise<Tree[]> {
   return data.filter(isServerTreeItem).map(normalizeTree);
 }
 
-async function uploadPhotos(treeId: string, photos: string[]): Promise<void> {
-  if (!photos || photos.length === 0) {
-    return;
-  }
+async function buildPhotoUploadFiles(
+  assets: { uri: string; fileName?: string; mimeType?: string }[]
+): Promise<(File | { uri: string; name: string; type: string })[]> {
+  return Promise.all(
+    assets.map(async (asset, index) => {
+      const fallbackName = `tree-photo-${index}.jpg`;
+      const name = asset.fileName?.trim() || asset.uri.split('/').pop() || fallbackName;
+
+      const extension = name.split('.').pop()?.toLowerCase();
+      let type = asset.mimeType?.toLowerCase() || '';
+
+      if (!type) {
+        if (extension === 'png') type = 'image/png';
+        else if (extension === 'jpg' || extension === 'jpeg') type = 'image/jpeg';
+        else if (extension === 'webp') type = 'image/webp';
+      }
+
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) {
+        throw new Error('Unsupported image type. Supported image types: JPG, JPEG, PNG and WEBP.');
+      }
+
+      if (asset.uri.startsWith('blob:')) {
+        const blobResponse = await fetch(asset.uri);
+        const blob = await blobResponse.blob();
+        return new File([blob], name, { type });
+      }
+
+      return {
+        uri: asset.uri.startsWith('file://') ? asset.uri : `file://${asset.uri}`,
+        name,
+        type,
+      };
+    })
+  );
+}
+
+export async function uploadTreePhotos(
+  treeId: number,
+  assets: { uri: string; fileName?: string; mimeType?: string }[]
+): Promise<UploadTreePhotosResponse> {
   const accessToken = await getAccessToken();
+
   if (!accessToken) {
     throw new Error('Authentication is required to upload tree photos.');
   }
 
   const formData = new FormData();
+  const files = await buildPhotoUploadFiles(assets);
 
-  for (let i = 0; i < photos.length; i += 1) {
-    let uri = photos[i];
-
-    if (uri.startsWith('blob:')) {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const file = new File([blob], `photo_${i}.jpg`, { type: blob.type });
-      formData.append('photos', file);
-      continue;
-    }
-
-    if (!uri.startsWith('file://')) {
-      uri = `file://${uri}`;
-    }
-
-    const mobilePhoto: UploadedPhotoFile = {
-      uri,
-      name: `photo_${i}.jpg`,
-      type: 'image/jpeg',
-    };
-
-    formData.append('photos', mobilePhoto as unknown as Blob);
-  }
+  files.forEach((file) => {
+    formData.append('photos', file as any);
+  });
 
   const response = await fetch(buildApiUrl(`trees/${treeId}/photos`), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
     },
     body: formData,
   });
 
-  const text = await response.text();
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody);
+  const data =
+    parsed && typeof parsed === 'object'
+      ? (parsed as UploadTreePhotosResponse)
+      : {};
 
-  try {
-    const payload = JSON.parse(text) as { error?: string };
-    if (!response.ok || payload.error) {
-      throw new Error(formatApiError('Photo upload failed.', response, text, payload.error));
+  if (!response.ok) {
+    if (response.status === 415) {
+      throw new Error('Unsupported image type. Supported image types: JPG, JPEG, PNG and WEBP.');
     }
-  } catch {
-    if (!response.ok) {
-      throw new Error(formatApiError('Photo upload failed.', response, text));
-    }
+
+    throw new Error(
+      formatApiError('Failed to upload tree photos.', response, rawBody, data.error)
+    );
+  }
+
+  return data;
+}
+
+export async function deleteTreePhoto(
+  treeId: number, photoId: number): Promise<void> {
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    throw new Error('Authentication required.');
+  }
+  const response = await fetch(buildApiUrl(`trees/${treeId}/photos/${photoId}`), {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+
+  const rawBody = await response.text();
+
+  if (!response.ok) {
+    const parsed = safeParseJson(rawBody);
+    const data =
+      parsed && typeof parsed === 'object'
+        ? (parsed as { error?: string })
+        : {};
+
+    throw new Error(formatApiError('Failed to delete photo.', response, rawBody, data.error));
+  }
+}
+
+export type TreeFeedItem = {
+  item_type: 'tree_comment' | 'wildlife' | 'disease' | 'seen' | 'reply';
+  comment_id: number;
+  created_at: string;
+  content: string | null;
+  extra: string | null;
+  user_id?: number | null;
+  username?: string | null;
+}
+
+export async function fetchTreeFeed(treeId: number, limit=50, offset=0): Promise<TreeFeedItem[]> {
+  const response = await fetch(buildApiUrl(`trees/${treeId}/feed?limit=${limit}&offset=${offset}`));
+  const rawBody = await response.text();
+  const data = safeParseJson(rawBody);
+
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to fetch tree feed.', response, rawBody));
+  }
+
+  return Array.isArray(data) ? (data as TreeFeedItem[]) : [];
+}
+
+export async function addTreeComment(treeId: number, content: string): Promise<void> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw new Error('Authentication is required to add a comment.');
+  }
+
+  const response = await fetch(buildApiUrl(`trees/${treeId}/comments`), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  const rawBody = await response.text();
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to add comment.', response, rawBody));
+  }
+}
+
+export async function deleteTreeComment(commentId: number): Promise<void> {
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    throw new Error('Authentication required');
+  }
+
+  const response = await fetch(buildApiUrl(`comments/${commentId}`), {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const rawBody = await response.text();
+
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to delete comment.', response, rawBody));
   }
 }
 
@@ -180,13 +359,22 @@ export async function addTreeData(tree: TreeDetails): Promise<void> {
 
   const rawBody = await response.text();
   const parsed = safeParseJson(rawBody);
-  const data = (parsed && typeof parsed === 'object' ? (parsed as AddTreeResponse) : {}) as AddTreeResponse;
+  const data = (
+    parsed && typeof parsed === 'object' ? (parsed as AddTreeResponse) : {}
+  ) as AddTreeResponse;
 
   if (!response.ok || !data.success || !data.tree_id) {
     throw new Error(formatApiError('Failed to save tree.', response, rawBody, data.error));
   }
 
   if (tree.photos?.length) {
-    await uploadPhotos(String(data.tree_id), tree.photos);
+    await uploadTreePhotos(
+      Number(data.tree_id),
+      tree.photos.map((photo) => ({
+        uri: photo.image_url,
+        fileName: photo.fileName,
+        mimeType: photo.mimeType,
+      }))
+    );
   }
 }

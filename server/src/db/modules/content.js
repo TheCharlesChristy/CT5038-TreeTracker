@@ -103,6 +103,18 @@ function createContentEndpoints(ctx) {
       return Boolean(row);
     },
 
+    async countByPhotoId(photoId, tx) {
+      ensurePositiveInt("photoId", photoId);
+
+      const row = await selectOne(
+        runtimeExecutor(tx),
+        "SELECT COUNT(*) AS ref_count FROM tree_photos WHERE photo_id = ?",
+        [photoId]
+      );
+
+      return Number(row?.ref_count || 0);
+    },
+
     async listPhotoIdsByTree(treeId, params = {}, tx) {
       ensurePositiveInt("treeId", treeId);
       const { limit, offset } = normalizeListParams(params);

@@ -156,6 +156,8 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
     });
 
     return db.transaction(async (tx) => {
+      const createdPhotos = [];
+
       for (const file of uploaded) {
         const photo = await db.photos.create(
           {
@@ -164,6 +166,7 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
           },
           tx
         );
+
         await db.treePhotos.add(
           {
             treeId,
@@ -171,7 +174,11 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
           },
           tx
         );
+
+        createdPhotos.push(photo);
       }
+
+      return createdPhotos;
     });
   }
 
@@ -217,6 +224,15 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
         res.status(400).json({ error: "No files uploaded" });
         return;
       }
+
+      const createdPhotos = await attachPhotos(treeId, uploaded);
+      res.json({
+        success: true,
+        uploaded: createdPhotos.map((photo) => ({
+          id: photo.id,
+          image_url: photo.image_url || photo.imageUrl
+        }))
+      });
 
       const uploaded = photos.map((photo) => {
         if (typeof photo === "string") {
