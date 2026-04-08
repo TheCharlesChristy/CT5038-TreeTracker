@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, StyleProp, ViewStyle, ScrollView, ImageBackground, View, ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '@/styles/theme';
+import { NavBar } from './NavBar';
 
 interface AppContainerProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface AppContainerProps {
   backgroundImage?: ImageSourcePropType;
   style?: StyleProp<ViewStyle>;
   noPadding?: boolean;
+  showNavBar?: boolean;
 }
 
 export const AppContainer = ({
@@ -17,6 +19,7 @@ export const AppContainer = ({
   backgroundImage,
   style,
   noPadding,
+  showNavBar = true,
 }: AppContainerProps) => {
   const containerPaddingStyle = noPadding ? null : styles.padding;
   const content = scrollable ? (
@@ -40,6 +43,7 @@ export const AppContainer = ({
       >
         <View style={styles.overlay}>
           <SafeAreaView style={[styles.containerTransparent, style]}>
+            {showNavBar && <NavBar />}
             {content}
           </SafeAreaView>
         </View>
@@ -49,6 +53,7 @@ export const AppContainer = ({
 
   return (
     <SafeAreaView style={[styles.container, style]}>
+      {showNavBar && <NavBar />}
       {content}
     </SafeAreaView>
   );
