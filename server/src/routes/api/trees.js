@@ -73,7 +73,7 @@ function joinObservationValues(rows, key) {
   return values.length > 0 ? Array.from(new Set(values)).join(", ") : null;
 }
 
-function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos) {
+function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos, creationRow, guardianUserIds) {
   return {
     id: tree.id,
     latitude: tree.latitude,
@@ -93,7 +93,12 @@ function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos) 
     notes: seenRows[0] ? seenRows[0].observation_notes : null,
     wildlife: joinObservationValues(wildlifeRows, "wildlife"),
     disease: joinObservationValues(diseaseRows, "disease"),
-    photos
+    photos,
+    creator_user_id: creationRow ? Number(creationRow.creator_user_id) : null,
+    created_at: creationRow ? creationRow.created_at : null,
+    guardian_user_ids: Array.isArray(guardianUserIds)
+      ? guardianUserIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : []
   };
 }
 
@@ -228,12 +233,14 @@ function createTreesRoute({ db }) {
 
     const result = await Promise.all(
       trees.map(async (tree) => {
-        const [dataRow, seenRows, wildlifeRows, diseaseRows, photoIds] = await Promise.all([
+        const [dataRow, seenRows, wildlifeRows, diseaseRows, photoIds, creationRow, guardianUserIds] = await Promise.all([
           db.treeData.getByTreeId(tree.id),
           db.seenObservations.listByTreeId(tree.id, { limit: 1, offset: 0, order: "desc" }),
           db.wildlifeObservations.listByTreeId(tree.id, { limit: 100, offset: 0, order: "desc" }),
           db.diseaseObservations.listByTreeId(tree.id, { limit: 100, offset: 0, order: "desc" }),
-          db.treePhotos.listPhotoIdsByTree(tree.id, { limit: 100, offset: 0 })
+          db.treePhotos.listPhotoIdsByTree(tree.id, { limit: 100, offset: 0 }),
+          db.treeCreationData.getByTreeId(tree.id),
+          db.guardians.listByTree(tree.id, { limit: 100, offset: 0 })
         ]);
 
         const photoRows = await Promise.all(photoIds.map((photoId) => db.photos.getById(photoId)));
@@ -245,7 +252,16 @@ function createTreesRoute({ db }) {
             mimeType: photo.mime_type || undefined
           }));
 
-        return mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos);
+        return mapTreeRow(
+          tree,
+          dataRow,
+          seenRows,
+          wildlifeRows,
+          diseaseRows,
+          photos,
+          creationRow,
+          guardianUserIds
+        );
       })
     );
 

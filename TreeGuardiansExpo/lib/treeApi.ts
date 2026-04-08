@@ -22,6 +22,9 @@ type ServerTreeItem = {
   latitude?: number;
   longitude?: number;
   id?: number;
+  creator_user_id?: number | null;
+  created_at?: string | null;
+  guardian_user_ids?: number[] | null;
 };
 
 type AddTreeResponse = {
@@ -106,7 +109,28 @@ function normalizePhotos(photos?: ServerPhoto[]): TreePhoto[] {
     .filter((photo): photo is TreePhoto => photo !== null);
 }
 
-const normalizeTree = (treeItem: ServerTreeItem & { latitude: number | string; longitude: number | string }): Tree => ({
+function normalizeOptionalNumber(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeNumberArray(values: unknown): number[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+}
+
+const normalizeTree = (
+  treeItem: ServerTreeItem & { latitude: number | string; longitude: number | string }
+): Tree => ({
   species: treeItem.species ?? undefined,
   notes: treeItem.notes ?? '',
   wildlife: treeItem.wildlife ?? undefined,
@@ -126,6 +150,9 @@ const normalizeTree = (treeItem: ServerTreeItem & { latitude: number | string; l
   latitude: Number(treeItem.latitude),
   longitude: Number(treeItem.longitude),
   id: treeItem.id,
+  creator_user_id: normalizeOptionalNumber(treeItem.creator_user_id),
+  created_at: treeItem.created_at ?? null,
+  guardian_user_ids: normalizeNumberArray(treeItem.guardian_user_ids),
 });
 
 const API_ORIGIN = buildApiUrl('').replace(/\/api\/?$/, '').replace(/\/$/, '');

@@ -29,8 +29,14 @@ export type TreeDetails = {
 }
 
 // when the tree is successfully placed
-export type Tree = TreeDetails & {
+export type Tree = TreeDetails & TreeOwnership & {
     latitude: number;
     longitude: number;
     id?: number; // optional but useful for referencing
 }
+
+export type TreeOwnership = {
+  creator_user_id?: number | null;
+  created_at?: string | null;
+  guardian_user_ids?: number[];
+};
