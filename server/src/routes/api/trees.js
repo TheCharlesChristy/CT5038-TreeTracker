@@ -218,6 +218,59 @@ function createTreesRoute({ db }) {
     res.json({ success: true, tree_id: treeId });
   };
 
+  const listRecentTreesHandler = async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "list-recent-trees" });
+
+    routeLog.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      query: req.query
+    });
+
+    const limit = parsePositiveInt(req.query.limit || 6, "limit");
+
+    // Fetch recent creation records
+    const recent = await db.treeCreationData.list({
+      limit,
+      offset: 0,
+      order: "desc"
+    });
+
+    routeLog.debug("recent.creation.rows", { count: recent.length });
+
+    const result = await Promise.all(
+      recent.map(async (creationRow) => {
+        const treeId = creationRow.tree_id;
+
+        const [tree, dataRow, user] = await Promise.all([
+          db.trees.getById(treeId),
+          db.treeData.getByTreeId(treeId),
+          creationRow.creator_user_id
+            ? db.users.getById(creationRow.creator_user_id)
+            : null
+        ]);
+
+        if (!tree) return null;
+
+        return {
+          id: tree.id,
+          latitude: tree.latitude,
+          longitude: tree.longitude,
+          tree_species: dataRow ? dataRow.tree_species : null,
+          created_at: creationRow.created_at,
+          creator_user_id: creationRow.creator_user_id,
+          creator_username: user ? user.username : null
+        };
+      })
+    );
+
+    const filtered = result.filter(Boolean);
+
+    routeLog.info("request.success", { count: filtered.length });
+
+    res.json(filtered);
+  };
+
   const listTreesHandler = async (req, res) => {
     const routeLog = getRouteLogger(req, { route: "list-trees" });
     routeLog.info("request.start", {
@@ -312,6 +365,12 @@ function createTreesRoute({ db }) {
 
   router.get("/trees", asyncHandler(listTreesHandler));
   router.get("/get-trees", asyncHandler(listTreesHandler));
+
+  router.get(
+    "/trees/recent",
+    asyncHandler(listRecentTreesHandler)
+  );
+
 
   router.get(
     "/trees/:treeId",

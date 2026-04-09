@@ -1,5 +1,60 @@
 import { buildApiUrl } from '@/config/api';
 import { getAccessToken } from '@/utilities/authHelper';
+import { API_BASE } from "@/config/api";
+import { getItem } from "@/utilities/authStorage";
+
+export type AnalyticsResponse = {
+  totalTrees: number;
+  totalUsers: number;
+  impactTotals: {
+    avoidedRunoff: number;
+    carbonDioxideStored: number;
+    carbonDioxideRemoved: number;
+    waterIntercepted: number;
+    airQualityImprovement: number;
+    leafArea: number;
+    evapotranspiration: number;
+    trunkCircumference: number;
+    trunkDiameter: number;
+    treeHeight: number;
+  };
+};
+
+export async function fetchAnalytics(): Promise<AnalyticsResponse> {
+  const token = await getItem("accessToken");
+
+  const response = await fetch(`${API_BASE}/analytics`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const rawText = await response.text();
+  const data = rawText ? JSON.parse(rawText) : null;
+
+  if (!response.ok) {
+    throw new Error(data?.error || "Failed to fetch analytics.");
+  }
+
+  return {
+    totalTrees: Number(data?.totalTrees ?? 0),
+    totalUsers: Number(data?.totalUsers ?? 0),
+    impactTotals: {
+      avoidedRunoff: Number(data?.impactTotals?.avoidedRunoff ?? 0),
+      carbonDioxideStored: Number(data?.impactTotals?.carbonDioxideStored ?? 0),
+      carbonDioxideRemoved: Number(data?.impactTotals?.carbonDioxideRemoved ?? 0),
+      waterIntercepted: Number(data?.impactTotals?.waterIntercepted ?? 0),
+      airQualityImprovement: Number(data?.impactTotals?.airQualityImprovement ?? 0),
+      leafArea: Number(data?.impactTotals?.leafArea ?? 0),
+      evapotranspiration: Number(data?.impactTotals?.evapotranspiration ?? 0),
+      trunkCircumference: Number(data?.impactTotals?.trunkCircumference ?? 0),
+      trunkDiameter: Number(data?.impactTotals?.trunkDiameter ?? 0),
+      treeHeight: Number(data?.impactTotals?.treeHeight ?? 0)
+    }
+  };
+}
 
 export type ManagedUser = {
   id: number;

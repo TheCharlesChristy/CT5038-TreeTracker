@@ -1,9 +1,21 @@
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles';
 import type { AppUserRole } from '@/utilities/authHelper';
+import React, { useState, useMemo } from 'react';
+import { fetchCharltonKingsWeather } from '@/lib/weatherApi';
+import { fetchRecentTreeActivity, LocalTreeActivityItem } from '@/lib/activityApi';
+
+type PopupType = 'weather' | 'activity' | null;
+
+type WeatherData = {
+  temperature: number;
+  humidity: number;
+  chanceOfRain: number;
+  time?: string;
+};
 
 type DashboardPanelProps = {
   userRole: AppUserRole;
@@ -24,6 +36,58 @@ export function DashboardPanel({
   onLogout,
   isLoggingOut = false,
 }: DashboardPanelProps) {
+  const [activePopup, setActivePopup] = useState<PopupType>(null);
+
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  const [activityItems, setActivityItems] = useState<LocalTreeActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
+  const popupTitle = useMemo(() => {
+    if (activePopup === 'weather') return 'Charlton Kings Weather';
+    if (activePopup === 'activity') return 'Local Tree Activity';
+    return '';
+  }, [activePopup]);
+
+  const openWeatherPopup = async () => {
+    try {
+      setActivePopup('weather');
+      setWeatherLoading(true);
+      setWeatherError(null);
+
+      const data = await fetchCharltonKingsWeather();
+      setWeatherData(data);
+    } catch (error) {
+      console.error('Failed to load weather data:', error);
+      setWeatherError('Unable to load weather data right now.');
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const openActivityPopup = async () => {
+    try {
+      setActivePopup('activity');
+      setActivityLoading(true);
+      setActivityError(null);
+
+      const items = await fetchRecentTreeActivity();
+      setActivityItems(items);
+    } catch (error) {
+      console.error('Failed to load local activity:', error);
+      setActivityError('Unable to load local activity right now.');
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  const closePopup = () => {
+    setActivePopup(null);
+  };
+
   return (
     <View style={styles.dashboardWrap}>
       <View style={styles.dashboardPanel}>
@@ -48,25 +112,19 @@ export function DashboardPanel({
               onClose();
               router.push('/(protected)/myProfile' as never);
             }}
-            style={styles.dashboardActionButton}
           />
 
           <AppButton
             title="Local Activity"
             variant="secondary"
-            onPress={() => {
-              onClose();
-              Alert.alert('Local Activity', 'Local activity feed is ready to connect. This should show a popup, must not redirect to a new page.');
-            }}
+            onPress={openActivityPopup}
             style={styles.dashboardActionButton}
           />
 
           <AppButton
             title="View Weather Data"
             variant="secondary"
-            onPress={() => {
-              Alert.alert('Weather Data', 'Weather integration is ready to connect. Show a popup with current weather data for the area, including temperature, humidity, and precipitation.');
-            }}
+            onPress={openWeatherPopup}
             style={styles.dashboardActionButton}
           />
 
@@ -135,12 +193,114 @@ export function DashboardPanel({
             </View>
           </View>
         </ScrollView>
+
+        {activePopup && (
+          <Modal
+            visible={activePopup !== null}
+            transparent
+            animationType="fade"
+            onRequestClose={closePopup}
+          >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+
+              <View style={styles.modalHeader}>
+                <AppText style={styles.panelTitle}>{popupTitle}</AppText>
+
+                <TouchableOpacity onPress={closePopup}>
+                  <AppText style={styles.closeText}>Close</AppText>
+                </TouchableOpacity>
+              </View>
+              <ScrollView>
+                
+                {activePopup === 'weather' && (
+                  <>
+                    {weatherLoading ? (
+                      <ActivityIndicator />
+                    ) : weatherError ? (
+                      <AppText>{weatherError}</AppText>
+                    ) : weatherData ? (
+                      <>
+                        <AppText>Temperature: {weatherData.temperature}°C</AppText>
+                        <AppText>Humidity: {weatherData.humidity}%</AppText>
+                        <AppText>Chance of Rain: {weatherData.chanceOfRain}%</AppText>
+                      </>
+                    ) : (
+                      <AppText>No weather data</AppText>
+                    )}
+                  </>
+                )}
+
+                {activePopup === 'activity' && (
+                  <>
+                    {activityLoading ? (
+                      <ActivityIndicator />
+                    ) : activityError ? (
+                      <AppText>{activityError}</AppText>
+                    ) : activityItems.length > 0 ? (
+                      activityItems.map((item) => (
+                        <View key={item.id} style={styles.activityCard}>
+                          <AppText>{item.title}</AppText>
+                          <AppText style={styles.activityMeta}>{item.subtitle}</AppText>
+                        </View>
+                      ))
+                    ) : (
+                      <AppText>No activity found</AppText>
+                    )}
+                  </>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+          </Modal>
+        )}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+
+  modalCard: {
+    width: '40%',
+    maxHeight: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  closeText: {
+    color: Theme.Colours.primary,
+  },
+
+  activityCard: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+
+  activityMeta: {
+    color: Theme.Colours.textMuted,
+    fontSize: 12,
+  },
+
   dashboardWrap: {
     position: 'absolute',
     top: 12,

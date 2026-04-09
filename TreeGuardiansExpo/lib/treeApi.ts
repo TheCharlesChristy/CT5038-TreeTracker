@@ -2,6 +2,16 @@ import { buildApiUrl, ENDPOINTS } from '@/config/api';
 import { Tree, TreeDetails, TreePhoto } from '@/objects/TreeDetails';
 import { getAccessToken } from '@/utilities/authHelper';
 
+type ServerRecentTree = {
+  id: number;
+  latitude: number;
+  longitude: number;
+  tree_species?: string | null;
+  created_at?: string | null;
+  creator_user_id?: number | null;
+  creator_username?: string | null;
+};
+
 type ServerTreeItem = {
   species?: string;
   notes?: string;
@@ -193,6 +203,22 @@ export async function fetchTrees(): Promise<Tree[]> {
   }
 
   return data.filter(isServerTreeItem).map(normalizeTree);
+}
+
+export async function fetchRecentTrees(limit: number = 6): Promise<ServerRecentTree[]> {
+  const response = await fetch(buildApiUrl(`trees/recent?limit=${limit}`));
+  const rawBody = await response.text();
+  const data = safeParseJson(rawBody);
+
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to fetch recent trees.', response, rawBody));
+  }
+
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data as ServerRecentTree[];
 }
 
 async function buildPhotoUploadFiles(

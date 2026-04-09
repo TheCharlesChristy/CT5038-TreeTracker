@@ -4,7 +4,8 @@ const { createTreesRoute } = require("./trees");
 const { createAuthRoute } = require("./auth");
 const { createUsersRoute } = require("./users");
 const { createUploadsRoute } = require("./uploads");
-const { createAccountRoute } = require("./account")
+const { createAccountRoute } = require("./account");
+const { createAnalyticsRoute } = require("./analytics");
 
 function createApiRouter(deps) {
   const router = express.Router();
@@ -15,6 +16,7 @@ function createApiRouter(deps) {
   router.use(createUsersRoute(deps));
   router.use(createUploadsRoute(deps));
   router.use(createAccountRoute(deps));
+  router.use( createAnalyticsRoute(deps));
 
   return router;
 }

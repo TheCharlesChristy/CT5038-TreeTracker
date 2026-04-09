@@ -58,6 +58,11 @@ function createAccountEndpoints(ctx) {
       ]);
     },
 
+    async count(tx) {
+      const row = await selectOne(runtimeExecutor(tx), "SELECT COUNT(*) AS total FROM users");
+      return row ? Number(row.total) : 0;
+    },
+
     async updateById(id, fields, tx) {
       ensurePositiveInt("id", id);
       if (fields.username !== undefined) ensureRequiredString("username", fields.username, 100);
