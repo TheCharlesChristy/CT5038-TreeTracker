@@ -16,7 +16,7 @@ function createApiRouter(deps) {
   router.use(createUsersRoute(deps));
   router.use(createUploadsRoute(deps));
   router.use(createAccountRoute(deps));
-  router.use( createAnalyticsRoute(deps));
+  router.use(createAnalyticsRoute(deps));
 
   return router;
 }

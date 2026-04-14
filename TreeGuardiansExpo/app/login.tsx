@@ -125,12 +125,7 @@ export default function Login() {
   };
 
   const handleForgotPassword = () => {
-    setStatus({
-      title: 'Password recovery',
-      message: 'Forgot password is ready for backend integration. Connect it to your recovery endpoint or deep link next.',
-      variant: 'error',
-      createdAt: Date.now(),
-    });
+    router.push('/forgot-password');
   };
 
   return (

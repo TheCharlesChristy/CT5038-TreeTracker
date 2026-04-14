@@ -118,7 +118,7 @@ export default function CreateAccount() {
 
       setStatus({
         title: 'Account Created',
-        message: 'Your account has been created successfully.',
+        message: 'Your account has been created successfully. Please check your email to verify',
         variant: 'success',
         createdAt: Date.now(),
       });
