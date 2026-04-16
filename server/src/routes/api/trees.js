@@ -170,7 +170,7 @@ function createTreesRoute({ db }) {
       );
 
       if (req.body.notes) {
-        const comment = await db.comments.create({ userId: null }, tx);
+        const comment = await db.comments.create({ userId: Number(auth.user.id) }, tx);
         await db.seenObservations.create(
           {
             commentId: comment.id,
@@ -182,7 +182,7 @@ function createTreesRoute({ db }) {
       }
 
       for (const wildlife of wildlifeEntries) {
-        const comment = await db.comments.create({ userId: null }, tx);
+        const comment = await db.comments.create({ userId: Number(auth.user.id) }, tx);
         await db.wildlifeObservations.create(
           {
             commentId: comment.id,
@@ -196,7 +196,7 @@ function createTreesRoute({ db }) {
       }
 
       for (const disease of diseaseEntries) {
-        const comment = await db.comments.create({ userId: null }, tx);
+        const comment = await db.comments.create({ userId: Number(auth.user.id) }, tx);
         await db.diseaseObservations.create(
           {
             commentId: comment.id,
@@ -371,7 +371,6 @@ function createTreesRoute({ db }) {
     asyncHandler(listRecentTreesHandler)
   );
 
-
   router.get(
     "/trees/:treeId",
     asyncHandler(async (req, res) => {
@@ -383,6 +382,50 @@ function createTreesRoute({ db }) {
     "/get-tree-details",
     asyncHandler(async (req, res) => {
       await getTreeDetailsHandler(req, res, req.query.tree_id);
+    })
+  );
+
+  router.delete(
+    "/trees/:treeId",
+    asyncHandler(async (req, res) => {
+      const routeLog = getRouteLogger(req, { route: "delete-tree" });
+
+      const treeId = parsePositiveInt(req.params.treeId, "treeId");
+
+      routeLog.info("request.start", {
+        method: req.method,
+        path: req.originalUrl || req.url,
+        treeId,
+      });
+
+      const auth = await requireAuthenticatedUser({
+        req,
+        db,
+        routeLog,
+      });
+
+      let deleted = false;
+
+      await db.transaction(async (tx) => {
+        const tree = await db.trees.getById(treeId, tx);
+
+        if (!tree) {
+          const error = new Error("Tree not found");
+          error.name = "NotFoundError";
+          throw error;
+        }
+
+        await db.trees.deleteById(treeId, tx);
+
+        deleted = true;
+      });
+
+      routeLog.info("request.success", { treeId });
+
+      res.json({
+        success: true,
+        deleted,
+      });
     })
   );
 

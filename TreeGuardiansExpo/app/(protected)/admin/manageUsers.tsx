@@ -3,7 +3,6 @@ import {
 	View,
 	StyleSheet,
 	ActivityIndicator,
-	Alert,
 	ScrollView,
 	TextInput,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
+import { showAlert } from '@/utilities/showAlert';
 import { canAccessManageUsers, useSessionUser } from '@/lib/session';
 import {
 	assignGuardianToTree,
@@ -108,7 +108,7 @@ export default function ManageUsersPage() {
 			await updateUserRole(targetUser.id, role);
 			await loadData();
 		} catch (err) {
-			Alert.alert('Role update failed', err instanceof Error ? err.message : 'Unknown error.');
+			showAlert('Role update failed', err instanceof Error ? err.message : 'Unknown error.');
 		} finally {
 			setBusyKey(null);
 		}
@@ -118,14 +118,14 @@ export default function ManageUsersPage() {
 		const rawTreeId = treeInputByUser[targetUser.id]?.trim();
 
 		if (!rawTreeId) {
-			Alert.alert('Missing tree id', 'Enter a tree ID first.');
+			showAlert('Missing tree id', 'Enter a tree ID first.');
 			return;
 		}
 
 		const treeId = Number(rawTreeId);
 
 		if (!Number.isInteger(treeId) || treeId <= 0) {
-			Alert.alert('Invalid tree id', 'Tree ID must be a positive number.');
+			showAlert('Invalid tree id', 'Tree ID must be a positive number.');
 			return;
 		}
 
@@ -135,7 +135,7 @@ export default function ManageUsersPage() {
 			setUserTreeInput(targetUser.id, '');
 			await loadData();
 		} catch (err) {
-			Alert.alert('Assignment failed', err instanceof Error ? err.message : 'Unknown error.');
+			showAlert('Assignment failed', err instanceof Error ? err.message : 'Unknown error.');
 		} finally {
 			setBusyKey(null);
 		}
@@ -147,7 +147,7 @@ export default function ManageUsersPage() {
 			await removeGuardianFromTree(targetUser.id, treeId);
 			await loadData();
 		} catch (err) {
-			Alert.alert('Removal failed', err instanceof Error ? err.message : 'Unknown error.');
+			showAlert('Removal failed', err instanceof Error ? err.message : 'Unknown error.');
 		} finally {
 			setBusyKey(null);
 		}
@@ -155,32 +155,29 @@ export default function ManageUsersPage() {
 
 	const handleDeleteUser = async (targetUser: ManagedUser) => {
 		if (sessionUser?.id === targetUser.id) {
-			Alert.alert('Action blocked', 'You cannot delete your own admin account.');
+			showAlert('Action blocked', 'You cannot delete your own admin account.');
 			return;
 		}
 
-		Alert.alert(
-			'Delete user',
-			`Are you sure you want to delete ${targetUser.username}? This cannot be undone.`,
-			[
-				{ text: 'Cancel', style: 'cancel' },
-				{
-					text: 'Delete',
-					style: 'destructive',
-					onPress: async () => {
-						try {
-							setBusyKey(`delete-${targetUser.id}`);
-							await deleteManagedUser(targetUser.id);
-							await loadData();
-						} catch (err) {
-							Alert.alert('Delete failed', err instanceof Error ? err.message : 'Unknown error.');
-						} finally {
-							setBusyKey(null);
-						}
-					},
-				},
-			]
-		);
+		// Web fallback
+		const confirmed =
+			typeof window !== 'undefined'
+				? window.confirm(
+						`Are you sure you want to delete ${targetUser.username}? This cannot be undone.`
+				  )
+				: true;
+
+		if (!confirmed) return;
+
+		try {
+			setBusyKey(`delete-${targetUser.id}`);
+			await deleteManagedUser(targetUser.id);
+			await loadData();
+		} catch (err) {
+			showAlert('Delete failed', err instanceof Error ? err.message : 'Unknown error.');
+		} finally {
+			setBusyKey(null);
+		}
 	};
 
 	if (isLoading) {
@@ -336,7 +333,7 @@ export default function ManageUsersPage() {
 							<View style={styles.deleteRow}>
 								<AppButton
 									title="Delete User"
-									variant="secondary"
+									variant="accent"
 									onPress={() => void handleDeleteUser(managedUser)}
 									disabled={busyKey !== null || sessionUser?.id === managedUser.id}
 								/>

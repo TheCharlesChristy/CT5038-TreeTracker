@@ -42,7 +42,7 @@ export default function CreateAccount() {
   const trimmedEmail = useMemo(() => email.trim(), [email]);
 
   const usernameError = getUsernameError(trimmedUsername);
-  const emailError = getEmailError(trimmedEmail);
+  const emailError = trimmedEmail ? getEmailError(trimmedEmail) : null;
   const passwordError = getPasswordError(password);
   const canSubmit = Boolean(trimmedUsername && password) && !usernameError && !emailError && !passwordError;
   const [loading, setLoading] = useState(false);
@@ -118,7 +118,7 @@ export default function CreateAccount() {
 
       setStatus({
         title: 'Account Created',
-        message: 'Your account has been created successfully. Please check your email to verify',
+        message: 'Your account has been created successfully!',
         variant: 'success',
         createdAt: Date.now(),
       });

@@ -40,10 +40,6 @@ export function useSessionUser() {
   };
 }
 
-export function canAccessMyTrees(role: UserRole | null | undefined): boolean {
-  return role === 'guardian' || role === 'admin';
-}
-
 export function canAccessManageUsers(role: UserRole | null | undefined): boolean {
   return role === 'admin';
 }

@@ -119,11 +119,6 @@ function createUsersRoute({ db }) {
       return res.status(400).json({ error: "Valid userId and treeId are required." });
     }
 
-    const role = await db.users.getRoleById(userId);
-    if (role !== "guardian" && role !== "admin") {
-      return res.status(400).json({ error: "Only guardians or admins can be assigned to trees." });
-    }
-
     await db.guardians.add({ userId, treeId });
     res.json({ success: true });
   }));

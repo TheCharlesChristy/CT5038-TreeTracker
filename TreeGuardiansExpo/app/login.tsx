@@ -144,12 +144,14 @@ export default function Login() {
       >
         <StatusMessageBox
           status={status}
-          redirectDuration={successRedirectDuration}
+          redirectDuration={status?.variant === 'success' ? successRedirectDuration : undefined}
           onClose={() => {
             if (redirectTimer.current) clearTimeout(redirectTimer.current);
+
             if (status?.variant === 'success') {
               router.replace('/mainPage');
             }
+
             setStatus(null);
           }}
         />

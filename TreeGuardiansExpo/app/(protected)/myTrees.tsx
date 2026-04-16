@@ -7,7 +7,7 @@ import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { Tree } from '@/objects/TreeDetails';
-import { canAccessMyTrees, useSessionUser } from '@/lib/session';
+import { useSessionUser } from '@/lib/session';
 import { fetchTrees } from '@/lib/treeApi';
 
 type TreeWithOwnership = Tree & {
@@ -21,13 +21,12 @@ type TreeWithOwnership = Tree & {
 
 export default function MyTreesPage() {
 	const { user, isLoading: isLoadingUser } = useSessionUser();
-	const authorized = canAccessMyTrees(user?.role);
 	const [trees, setTrees] = useState<TreeWithOwnership[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (isLoadingUser || !authorized || !user?.id) {
+		if (isLoadingUser || !user?.id) {
 			return;
 		}
 
@@ -40,10 +39,10 @@ export default function MyTreesPage() {
 
 				const myTrees = treesFromApi.filter((tree) => {
 					const isCreator = Number(tree.creator_user_id) === Number(user?.id);
-
-					const isAllocatedGuardian =
-						Array.isArray(tree.guardian_user_ids) &&
-						tree.guardian_user_ids.some((guardianId) => Number(guardianId) === Number(user?.id));
+					
+					const isAllocatedGuardian = 
+						Array.isArray(tree.guardian_user_ids)
+						&& tree.guardian_user_ids.some(id => Number(id) === Number(user?.id));
 
 					return isCreator || isAllocatedGuardian;
 				});
@@ -59,7 +58,7 @@ export default function MyTreesPage() {
 		};
 
 		loadTrees();
-	}, [authorized, isLoadingUser, user?.id, user?.role]);
+	}, [isLoadingUser, user?.id]);
 
 	const treeSummary = useMemo(() => {
 		const needsAttention = trees.filter(
@@ -89,27 +88,6 @@ export default function MyTreesPage() {
 					<ActivityIndicator color={Theme.Colours.primary} />
 					<AppText style={styles.loadingText}>Loading session...</AppText>
 				</View>
-			</AppContainer>
-		);
-	}
-
-	if (!authorized) {
-		return (
-			<AppContainer>
-				<View style={styles.topBar}>
-					<NavigationButton onPress={() => router.push('/mainPage')}>
-						Back to Map
-					</NavigationButton>
-				</View>
-				<AppText variant="title" style={styles.title}>Access Restricted</AppText>
-				<AppText style={styles.subtitle}>
-					Your account role ({user?.role ?? 'guest'}) does not currently include the My Trees dashboard.
-				</AppText>
-				<AppButton
-					title="Return to Map"
-					variant="secondary"
-					onPress={() => router.push('/mainPage')}
-				/>
 			</AppContainer>
 		);
 	}

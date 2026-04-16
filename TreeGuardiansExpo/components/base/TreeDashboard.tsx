@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  Pressable,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
@@ -18,6 +19,7 @@ import { Tree } from '@/objects/TreeDetails';
 import {
   addTreeComment,
   deleteTreeComment,
+  deleteTree,
   deleteTreePhoto,
   fetchTreeFeed,
   fetchTrees,
@@ -25,9 +27,12 @@ import {
   uploadTreePhotos,
 } from '@/lib/treeApi';
 import { showAlert } from '@/utilities/showAlert';
+import { API_BASE, ENDPOINTS } from '@/config/api';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import { TreePhoto } from '@/objects/TreeDetails';
+import { router } from 'expo-router';
+import { getAccessToken } from '@/utilities/authHelper';
 
 type PopupTab = 'overview' | 'photos' | 'activity';
 type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
@@ -597,7 +602,6 @@ export default function TreeDetailsDashboard({
   onClose,
   currentUserId,
   isAdmin,
-  isGuardian,
 }: TreeDetailsDashboardProps) {
   const { width, height } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<PopupTab>('overview');
@@ -609,8 +613,11 @@ export default function TreeDetailsDashboard({
   const [photos, setPhotos] = useState<TreePhoto[]>(tree.photos ?? []);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
+  const isGuardian = Array.isArray(tree.guardian_user_ids)
+    && tree.guardian_user_ids.includes(Number(currentUserId));
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
   const canManagePhotos = isGuardian || isAdmin;
+  const canDeleteTree = isLoggedIn || isGuardian || isAdmin;
 
   useEffect(() => {
     setActiveTab('overview');
@@ -848,6 +855,35 @@ export default function TreeDetailsDashboard({
     setActivityItems(feed.map(mapFeedItemToActivity));
   };
 
+  const handleDeleteTree = () => {
+    showConfirm(
+      'Delete Tree',
+      'Are you sure you want to delete this tree? This cannot be undone.',
+      async () => {
+        await confirmDeleteTree();
+      }
+    );
+  };
+
+  const confirmDeleteTree = async () => {
+    if (typeof tree.id !== 'number') {
+      showAlert('Delete Failed', 'This tree does not have a valid ID.');
+      return;
+    }
+
+    try {
+      await deleteTree(tree.id);
+      showAlert('Success', 'Tree deleted successfully.');
+
+      router.replace('/mainPage');
+    } catch (err) {
+      showAlert(
+        'Delete failed',
+        err instanceof Error ? err.message : 'Unknown error'
+      );
+    }
+  };
+
   const handleDeleteComment = (item: ActivityItem) => {
     showConfirm(
       'Delete Comment',
@@ -950,6 +986,15 @@ export default function TreeDetailsDashboard({
               {photos.length} photos • {activityItems.length} updates
             </AppText>
           </View>
+
+            {canDeleteTree && (
+            <Pressable
+              onPress={handleDeleteTree}
+              style={styles.iconButton}
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={22} color="#B3261E" />
+            </Pressable>
+          )}
 
           <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.82}>
             <MaterialCommunityIcons name="close" size={20} color="#234229" />
@@ -1673,5 +1718,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#56705C',
+  },
+
+  topRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  iconButton: {
+    padding: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.7)',
   },
 });

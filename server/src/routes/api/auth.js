@@ -62,23 +62,24 @@ function createAuthRoute({ db }) {
       return createdUser;
     });
 
-    // Email verification token
-    const verificationToken = signActionToken(
-      { userId: user.id, purpose: "verify-email" },
-      "1h"
-    );
+    if (user.email && user.email.trim().length > 0) {
+      const verificationToken = signActionToken(
+        { userId: user.id, purpose: "verify-email" },
+        "1h"
+      );
 
-    const verifyUrl = `https://s4316157-ctxxxx.uogs.co.uk/verify-email?token=${verificationToken}`;
+      const verifyUrl = `https://s4316157-ctxxxx.uogs.co.uk/verify-email?token=${verificationToken}`;
 
-    await sendEmail({
-      to: user.email,
-      subject: "Verify your email",
-      html: `
-        <h2>Welcome to TreeGuardians!</h2>
-        <p>Please verify your email with this link:</p>
-        <a href="${verifyUrl}">Verify Email</a>
-      `
-    });
+      await sendEmail({
+        to: user.email,
+        subject: "Verify your email",
+        html: `
+          <h2>Welcome to TreeGuardians!</h2>
+          <p>Please verify your email with this link:</p>
+          <a href="${verifyUrl}">Verify Email</a>
+        `
+      });
+    }
 
     const accessToken = signJwt(
       { userId: user.id, username: user.username },

@@ -128,17 +128,15 @@ export function DashboardPanel({
             style={styles.dashboardActionButton}
           />
 
-          {(userRole === 'guardian' || userRole === 'admin') ? (
-            <AppButton
-              title="My Trees"
-              variant="secondary"
-              onPress={() => {
-                onClose();
-                router.push('/(protected)/myTrees' as never);
-              }}
-              style={styles.dashboardActionButton}
-            />
-          ) : null}
+          <AppButton
+            title="My Trees"
+            variant="secondary"
+            onPress={() => {
+              onClose();
+              router.push('/(protected)/myTrees' as never);
+            }}
+            style={styles.dashboardActionButton}
+          />
 
           {userRole === 'admin' ? (
             <>

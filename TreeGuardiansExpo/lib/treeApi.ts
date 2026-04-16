@@ -257,6 +257,35 @@ async function buildPhotoUploadFiles(
   );
 }
 
+export async function deleteTree(treeId: number): Promise<void> {
+  const response = await fetch(buildApiUrl(`trees/${treeId}`), {
+    method: 'DELETE',
+    headers: await getAuthHeaders(),
+  });
+
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody) as { error?: string } | undefined;
+
+  if (!response.ok) {
+    throw new Error(
+      formatApiError('Failed to delete tree.', response, rawBody, parsed?.error)
+    );
+  }
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    throw new Error('Authentication required.');
+  }
+
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    Accept: 'application/json',
+  };
+}
+
 export async function uploadTreePhotos(
   treeId: number,
   assets: { uri: string; fileName?: string; mimeType?: string }[]
