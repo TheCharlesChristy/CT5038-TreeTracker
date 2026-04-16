@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
-
 import MapComponent from '@/components/base/MapComponent';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
