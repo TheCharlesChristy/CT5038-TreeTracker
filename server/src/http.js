@@ -8,7 +8,7 @@ const { createApiRouter } = require("./routes/api");
 const { createLogger, sanitizeForLog, serializeError } = require("./logging");
 const { DEFAULT_UPLOADS_DIR, ensureUploadsDirExists } = require("./routes/api/uploads");
 
-const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_JSON_BODY_BYTES = 10 * 1024 * 1024;
 const logger = createLogger("http");
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
