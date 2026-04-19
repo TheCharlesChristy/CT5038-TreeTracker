@@ -265,52 +265,26 @@ function createWorkflows(ctx) {
         ensurePositiveInt("userId", payload.userId);
 
         return transaction(async (tx) => {
-          const existing = await comments.getById(payload.commentId, tx);
+        const existing = await comments.getById(payload.commentId, tx);
 
-          if (!existing) {
-            throw new NotFoundError(`Comment ${payload.commentId} not found`);
-          }
+        if (!existing) {
+          throw new NotFoundError(`Comment ${payload.commentId} not found`);
+        }
 
-          const isOwner = Number(existing.user_id) === Number(payload.userId);
-          const isAdmin = await admins.isAdmin(payload.userId, tx);
+        const isOwner = Number(existing.user_id) === Number(payload.userId);
+        const isAdmin = await admins.isAdmin(payload.userId, tx);
 
-          if (!isOwner && !isAdmin) {
-            const error = new Error("You can only delete your own comments unless you are an admin");
-            error.name = "ForbiddenError";
-            throw error;
-          }
+        if (!isOwner && !isAdmin) {
+          const error = new Error("You can only delete your own comments unless you are an admin");
+          error.name = "ForbiddenError";
+          throw error;
+        }
 
-          await run(runtimeExecutor(tx), "DELETE FROM comment_photos WHERE comment_id = ?", [
-            payload.commentId
-          ]);
+        await run(runtimeExecutor(tx), "DELETE FROM comments WHERE id = ?", [
+          payload.commentId
+        ]);
 
-          await run(
-            runtimeExecutor(tx),
-            "DELETE FROM comment_replies WHERE comment_id = ? OR parent_comment_id = ?",
-            [payload.commentId, payload.commentId]
-          );
-
-          await run(runtimeExecutor(tx), "DELETE FROM comments_tree WHERE comment_id = ?", [
-            payload.commentId
-          ]);
-
-          await run(runtimeExecutor(tx), "DELETE FROM wildlife_observations WHERE comment_id = ?", [
-            payload.commentId
-          ]);
-
-          await run(runtimeExecutor(tx), "DELETE FROM disease_observations WHERE comment_id = ?", [
-            payload.commentId
-          ]);
-
-          await run(runtimeExecutor(tx), "DELETE FROM seen_observations WHERE comment_id = ?", [
-            payload.commentId
-          ]);
-
-          await run(runtimeExecutor(tx), "DELETE FROM comments WHERE id = ?", [
-            payload.commentId
-          ]);
-
-          return { deleted: true };
+        return { deleted: true };
         });
       },
 
