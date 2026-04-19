@@ -70,18 +70,18 @@ CREATE TABLE IF NOT EXISTS tree_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     UNIQUE INDEX uq_tree_data_tree_id (tree_id),
-    tree_species varchar(255) NULL,
-    avoided_runoff decimal(10,2) NULL,
-    carbon_dioxide_stored decimal(10,2) NULL,
-    carbon_dioxide_removed decimal(10,2) NULL,
-    water_intercepted decimal(10,2) NULL,
-    air_quality_improvement decimal(10,2) NULL,
-    leaf_area decimal(10,2) NULL,
-    evapotranspiration decimal(10,2) NULL,
-    trunk_circumference decimal(10,2) NULL,
-    trunk_diameter decimal(10,2) NULL,
-    tree_height decimal(10,2) NULL,
-    health enum('excellent','good','ok','bad','terrible') NULL,
+    tree_species varchar(255) NULL, -- Species name (test)
+    avoided_runoff decimal(10,2) NULL, -- m^3
+    carbon_dioxide_stored decimal(10,2) NULL, -- kg
+    carbon_dioxide_removed decimal(10,2) NULL, -- kg
+    water_intercepted decimal(10,2) NULL, -- m^3
+    air_quality_improvement decimal(10,2) NULL, -- g/year
+    leaf_area decimal(10,2) NULL, -- m^2
+    evapotranspiration decimal(10,2) NULL, -- m^3
+    trunk_circumference decimal(10,2) NULL, -- cm
+    trunk_diameter decimal(10,2) NULL, -- cm
+    tree_height decimal(10,2) NULL, -- m
+    health enum('excellent','good','ok','bad','terrible') NULL, -- health rating (categorical)
     CONSTRAINT fk_data_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;

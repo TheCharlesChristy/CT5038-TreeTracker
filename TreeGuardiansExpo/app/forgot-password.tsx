@@ -101,7 +101,7 @@ export default function ForgotPasswordScreen() {
             </AppText>
 
             <AppText variant="body" style={styles.subtitle}>
-              Enter the email address linked to your account and we'll send you a reset link.
+              Enter the email address linked to your account and we will send you a reset link.
             </AppText>
 
             <View style={styles.form}>
