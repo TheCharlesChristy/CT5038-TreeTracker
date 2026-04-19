@@ -340,7 +340,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
         callLog.creationDataCreate += 1;
         return { id: 1 };
       },
-      getByTreeId: async () => null
+      getByTreeId: async () => ({ id: 1 })
     },
     treeData: {
       create: async () => {
@@ -481,7 +481,7 @@ test("legacy auth routes register login and return /api/me", async () => {
     health: async () => ({ ready: true }),
     transaction: async (fn) => fn({ __tx: true }),
     trees: { list: async () => [], getById: async () => null, create: async () => ({ id: 1 }) },
-    treeCreationData: { create: async () => ({ id: 1 }), getByTreeId: async () => null },
+    treeCreationData: { create: async () => ({ id: 1 }), getByTreeId: async () => ({ id: 1 }) },
     treeData: { create: async () => ({ id: 1 }), getByTreeId: async () => null },
     comments: { create: async () => ({ id: 1 }) },
     seenObservations: { create: async () => ({ id: 1 }), listByTreeId: async () => [] },
