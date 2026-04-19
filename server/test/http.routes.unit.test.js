@@ -354,6 +354,15 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
         trunk_circumference: 30
       })
     },
+    guardians: {
+      listByTree: async () => []
+    },
+    admins: {
+      isAdmin: async () => false
+    },
+    guardianUsers: {
+      isGuardian: async () => false
+    },
     comments: {
       create: async () => {
         callLog.commentsCreate += 1;
