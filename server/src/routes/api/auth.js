@@ -70,15 +70,19 @@ function createAuthRoute({ db }) {
 
       const verifyUrl = `https://s4316157-ctxxxx.uogs.co.uk/verify-email?token=${verificationToken}`;
 
-      await sendEmail({
-        to: user.email,
-        subject: "Verify your email",
-        html: `
-          <h2>Welcome to TreeGuardians!</h2>
-          <p>Please verify your email with this link:</p>
-          <a href="${verifyUrl}">Verify Email</a>
-        `
-      });
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: "Verify your email",
+          html: `
+            <h2>Welcome to TreeGuardians!</h2>
+            <p>Please verify your email with this link:</p>
+            <a href="${verifyUrl}">Verify Email</a>
+          `
+        });
+      } catch (emailError) {
+        logger.warn("email.send.failed", { userId: user.id, error: emailError.message });
+      }
     }
 
     const accessToken = signJwt(
