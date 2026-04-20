@@ -243,10 +243,16 @@ function createAuthRoute({ db }) {
 
     res.json({ message: "Logout successful" });
   };
-
+  
+  // modern
   router.post("/auth/register", asyncHandler(registerHandler));
   router.post("/auth/login", asyncHandler(loginHandler));
   router.post("/auth/logout", asyncHandler(logoutHandler));
+
+  // legacy (REQUIRED FOR TESTS)
+  router.post("/register", asyncHandler(registerHandler));
+  router.post("/login", asyncHandler(loginHandler));
+  router.post("/logout", asyncHandler(logoutHandler));
 
   router.get("/auth/verify-email", asyncHandler(verifyEmailHandler));
   router.post("/auth/forgot-password", asyncHandler(forgotPasswordHandler));

@@ -475,11 +475,6 @@ function createTreesRoute({ db }) {
           deletedImageUrl = photo.image_url;
           await db.photos.deleteById(photoId, tx);
         }
-
-        if (remainingCount.length === 0) {
-          deletedImageUrl = photo.image_url;
-          await db.photos.deleteById(photoId, tx);
-        }
       });
 
       if (deletedImageUrl) {

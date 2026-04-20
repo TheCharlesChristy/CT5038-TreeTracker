@@ -461,7 +461,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     assert.equal(Array.isArray(trees.body), true);
     assert.equal(trees.body[0].id, 77);
     assert.equal(trees.body[0].species, "Oak");
-    assert.deepEqual(trees.body[0].photos, ["https://example.com/photo.jpg"]);
+    assert.deepEqual(trees.body[0].photos, [{ id: 5, image_url: "https://example.com/photo.jpg" }]);
 
     const details = await sendRequest({ port, path: "/api/get-tree-details?tree_id=77" });
     assert.equal(details.status, 200);
