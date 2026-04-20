@@ -612,12 +612,11 @@ export default function TreeDetailsDashboard({
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [photos, setPhotos] = useState<TreePhoto[]>(tree.photos ?? []);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
-
   const isGuardian = Array.isArray(tree.guardian_user_ids)
     && tree.guardian_user_ids.includes(Number(currentUserId));
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
   const canManagePhotos = isGuardian || isAdmin;
-  const canDeleteTree = isLoggedIn || isGuardian || isAdmin;
+  const canDeleteTree = isGuardian || isAdmin;
 
   useEffect(() => {
     setActiveTab('overview');

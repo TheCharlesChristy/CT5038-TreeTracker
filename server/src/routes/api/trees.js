@@ -161,6 +161,11 @@ function createTreesRoute({ db }) {
         tx
       );
 
+      await db.guardians.add(
+        { treeId: tree.id, userId: Number(auth.user.id) },
+        tx
+      );
+
       await db.treeData.create(
         {
           treeId: tree.id,
