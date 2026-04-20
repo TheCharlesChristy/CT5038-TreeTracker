@@ -355,7 +355,8 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
       })
     },
     guardians: {
-      listByTree: async () => []
+      listByTree: async () => [],
+      add: async () => ({ added: true }),
     },
     admins: {
       isAdmin: async () => false
