@@ -431,19 +431,7 @@ function createHttpServer({
 
   app.use(express.json({ limit: MAX_JSON_BODY_BYTES }));
   app.use(express.urlencoded({ extended: true, limit: MAX_JSON_BODY_BYTES }));
-  app.use((err, req, res, next) => {
-    if (err.type === "entity.too.large") {
-      const customError = new Error(
-        `Request body exceeds ${Math.floor(MAX_JSON_BODY_BYTES / (1024 * 1024))}MB limit`
-      );
-      customError.name = "PayloadTooLargeError";
-      customError.code = "PayloadTooLargeError";
-      customError.type = "entity.too.large";
-      return next(customError);
-    }
-    next(err);
-  });
-
+  // The global error handler at the bottom already handles entity too large. Which is why this block is removed
   app.use("/uploads", express.static(DEFAULT_UPLOADS_DIR));
 
   app.use(createHealthRouter({ db }));
