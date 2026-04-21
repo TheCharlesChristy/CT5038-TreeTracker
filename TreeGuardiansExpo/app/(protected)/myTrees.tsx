@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet, Pressable } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
@@ -129,7 +129,7 @@ export default function MyTreesPage() {
 
 			{loadError ? <AppText style={styles.errorText}>{loadError}</AppText> : null}
 
-			<View style={styles.list}>
+			<ScrollView style={styles.list} contentContainerStyle={{ paddingBottom: 20}}>
 				{trees.map((tree, index) => (
 					<Pressable
 						key={tree.id ?? `${tree.latitude}-${tree.longitude}-${index}`}
@@ -152,7 +152,7 @@ export default function MyTreesPage() {
 						You do not currently have any created or allocated trees.
 					</AppText>
 				) : null}
-			</View>
+			</ScrollView>
 
 			<AppButton
 				title="Return to Map"
