@@ -67,8 +67,8 @@ export function estimateTreeEcoStats(input: EstimateInput): EstimateOutput {
         };
     }
 
-    const diamterM = diameterCm / 100;
-    const trunkRadiusM = diamterM / 2;
+    const diameterM = diameterCm / 100;
+    const trunkRadiusM = diameterM / 2;
 
     // Crown radius estimate from species + height
     const crownRadiusM = clamp(heightM * speciesMeta.canopySpreadFactor, 1.2, 12);
