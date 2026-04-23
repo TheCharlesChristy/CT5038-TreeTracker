@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
 	View,
 	StyleSheet,
@@ -23,6 +23,11 @@ type PasswordForm = {
 
 export default function MyProfilePage() {
 	const { user, isLoading } = useSessionUser();
+	useEffect(() => {
+	if (!isLoading && !user) {
+		router.replace('/login');
+	}
+	}, [isLoading, user]);
 
 	const [isEditingUsername, setIsEditingUsername] = useState(false);
 	const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -49,39 +54,13 @@ export default function MyProfilePage() {
 	const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 	const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-	if (isLoading) {
+	if (isLoading || !user) {
 		return (
 			<AppContainer>
 				<View style={styles.loadingRow}>
 					<ActivityIndicator color={Theme.Colours.primary} />
 					<AppText style={styles.body}>Loading profile...</AppText>
 				</View>
-			</AppContainer>
-		);
-	}
-
-	if (!user) {
-		return (
-			<AppContainer>
-				<View style={styles.topBar}>
-					<NavigationButton onPress={() => router.push('/mainPage')}>
-						Back to Map
-					</NavigationButton>
-				</View>
-
-				<AppText variant="title" style={styles.title}>
-					Sign In Required
-				</AppText>
-
-				<AppText style={styles.subtitle}>
-					Sign in to view your profile details.
-				</AppText>
-
-				<AppButton
-					title="Return to Map"
-					variant="secondary"
-					onPress={() => router.push('/mainPage')}
-				/>
 			</AppContainer>
 		);
 	}

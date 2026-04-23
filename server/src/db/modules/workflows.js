@@ -27,6 +27,26 @@ function createWorkflows(ctx) {
 
   const { ensurePositiveInt, ensureRequiredString, ensureHex64, normalizeListParams } = validators;
 
+  async function resolveTreeIdForComment(commentId, tx, visited = new Set()) {
+    ensurePositiveInt("commentId", commentId);
+
+    if (visited.has(commentId)) {
+      throw new Error("Cycle detected in comment reply chain");
+    }
+    visited.add(commentId);
+
+    const treeLink = await commentsTree.getByCommentId(commentId, tx);
+    if (treeLink?.tree_id) return treeLink.tree_id;
+
+    const parentIds = await commentReplies.listParentsOfComment(commentId, {}, tx);
+
+    if (parentIds.length > 0) {
+      return resolveTreeIdForComment(parentIds[0], tx, visited);
+    }
+
+    return null;
+  }
+
   return {
     auth: {
       async registerUser(payload) {
@@ -265,26 +285,39 @@ function createWorkflows(ctx) {
         ensurePositiveInt("userId", payload.userId);
 
         return transaction(async (tx) => {
-        const existing = await comments.getById(payload.commentId, tx);
+          const existing = await comments.getById(payload.commentId, tx);
 
-        if (!existing) {
-          throw new NotFoundError(`Comment ${payload.commentId} not found`);
-        }
+          if (!existing) {
+            throw new NotFoundError(`Comment ${payload.commentId} not found`);
+          }
 
-        const isOwner = Number(existing.user_id) === Number(payload.userId);
-        const isAdmin = await admins.isAdmin(payload.userId, tx);
+          // 🔥 Use helper
+          const treeId = await resolveTreeIdForComment(payload.commentId, tx);
 
-        if (!isOwner && !isAdmin) {
-          const error = new Error("You can only delete your own comments unless you are an admin");
-          error.name = "ForbiddenError";
-          throw error;
-        }
+          if (!treeId) {
+            throw new NotFoundError(`Could not determine tree for comment ${payload.commentId}`);
+          }
 
-        await run(runtimeExecutor(tx), "DELETE FROM comments WHERE id = ?", [
-          payload.commentId
-        ]);
+          const isOwner = Number(existing.user_id) === Number(payload.userId);
+          const isAdmin = await admins.isAdmin(payload.userId, tx);
+          const isGuardian = await guardians.exists(
+            { userId: payload.userId, treeId },
+            tx
+          );
 
-        return { deleted: true };
+          if (!isOwner && !isAdmin && !isGuardian) {
+            const error = new Error(
+              "You can only delete your own comments unless you are an admin or guardian of this tree"
+            );
+            error.name = "ForbiddenError";
+            throw error;
+          }
+
+          await run(runtimeExecutor(tx), "DELETE FROM comments WHERE id = ?", [
+            payload.commentId
+          ]);
+
+          return { deleted: true };
         });
       },
 

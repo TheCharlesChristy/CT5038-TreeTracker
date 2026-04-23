@@ -194,7 +194,6 @@ export function DashboardPanel({
 
         {activePopup && (
           <Modal
-            visible={activePopup !== null}
             transparent
             animationType="fade"
             onRequestClose={closePopup}

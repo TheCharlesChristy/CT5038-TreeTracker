@@ -27,12 +27,10 @@ import {
   uploadTreePhotos,
 } from '@/lib/treeApi';
 import { showAlert } from '@/utilities/showAlert';
-import { API_BASE, ENDPOINTS } from '@/config/api';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import { TreePhoto } from '@/objects/TreeDetails';
 import { router } from 'expo-router';
-import { getAccessToken } from '@/utilities/authHelper';
 
 type PopupTab = 'overview' | 'photos' | 'activity';
 type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
@@ -448,6 +446,7 @@ function TreeActivity({
   isLoadingActivity,
   currentUserId,
   isAdmin,
+  isGuardian,
 }: {
   items: ActivityItem[];
   onAddComment: () => void;
@@ -455,6 +454,7 @@ function TreeActivity({
   isLoadingActivity: boolean;
   currentUserId: number | null;
   isAdmin: boolean;
+  isGuardian: boolean;
 }) {
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
 
@@ -513,7 +513,7 @@ function TreeActivity({
               <View style={styles.feedTopRow}>
                 <ActivityTag item={item} />
 
-                {isLoggedIn && (item.userId === currentUserId || isAdmin) ? (
+                {isLoggedIn && (item.userId === currentUserId || isAdmin || isGuardian) ? (
                   <TouchableOpacity
                     onPress={() => onDeleteComment(item)}
                     activeOpacity={0.8}
@@ -1062,6 +1062,7 @@ export default function TreeDetailsDashboard({
               isLoadingActivity={isLoadingActivity}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
+              isGuardian={isGuardian}
             />
           ) : null}
         </ScrollView>

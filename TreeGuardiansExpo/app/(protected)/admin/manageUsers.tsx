@@ -13,6 +13,7 @@ import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { showAlert } from '@/utilities/showAlert';
+import { showConfirm } from '@/utilities/showConfirm';
 import { canAccessManageUsers, useSessionUser } from '@/lib/session';
 import {
 	assignGuardianToTree,
@@ -154,30 +155,29 @@ export default function ManageUsersPage() {
 	};
 
 	const handleDeleteUser = async (targetUser: ManagedUser) => {
-		if (sessionUser?.id === targetUser.id) {
-			showAlert('Action blocked', 'You cannot delete your own admin account.');
-			return;
-		}
+	if (sessionUser?.id === targetUser.id) {
+		showAlert('Action blocked', 'You cannot delete your own admin account.');
+		return;
+	}
 
-		// Web fallback
-		const confirmed =
-			typeof window !== 'undefined'
-				? window.confirm(
-						`Are you sure you want to delete ${targetUser.username}? This cannot be undone.`
-				  )
-				: true;
-
-		if (!confirmed) return;
-
+	showConfirm(
+		"Delete User",
+		`Are you sure you want to delete ${targetUser.username}? This cannot be undone.`,
+		async () => {
 		try {
 			setBusyKey(`delete-${targetUser.id}`);
 			await deleteManagedUser(targetUser.id);
 			await loadData();
 		} catch (err) {
-			showAlert('Delete failed', err instanceof Error ? err.message : 'Unknown error.');
+			showAlert(
+			'Delete failed',
+			err instanceof Error ? err.message : 'Unknown error.'
+			);
 		} finally {
 			setBusyKey(null);
 		}
+		}
+	);
 	};
 
 	if (isLoading) {

@@ -73,18 +73,21 @@ function isAllowedUploadUrl(url, uploadPublicBaseUrl) {
 
 async function authorizeTreeUpload({ req, db, treeId, routeLog }) {
   const auth = await requireAuthenticatedUser({ req, db, routeLog });
-  const creationData = db.treeCreationData && typeof db.treeCreationData.getByTreeId === "function"
-    ? await db.treeCreationData.getByTreeId(treeId)
-    : null;
 
-  if (!creationData || creationData.creator_user_id === null || creationData.creator_user_id === undefined) {
-    return auth;
-  }
+  const creationData =
+    db.treeCreationData &&
+    typeof db.treeCreationData.getByTreeId === "function"
+      ? await db.treeCreationData.getByTreeId(treeId)
+      : null;
+
+  const isGuardian = await db.guardians.exists({
+    userId: Number(auth.user.id),
+    treeId
+  });
 
   if (
-    auth.user.role === "admin" ||
-    auth.user.role === "guardian" ||
-    Number(creationData.creator_user_id) === Number(auth.user.id)
+    auth.user.role === "admin" || isGuardian ||                                     
+    Number(creationData?.creator_user_id) === Number(auth.user.id) // creator
   ) {
     return auth;
   }
@@ -92,8 +95,10 @@ async function authorizeTreeUpload({ req, db, treeId, routeLog }) {
   routeLog.warn("auth.denied", {
     treeId,
     userId: auth.user.id,
-    creatorUserId: Number(creationData.creator_user_id)
+    creatorUserId: creationData?.creator_user_id || null,
+    isGuardian
   });
+
   throw new AuthError("You do not have access to modify this tree");
 }
 
@@ -195,7 +200,10 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
 
     try {
       if (Array.isArray(req.files) && req.files.length > 0) {
-        const publicBase = getUploadPublicBase(req, uploadPublicBaseUrl || process.env.UPLOAD_PUBLIC_BASE_URL || null);
+        const publicBase = getUploadPublicBase(
+          req,
+          uploadPublicBaseUrl || process.env.UPLOAD_PUBLIC_BASE_URL || null
+        );
 
         const uploaded = req.files.map((file) => ({
           url: `${publicBase}/${file.filename}`,
@@ -210,23 +218,63 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
           mode: "multipart"
         });
 
-        res.json({
+        return res.json({
           success: true,
           uploaded: uploaded.map((item) => item.url)
         });
-        return;
       }
 
       requireJson(req);
       const photos = Array.isArray(req.body.photos) ? req.body.photos : [];
       if (photos.length === 0) {
         routeLog.warn("validation.failed", { reason: "no-photos" });
-        res.status(400).json({ error: "No files uploaded" });
-        return;
+        return res.status(400).json({ error: "No files uploaded" });
       }
 
-      const createdPhotos = await attachPhotos(treeId, uploaded);
-      res.json({
+      let uploaded;
+
+      try {
+        uploaded = photos.map((photo) => {
+          if (typeof photo === "string") {
+            if (!isAllowedUploadUrl(photo, uploadPublicBaseUrl || process.env.UPLOAD_PUBLIC_BASE_URL || null)) {
+              throw new Error("Invalid upload URL");
+            }
+            return { url: photo.trim(), mimeType: null };
+          }
+
+          if (!photo || typeof photo !== "object" || typeof photo.url !== "string") {
+            throw new Error("Invalid photo format");
+          }
+
+          if (!isAllowedUploadUrl(photo.url, uploadPublicBaseUrl || process.env.UPLOAD_PUBLIC_BASE_URL || null)) {
+            throw new Error("Invalid upload URL");
+          }
+
+          return {
+            url: photo.url.trim(),
+            mimeType: photo.mimeType || null
+          };
+        });
+      } catch (err) {
+        routeLog.warn("validation.failed", { error: err.message });
+        return res.status(400).json({ error: err.message });
+      }
+
+      if (!Array.isArray(uploaded) || uploaded.length === 0) {
+        routeLog.warn("upload.failed", { reason: "no_valid_uploaded_data" });
+        return res.status(400).json({ error: "No valid upload data provided" });
+      }
+
+      let createdPhotos;
+
+      try {
+        createdPhotos = await attachPhotos(treeId, uploaded);
+      } catch (err) {
+        routeLog.error("upload.attach.failed", { error: err.message });
+        return res.status(500).json({ error: "Failed to attach photos" });
+      }
+
+      return res.json({
         success: true,
         uploaded: createdPhotos.map((photo) => ({
           id: photo.id,
@@ -234,46 +282,9 @@ function createUploadsRoute({ db, uploadsDir = DEFAULT_UPLOADS_DIR, uploadPublic
         }))
       });
 
-      const uploaded = photos.map((photo) => {
-        if (typeof photo === "string") {
-          if (!isAllowedUploadUrl(photo, uploadPublicBaseUrl || process.env.UPLOAD_PUBLIC_BASE_URL || null)) {
-            const error = new Error("photos entries must reference previously uploaded /uploads URLs");
-            error.name = "ValidationError";
-            throw error;
-          }
-          return { url: photo.trim(), mimeType: null };
-        }
-        if (!photo || typeof photo !== "object" || typeof photo.url !== "string") {
-          routeLog.warn("validation.failed", { reason: "invalid-photo-entry" });
-          const error = new Error("photos entries must be strings or { url, mimeType }");
-          error.name = "ValidationError";
-          throw error;
-        }
-        if (!isAllowedUploadUrl(photo.url, uploadPublicBaseUrl || process.env.UPLOAD_PUBLIC_BASE_URL || null)) {
-          const error = new Error("photos entries must reference previously uploaded /uploads URLs");
-          error.name = "ValidationError";
-          throw error;
-        }
-        return {
-          url: photo.url.trim(),
-          mimeType: photo.mimeType || null
-        };
-      });
-
-      await attachPhotos(treeId, uploaded);
-
-      routeLog.info("upload.success", {
-        treeId,
-        count: uploaded.length,
-        mode: "json"
-      });
-
-      res.json({
-        success: true,
-        uploaded: uploaded.map((item) => item.url)
-      });
     } catch (error) {
       await removeUploadedFiles(req.files);
+      routeLog.error("upload.failed", { error: error.message });
       throw error;
     }
   };

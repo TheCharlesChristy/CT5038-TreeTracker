@@ -97,7 +97,9 @@ export function useTreeMapState() {
 
         return aDistance - bDistance;
       });
-  }, []);
+    }, 
+    [searchCenter]
+  );
 
   const fetchTreesFromServer = useCallback(async () => {
     try {
@@ -163,7 +165,9 @@ export function useTreeMapState() {
       { latitude: tree.latitude, longitude: tree.longitude },
       searchCenter ?? CHARLTON_CENTER
     );
-  }, []);
+  }, 
+  [searchCenter]
+  );
 
   const clearAddValidationError = useCallback(() => {
     setAddValidationError(null);
