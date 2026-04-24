@@ -7,20 +7,20 @@ const { hashPassword, randomHex64, signJwt, verifyPassword } = require("./utils/
 const { requireJwtSecret, resolveUserRole } = require("./utils/auth");
 const { sendEmail } = require("./utils/email");
 
-function getFrontendUrl() {
-  const url = process.env.FRONTEND_URL;
-  if (!url) throw new Error("FRONTEND_URL not configured");
-  return url.replace(/\/+$/, "");
-}
-
 const logger = createLogger("routes.api.auth");
 
 function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.auth", extra) : logger.child(extra);
 }
 
-function createAuthRoute({ db }) {
+function createAuthRoute({ db, frontendUrl }) {
   const router = express.Router();
+  
+  function getFrontendUrl() {
+    const url = frontendUrl;
+    if (!url) throw new Error("FRONTEND_URL not configured");
+    return url.replace(/\/+$/, "");
+  }
 
   function signActionToken(payload, expiresIn) {
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });

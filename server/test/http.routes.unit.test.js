@@ -192,6 +192,7 @@ test("unmatched routes proxy to the Expo dev server when enabled", async () => {
   const httpServer = createHttpServer({
     port: 0,
     db: createDbStub(),
+    frontendUrl: "http://localhost:3000",
     expoProxyEnabled: true,
     expoProxyTarget: { host: "127.0.0.1", port: expoPort }
   });

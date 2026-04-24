@@ -362,6 +362,7 @@ function createRequestId() {
 function createHttpServer({
   port,
   db,
+  frontendUrl = null,
   dbTestBenchEnabled = false,
   dbTestBenchToken = null,
   expoProxyEnabled = false,
@@ -445,7 +446,8 @@ function createHttpServer({
     createApiRouter({
       db,
       uploadsDir: DEFAULT_UPLOADS_DIR,
-      uploadPublicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || null
+      uploadPublicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || null,
+      frontendUrl: frontendUrl ?? process.env.FRONTEND_URL ?? null
     })
   );
 
