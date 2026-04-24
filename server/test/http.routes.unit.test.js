@@ -529,7 +529,7 @@ test("legacy auth routes register login and return /api/me", async () => {
     }
   };
 
-  const httpServer = createHttpServer({ port: 0, db });
+  const httpServer = createHttpServer({ port: 0, db, frontendUrl: "http://localhost:3000" });
   const listening = await httpServer.start();
   listening.unref();
   const port = listening.address().port;
