@@ -192,7 +192,6 @@ test("unmatched routes proxy to the Expo dev server when enabled", async () => {
   const httpServer = createHttpServer({
     port: 0,
     db: createDbStub(),
-    frontendUrl: "http://localhost:3000",
     expoProxyEnabled: true,
     expoProxyTarget: { host: "127.0.0.1", port: expoPort }
   });
@@ -417,7 +416,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     }
   };
 
-  const httpServer = createHttpServer({ port: 0, db });
+  const httpServer = createHttpServer({ port: 0, db, frontendUrl: "http://localhost:3000" });
   const listening = await httpServer.start();
   listening.unref();
   const port = listening.address().port;

@@ -16,12 +16,11 @@ function getRouteLogger(req, extra = {}) {
 function createAuthRoute({ db, frontendUrl }) {
   const router = express.Router();
   
-  function getFrontendUrl() {
-    const url = frontendUrl;
-    if (!url) throw new Error("FRONTEND_URL not configured");
-    return url.replace(/\/+$/, "");
+  function getFrontendUrl() {           
+    if (!frontendUrl) throw new Error("FRONTEND_URL not configured");
+    return frontendUrl.replace(/\/+$/, "");
   }
-
+  
   function signActionToken(payload, expiresIn) {
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
   }
