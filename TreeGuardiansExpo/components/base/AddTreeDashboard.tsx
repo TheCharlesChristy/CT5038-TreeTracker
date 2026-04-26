@@ -12,12 +12,14 @@ import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppInput } from './AppInput';
 import { AppText } from './AppText';
-import { TreeDetails } from '@/objects/TreeDetails';
+import { TreeDetails, TreePhoto } from '@/objects/TreeDetails';
 import type { MapCoordinate } from './MapComponent.types';
 import { TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
 import * as ImagePicker from 'expo-image-picker';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { ErrorMessageBox } from './ErrorMessageBox';
+import { TreeSpeciesSelect } from './TreeSpeciesSelect';
+import { estimateTreeEcoStats } from '@/lib/treeEcoEstimates';
 
 type NumericField = 'diameter' | 'height' | 'circumference';
 
@@ -61,7 +63,7 @@ export default function PlotDashboard({
     circumference: '',
   });
 
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<TreePhoto[]>([]);
 
   const { width } = useWindowDimensions();
   const isMobile = width < 900;
@@ -73,11 +75,11 @@ export default function PlotDashboard({
     setNotes(initialDetails?.notes ?? '');
     setWildlifeList(
       initialDetails?.wildlifeList ??
-      (initialDetails?.wildlife ? [initialDetails.wildlife] : [])
+        (initialDetails?.wildlife ? [initialDetails.wildlife] : [])
     );
     setDiseaseList(
       initialDetails?.diseaseList ??
-      (initialDetails?.disease ? [initialDetails.disease] : [])
+        (initialDetails?.disease ? [initialDetails.disease] : [])
     );
     setDiameter(
       initialDetails?.diameter === undefined || initialDetails.diameter === null
@@ -124,19 +126,29 @@ export default function PlotDashboard({
   };
 
   const buildTreeDetails = (): TreeDetails => {
+    const estimates = estimateTreeEcoStats({
+      species: species.trim() || undefined,
+      diameter: diameter.trim() ? Number(diameter) : undefined,
+      height: height.trim() ? Number(height) : undefined,
+      circumference: circumference.trim() ? Number(circumference) : undefined,
+    });
+
     return {
       species: species.trim() || undefined,
       health,
       notes: notes.trim() || undefined,
-      wildlifeList: wildlifeList
-        .map((entry) => entry.trim())
-        .filter((entry) => entry.length > 0),
-      diseaseList: diseaseList
-        .map((entry) => entry.trim())
-        .filter((entry) => entry.length > 0),
-      diameter: diameter.trim() ? Number(diameter) : undefined,
-      height: height.trim() ? Number(height) : undefined,
-      circumference: circumference.trim() ? Number(circumference) : undefined,
+      wildlifeList: wildlifeList.map((entry) => entry.trim()).filter((entry) => entry.length > 0),
+      diseaseList: diseaseList.map((entry) => entry.trim()).filter((entry) => entry.length > 0),
+      diameter: estimates.diameter || undefined,
+      height: estimates.height || undefined,
+      circumference: estimates.circumference || undefined,
+      avoidedRunoff: estimates.avoidedRunoff || undefined,
+      carbonDioxideStored: estimates.carbonDioxideStored || undefined,
+      carbonDioxideRemoved: estimates.carbonDioxideRemoved || undefined,
+      waterIntercepted: estimates.waterIntercepted || undefined,
+      airQualityImprovement: estimates.airQualityImprovement || undefined,
+      leafArea: estimates.leafArea || undefined,
+      evapotranspiration: estimates.evapotranspiration || undefined,
       photos,
     };
   };
@@ -167,6 +179,38 @@ export default function PlotDashboard({
 
     return `${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}`;
   }, [selectedLocation]);
+
+  const estimatedStats = useMemo(() => {
+    return estimateTreeEcoStats({
+      species,
+      diameter: diameter.trim() ? Number(diameter) : undefined,
+      height: height.trim() ? Number(height) : undefined,
+      circumference: circumference.trim() ? Number(circumference) : undefined,
+    });
+  }, [species, diameter, height, circumference]);
+
+  const upsertPhotoAtIndex = (
+    photo: { uri: string; fileName?: string; mimeType?: string },
+    slotIndex: number
+  ) => {
+    setPhotos((prev) => {
+      const next = [...prev];
+
+      const newPhoto: TreePhoto = {
+        image_url: photo.uri,
+        fileName: photo.fileName,
+        mimeType: photo.mimeType,
+      };
+
+      if (slotIndex < next.length) {
+        next[slotIndex] = newPhoto;
+      } else if (next.length < MAX_PHOTOS) {
+        next.push(newPhoto);
+      }
+
+      return next;
+    });
+  };
 
   const chooseImageSource = (slotIndex: number) => {
     const isWeb = Platform.OS === 'web';
@@ -229,7 +273,14 @@ export default function PlotDashboard({
       return;
     }
 
-    upsertPhotoAtIndex(selected.uri, slotIndex);
+    upsertPhotoAtIndex(
+      {
+        uri: selected.uri,
+        fileName: selected.fileName ?? undefined,
+        mimeType: selected.mimeType ?? undefined,
+      },
+      slotIndex
+    );
   };
 
   const takePhoto = async (slotIndex: number) => {
@@ -249,22 +300,21 @@ export default function PlotDashboard({
       return;
     }
 
-    upsertPhotoAtIndex(result.assets[0].uri, slotIndex);
-  };
+    const asset = result.assets[0];
 
-  // helper for updating photos
-  const upsertPhotoAtIndex = (uri: string, slotIndex: number) => {
-    setPhotos((prev) => {
-      const next = [...prev];
+    if (asset.mimeType === 'image/gif') {
+      alert('GIF files are not supported. Please choose a static image.');
+      return;
+    }
 
-      if (slotIndex < next.length) {
-        next[slotIndex] = uri; // replace existing
-      } else if (next.length < MAX_PHOTOS) {
-        next.push(uri); // add new
-      }
-
-      return next;
-    });
+    upsertPhotoAtIndex(
+      {
+        uri: asset.uri,
+        fileName: asset.fileName ?? asset.uri.split('/').pop() ?? 'camera-photo.jpg',
+        mimeType: asset.mimeType ?? 'image/jpeg',
+      },
+      slotIndex
+    );
   };
 
   const summaryText = useMemo(() => {
@@ -297,11 +347,9 @@ export default function PlotDashboard({
           <View style={styles.section}>
             <AppText style={styles.sectionTitle}>Observations</AppText>
 
-            <AppInput
-              placeholder="Tree Species"
+            <TreeSpeciesSelect
               value={species}
-              onChangeText={setSpecies}
-              style={styles.input}
+              onChange={setSpecies}
             />
 
             <TreeHealthSelect value={health} onChange={setHealth} />
@@ -429,6 +477,31 @@ export default function PlotDashboard({
                 <AppText style={styles.errorText}>{errors.circumference}</AppText>
               ) : null}
             </View>
+
+            <View style={styles.estimateBox}>
+              <AppText style={styles.estimateTitle}>Estimated Environmental Impact</AppText>
+              <AppText style={styles.estimateItem}>
+                Avoided Runoff: {estimatedStats.avoidedRunoff ?? '—'} m3
+              </AppText>
+              <AppText style={styles.estimateItem}>
+                CO2 Stored: {estimatedStats.carbonDioxideStored ?? '—'} kg
+              </AppText>
+              <AppText style={styles.estimateItem}>
+                CO2 Removed: {estimatedStats.carbonDioxideRemoved ?? '—'} kg
+              </AppText>
+              <AppText style={styles.estimateItem}>
+                Water Intercepted: {estimatedStats.waterIntercepted ?? '—'} m3
+              </AppText>
+              <AppText style={styles.estimateItem}>
+                Air Quality Gain: {estimatedStats.airQualityImprovement ?? '—'} g/year
+              </AppText>
+              <AppText style={styles.estimateItem}>
+                Leaf Area: {estimatedStats.leafArea ?? '—'} m2
+              </AppText>
+              <AppText style={styles.estimateItem}>
+                Evapotranspiration: {estimatedStats.evapotranspiration ?? '—'} m3
+              </AppText>
+            </View>
           </View>
 
           <View style={styles.section}>
@@ -495,7 +568,7 @@ export default function PlotDashboard({
                     style={styles.photoCard}
                     activeOpacity={0.85}
                   >
-                    <Image source={{ uri: photo }} style={styles.photoImage} />
+                    <Image source={{ uri: photo.image_url }} style={styles.photoImage} />
                     <View style={styles.photoBadge}>
                       <AppText style={styles.photoBadgeText}>Edit</AppText>
                     </View>
@@ -873,5 +946,27 @@ const styles = StyleSheet.create({
 
   footerButtonMobile: {
     width: '100%',
+  },
+
+  estimateBox: {
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F4FBF3',
+    borderWidth: 1,
+    borderColor: '#D7E4D4',
+    gap: 4,
+  },
+
+  estimateTitle: {
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#23422A',
+    marginBottom: 4,
+  },
+
+  estimateItem: {
+    ...Theme.Typography.caption,
+    color: '#35503B',
   },
 });

@@ -42,7 +42,7 @@ export default function CreateAccount() {
   const trimmedEmail = useMemo(() => email.trim(), [email]);
 
   const usernameError = getUsernameError(trimmedUsername);
-  const emailError = getEmailError(trimmedEmail);
+  const emailError = trimmedEmail ? getEmailError(trimmedEmail) : null;
   const passwordError = getPasswordError(password);
   const canSubmit = Boolean(trimmedUsername && password) && !usernameError && !emailError && !passwordError;
   const [loading, setLoading] = useState(false);
@@ -118,7 +118,7 @@ export default function CreateAccount() {
 
       setStatus({
         title: 'Account Created',
-        message: 'Your account has been created successfully.',
+        message: 'Your account has been created successfully!',
         variant: 'success',
         createdAt: Date.now(),
       });
@@ -162,9 +162,9 @@ export default function CreateAccount() {
         <View style={[styles.shell, isMobileLayout && styles.shellMobile, isWideLayout ? styles.shellWide : styles.shellStacked]}>
           <View style={[styles.formColumn, isWideLayout ? styles.formColumnWide : styles.formColumnStacked]}>
             <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
-              <Pressable onPress={() => router.push('/mainPage')} style={styles.homeLink}>
+              <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                 <AppText variant="caption" style={styles.homeLinkText}>
-                  Back to Map
+                  Back
                 </AppText>
               </Pressable>
 

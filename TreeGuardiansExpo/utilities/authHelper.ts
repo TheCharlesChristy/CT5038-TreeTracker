@@ -16,6 +16,15 @@ export interface AuthState {
   user: AuthUser | null;
 }
 
+type AccountUserResponse = {
+  message?: string;
+  user: AuthUser;
+};
+
+type MessageResponse = {
+  message?: string;
+};
+
 export async function validateSession(): Promise<AuthState> {
   try {
     const token = await getItem("accessToken");
@@ -50,7 +59,6 @@ export async function validateSession(): Promise<AuthState> {
       isLoggedIn: true,
       user,
     };
-
   } catch (error) {
     console.error("Session validation error:", error);
 
@@ -64,12 +72,11 @@ export async function validateSession(): Promise<AuthState> {
 }
 
 // Load authentication state
-// Used when the app starts or page refreshes
 export async function getAuthState(): Promise<AuthState> {
   try {
     const token = await getItem("accessToken");
     const storedUser = await getItem("user");
-    const parsedUser = storedUser ? JSON.parse(storedUser) as AuthUser : null;
+    const parsedUser = storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
 
     return {
       isLoggedIn: Boolean(token && parsedUser),
@@ -77,6 +84,7 @@ export async function getAuthState(): Promise<AuthState> {
     };
   } catch (error) {
     console.error("Auth state error:", error);
+
     return {
       isLoggedIn: false,
       user: null,
@@ -89,7 +97,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const token = await getItem("accessToken");
     const storedUser = await getItem("user");
-    const cachedUser = storedUser ? JSON.parse(storedUser) as AuthUser : null;
+    const cachedUser = storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
 
     if (!token) {
       return null;
@@ -175,4 +183,148 @@ export async function logoutUser(): Promise<boolean> {
     console.error("Logout error:", error);
     return false;
   }
+}
+
+async function getAuthorizedHeaders(): Promise<HeadersInit> {
+  const token = await getItem("accessToken");
+
+  if (!token) {
+    throw new Error("You must be logged in to perform this action.");
+  }
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+async function parseErrorResponse(response: Response, fallbackMessage: string): Promise<never> {
+  try {
+    const data = await response.json();
+    throw new Error(data?.error || data?.message || fallbackMessage);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    throw new Error(fallbackMessage);
+  }
+}
+
+async function fetchWithAuth(path: string, options: RequestInit = {}): Promise<Response> {
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(API_BASE + path, {
+    ...options,
+    headers: {
+      ...headers,
+      ...(options.headers ?? {}),
+    },
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    await logoutUser();
+    throw new Error("Your session has expired. Please sign in again.");
+  }
+
+  return response;
+}
+
+export async function updateUsername(payload: {
+  username: string;
+}): Promise<AuthUser> {
+  const username = payload.username.trim();
+
+  if (!username) {
+    throw new Error("Username is required.");
+  }
+
+  const response = await fetchWithAuth(ENDPOINTS.ACCOUNT_USERNAME, {
+    method: "PUT",
+    body: JSON.stringify({ username }),
+  });
+
+  if (!response.ok) {
+    await parseErrorResponse(response, "Failed to update username.");
+  }
+
+  const data = (await response.json()) as AccountUserResponse;
+
+  if (!data?.user) {
+    const refreshedUser = await getCurrentUser();
+
+    if (!refreshedUser) {
+      throw new Error("Username updated, but failed to refresh user data.");
+    }
+
+    return refreshedUser;
+  }
+
+  await saveItem("user", JSON.stringify(data.user));
+  return data.user;
+}
+
+export async function updateEmail(payload: {
+  email: string;
+}): Promise<AuthUser> {
+  const email = payload.email.trim();
+
+  if (!email) {
+    throw new Error("Email is required.");
+  }
+
+  const response = await fetchWithAuth(ENDPOINTS.ACCOUNT_EMAIL, {
+    method: "PUT",
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    await parseErrorResponse(response, "Failed to update email.");
+  }
+
+  const data = (await response.json()) as AccountUserResponse;
+
+  if (!data?.user) {
+    const refreshedUser = await getCurrentUser();
+
+    if (!refreshedUser) {
+      throw new Error("Email updated, but failed to refresh user data.");
+    }
+
+    return refreshedUser;
+  }
+
+  await saveItem("user", JSON.stringify(data.user));
+  return data.user;
+}
+
+export async function updatePassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<boolean> {
+  const currentPassword = payload.currentPassword;
+  const newPassword = payload.newPassword;
+
+  if (!currentPassword) {
+    throw new Error("Current password is required.");
+  }
+
+  if (!newPassword) {
+    throw new Error("New password is required.");
+  }
+
+  const response = await fetchWithAuth(ENDPOINTS.ACCOUNT_PASSWORD, {
+    method: "PUT",
+    body: JSON.stringify({
+      currentPassword,
+      newPassword,
+    }),
+  });
+
+  if (!response.ok) {
+    await parseErrorResponse(response, "Failed to update password.");
+  }
+
+  await response.json().catch(() => null as MessageResponse | null);
+  return true;
 }

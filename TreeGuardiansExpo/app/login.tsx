@@ -17,6 +17,7 @@ import { getPasswordError } from '@/lib/authValidation';
 import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
+import { fetchRecentTreeActivity, LocalTreeActivityItem } from '@/lib/activityApi';
 
 export default function Login() {
   const successRedirectDuration = 1;
@@ -34,6 +35,9 @@ export default function Login() {
 
   const [credentialTouched, setCredentialTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
+
+  const [activity, setActivity] = useState<LocalTreeActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   const [credentialFocused, setCredentialFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -58,6 +62,21 @@ export default function Login() {
       if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
   }, [status, successRedirectDuration]);
+
+  useEffect(() => {
+    const loadActivity = async () => {
+      try {
+        const data = await fetchRecentTreeActivity();
+        setActivity(data);
+      } catch (err) {
+        console.error('Failed to load activity:', err);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+
+    loadActivity();
+  }, []);
 
   const handleLogin = async () => {
     setCredentialTouched(true);
@@ -125,12 +144,7 @@ export default function Login() {
   };
 
   const handleForgotPassword = () => {
-    setStatus({
-      title: 'Password recovery',
-      message: 'Forgot password is ready for backend integration. Connect it to your recovery endpoint or deep link next.',
-      variant: 'error',
-      createdAt: Date.now(),
-    });
+    router.push('/forgot-password');
   };
 
   return (
@@ -149,12 +163,14 @@ export default function Login() {
       >
         <StatusMessageBox
           status={status}
-          redirectDuration={successRedirectDuration}
+          redirectDuration={status?.variant === 'success' ? successRedirectDuration : undefined}
           onClose={() => {
             if (redirectTimer.current) clearTimeout(redirectTimer.current);
+
             if (status?.variant === 'success') {
               router.replace('/mainPage');
             }
+
             setStatus(null);
           }}
         />
@@ -174,9 +190,9 @@ export default function Login() {
           >
             <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
               <View style={styles.topRow}>
-                <Pressable onPress={() => router.push('/mainPage')} style={styles.homeLink}>
+                <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                   <AppText variant="caption" style={styles.homeLinkText}>
-                    Back to Map
+                    Back
                   </AppText>
                 </Pressable>
               </View>
@@ -421,45 +437,36 @@ export default function Login() {
                   Recent community activity
                 </AppText>
 
-                <View style={styles.activityItem}>
-                  <View style={[styles.activityDot, { backgroundColor: '#81C784' }]} />
-                  <View style={styles.activityContent}>
-                    <AppText variant="body" style={styles.activityTitle}>
-                      Oak logged on King William Walk
-                    </AppText>
-                    <AppText variant="caption" style={styles.activityMeta}>
-                      2 hours ago
-                    </AppText>
-                  </View>
-                </View>
+                {activityLoading ? (
+                  <AppText variant="caption">Loading activity...</AppText>
+                ) : activity.length === 0 ? (
+                  <AppText variant="caption">No recent activity</AppText>
+                ) : (
+                  activity.map((item, index) => (
+                    <View key={item.id}>
+                      <View style={styles.activityItem}>
+                        <View
+                          style={[
+                            styles.activityDot,
+                            { backgroundColor: '#81C784' },
+                          ]}
+                        />
+                        <View style={styles.activityContent}>
+                          <AppText variant="body" style={styles.activityTitle}>
+                            {item.title}
+                          </AppText>
+                          <AppText variant="caption" style={styles.activityMeta}>
+                            {item.subtitle}
+                          </AppText>
+                        </View>
+                      </View>
 
-                <View style={styles.activityDivider} />
-
-                <View style={styles.activityItem}>
-                  <View style={[styles.activityDot, { backgroundColor: '#A5D6A7' }]} />
-                  <View style={styles.activityContent}>
-                    <AppText variant="body" style={styles.activityTitle}>
-                      Health check added for Silver Birch
-                    </AppText>
-                    <AppText variant="caption" style={styles.activityMeta}>
-                      5 hours ago
-                    </AppText>
-                  </View>
-                </View>
-
-                <View style={styles.activityDivider} />
-
-                <View style={styles.activityItem}>
-                  <View style={[styles.activityDot, { backgroundColor: '#66BB6A' }]} />
-                  <View style={styles.activityContent}>
-                    <AppText variant="body" style={styles.activityTitle}>
-                      3 new trees mapped in Charlton Kings
-                    </AppText>
-                    <AppText variant="caption" style={styles.activityMeta}>
-                      Yesterday
-                    </AppText>
-                  </View>
-                </View>
+                      {index < activity.length - 1 && (
+                        <View style={styles.activityDivider} />
+                      )}
+                    </View>
+                  ))
+                )}
               </View>
 
               <View style={styles.previewStatsRow}>

@@ -3,6 +3,8 @@ const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { parsePositiveInt, parseListParams, requireJson } = require("./utils/http");
 const { requireAuthenticatedUser } = require("./utils/auth");
+const fs = require('fs');
+const path = require('path');
 
 const DEFAULT_TREE_DATA = {
   treeSpecies: "Unknown",
@@ -71,7 +73,7 @@ function joinObservationValues(rows, key) {
   return values.length > 0 ? Array.from(new Set(values)).join(", ") : null;
 }
 
-function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos) {
+function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos, creationRow, guardianUserIds) {
   return {
     id: tree.id,
     latitude: tree.latitude,
@@ -91,7 +93,12 @@ function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos) 
     notes: seenRows[0] ? seenRows[0].observation_notes : null,
     wildlife: joinObservationValues(wildlifeRows, "wildlife"),
     disease: joinObservationValues(diseaseRows, "disease"),
-    photos
+    photos,
+    creator_user_id: creationRow ? Number(creationRow.creator_user_id) : null,
+    created_at: creationRow ? creationRow.created_at : null,
+    guardian_user_ids: Array.isArray(guardianUserIds)
+      ? guardianUserIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : []
   };
 }
 
@@ -154,6 +161,11 @@ function createTreesRoute({ db }) {
         tx
       );
 
+      await db.guardians.add(
+        { treeId: tree.id, userId: Number(auth.user.id) },
+        tx
+      );
+
       await db.treeData.create(
         {
           treeId: tree.id,
@@ -163,7 +175,7 @@ function createTreesRoute({ db }) {
       );
 
       if (req.body.notes) {
-        const comment = await db.comments.create({ userId: null }, tx);
+        const comment = await db.comments.create({ userId: Number(auth.user.id) }, tx);
         await db.seenObservations.create(
           {
             commentId: comment.id,
@@ -175,7 +187,7 @@ function createTreesRoute({ db }) {
       }
 
       for (const wildlife of wildlifeEntries) {
-        const comment = await db.comments.create({ userId: null }, tx);
+        const comment = await db.comments.create({ userId: Number(auth.user.id) }, tx);
         await db.wildlifeObservations.create(
           {
             commentId: comment.id,
@@ -189,7 +201,7 @@ function createTreesRoute({ db }) {
       }
 
       for (const disease of diseaseEntries) {
-        const comment = await db.comments.create({ userId: null }, tx);
+        const comment = await db.comments.create({ userId: Number(auth.user.id) }, tx);
         await db.diseaseObservations.create(
           {
             commentId: comment.id,
@@ -211,6 +223,59 @@ function createTreesRoute({ db }) {
     res.json({ success: true, tree_id: treeId });
   };
 
+  const listRecentTreesHandler = async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "list-recent-trees" });
+
+    routeLog.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      query: req.query
+    });
+
+    const limit = parsePositiveInt(req.query.limit || 6, "limit");
+
+    // Fetch recent creation records
+    const recent = await db.treeCreationData.list({
+      limit,
+      offset: 0,
+      order: "desc"
+    });
+
+    routeLog.debug("recent.creation.rows", { count: recent.length });
+
+    const result = await Promise.all(
+      recent.map(async (creationRow) => {
+        const treeId = creationRow.tree_id;
+
+        const [tree, dataRow, user] = await Promise.all([
+          db.trees.getById(treeId),
+          db.treeData.getByTreeId(treeId),
+          creationRow.creator_user_id
+            ? db.users.getById(creationRow.creator_user_id)
+            : null
+        ]);
+
+        if (!tree) return null;
+
+        return {
+          id: tree.id,
+          latitude: tree.latitude,
+          longitude: tree.longitude,
+          tree_species: dataRow ? dataRow.tree_species : null,
+          created_at: creationRow.created_at,
+          creator_user_id: creationRow.creator_user_id,
+          creator_username: user ? user.username : null
+        };
+      })
+    );
+
+    const filtered = result.filter(Boolean);
+
+    routeLog.info("request.success", { count: filtered.length });
+
+    res.json(filtered);
+  };
+
   const listTreesHandler = async (req, res) => {
     const routeLog = getRouteLogger(req, { route: "list-trees" });
     routeLog.info("request.start", {
@@ -226,20 +291,35 @@ function createTreesRoute({ db }) {
 
     const result = await Promise.all(
       trees.map(async (tree) => {
-        const [dataRow, seenRows, wildlifeRows, diseaseRows, photoIds] = await Promise.all([
+        const [dataRow, seenRows, wildlifeRows, diseaseRows, photoIds, creationRow, guardianUserIds] = await Promise.all([
           db.treeData.getByTreeId(tree.id),
           db.seenObservations.listByTreeId(tree.id, { limit: 1, offset: 0, order: "desc" }),
           db.wildlifeObservations.listByTreeId(tree.id, { limit: 100, offset: 0, order: "desc" }),
           db.diseaseObservations.listByTreeId(tree.id, { limit: 100, offset: 0, order: "desc" }),
-          db.treePhotos.listPhotoIdsByTree(tree.id, { limit: 100, offset: 0 })
+          db.treePhotos.listPhotoIdsByTree(tree.id, { limit: 100, offset: 0 }),
+          db.treeCreationData.getByTreeId(tree.id),
+          db.guardians.listByTree(tree.id, { limit: 100, offset: 0 })
         ]);
 
         const photoRows = await Promise.all(photoIds.map((photoId) => db.photos.getById(photoId)));
         const photos = photoRows
           .filter((photo) => photo && typeof photo.image_url === "string")
-          .map((photo) => photo.image_url);
+          .map((photo) => ({
+            id: Number(photo.id),
+            image_url: photo.image_url,
+            mimeType: photo.mime_type || undefined
+          }));
 
-        return mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos);
+        return mapTreeRow(
+          tree,
+          dataRow,
+          seenRows,
+          wildlifeRows,
+          diseaseRows,
+          photos,
+          creationRow,
+          guardianUserIds
+        );
       })
     );
 
@@ -292,6 +372,11 @@ function createTreesRoute({ db }) {
   router.get("/get-trees", asyncHandler(listTreesHandler));
 
   router.get(
+    "/trees/recent",
+    asyncHandler(listRecentTreesHandler)
+  );
+
+  router.get(
     "/trees/:treeId",
     asyncHandler(async (req, res) => {
       await getTreeDetailsHandler(req, res, req.params.treeId);
@@ -304,6 +389,173 @@ function createTreesRoute({ db }) {
       await getTreeDetailsHandler(req, res, req.query.tree_id);
     })
   );
+
+  router.delete(
+    "/trees/:treeId",
+    asyncHandler(async (req, res) => {
+      const routeLog = getRouteLogger(req, { route: "delete-tree" });
+
+      const treeId = parsePositiveInt(req.params.treeId, "treeId");
+
+      routeLog.info("request.start", {
+        method: req.method,
+        path: req.originalUrl || req.url,
+        treeId,
+      });
+
+      const auth = await requireAuthenticatedUser({
+        req,
+        db,
+        routeLog,
+      });
+
+      let deleted = false;
+
+      await db.transaction(async (tx) => {
+        const tree = await db.trees.getById(treeId, tx);
+
+        if (!tree) {
+          const error = new Error("Tree not found");
+          error.name = "NotFoundError";
+          throw error;
+        }
+
+        await db.trees.deleteById(treeId, tx);
+
+        deleted = true;
+      });
+
+      routeLog.info("request.success", { treeId });
+
+      res.json({
+        success: true,
+        deleted,
+      });
+    })
+  );
+
+  router.delete(
+    "/trees/:treeId/photos/:photoId",
+    asyncHandler(async (req, res) => {
+      const routeLog = getRouteLogger(req, { route: "delete-tree-photo" });
+      const auth = await requireAuthenticatedUser({ req, db, routeLog });
+
+      const treeId = Number(req.params.treeId);
+      const photoId = Number(req.params.photoId);
+      const userId = Number(auth.user.id);
+
+      if (!treeId || Number.isNaN(treeId) || !photoId || Number.isNaN(photoId)) {
+        res.status(400).json({ error: "Invalid tree ID or photo ID." });
+        return;
+      }
+
+      let deletedImageUrl = null;
+
+      await db.transaction(async (tx) => {
+        const photo = await db.photos.getById(photoId, tx);
+        const linkedToTree = await db.treePhotos.exists({ treeId, photoId }, tx);
+
+        if (!photo || !linkedToTree) {
+          const error = new Error("Photo not found for this tree.");
+          error.statusCode = 404;
+          throw error;
+        }
+
+        const [isAdmin, isGuardian] = await Promise.all([
+          db.admins.isAdmin(userId, tx),
+          db.guardians.exists({ userId, treeId }, tx)
+        ]);
+
+        if (!isAdmin && !isGuardian) {
+          const error = new Error("Only admins or guardians of this tree can delete its photos.");
+          error.statusCode = 403;
+          throw error;
+        }
+
+        await db.treePhotos.remove({ treeId, photoId }, tx);
+
+        const remainingCount = await db.treePhotos.countByPhotoId(photoId, tx);
+
+        if (remainingCount === 0) {
+          deletedImageUrl = photo.image_url;
+          await db.photos.deleteById(photoId, tx);
+        }
+      });
+
+      if (deletedImageUrl) {
+        const relativePath = String(deletedImageUrl).replace(/^\/+/, "");
+        const absolutePath = path.join(process.cwd(), relativePath);
+
+        fs.unlink(absolutePath, (err) => {
+          if (err) {
+            console.warn("Could not delete photo file from disk:", err.message);
+          }
+        });
+      }
+
+      res.json({ success: true });
+    })
+  );
+
+  router.get(
+    "/trees/:treeId/feed",
+    asyncHandler(async (req, res) => {
+      const treeId = parsePositiveInt(req.params.treeId, "treeId");
+      const { limit, offset } = parseListParams(req.query);
+
+      const items = await db.workflows.trees.getTreeFeed(treeId, { limit, offset });
+      res.json(items);
+    })
+  );
+
+  router.delete(
+    "/comments/:commentId",
+    asyncHandler(async (req, res) => {
+      const commentId = parsePositiveInt(req.params.commentId, "commentId");
+
+      const auth = await requireAuthenticatedUser({
+        req,
+        db,
+        routeLog: getRouteLogger(req, { route: "delete-comment" }),
+      });
+
+      await db.workflows.comments.deleteTreeComment({
+        commentId,
+        userId: Number(auth.user.id),
+      });
+
+      res.json({ success: true });
+    })
+  );
+
+  router.post(
+    "/trees/:treeId/comments",
+    asyncHandler(async (req, res) => {
+      requireJson(req);
+
+      const treeId = parsePositiveInt(req.params.treeId, "treeId");
+      const auth = await requireAuthenticatedUser({ req, db, routeLog: getRouteLogger(req, { route: "add-tree-comment"}) });
+
+      const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
+      if (!content) {
+        const error = new Error("content is required");
+        error.name = "ValidationError";
+        throw error;
+      }
+
+      const result = await db.workflows.comments.addTreeComment({
+        treeId,
+        userId: Number(auth.user.id),
+        content,
+        photoIds: Array.isArray(req.body?.photoIds) ? req.body.photoIds : []
+      });
+
+      res.status(201).json({
+        success: true,
+        comment_id: result.commentId
+      });
+    })
+  )
 
   return router;
 }

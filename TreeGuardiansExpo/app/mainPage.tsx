@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
-
 import MapComponent from '@/components/base/MapComponent';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
@@ -28,6 +27,7 @@ import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/ut
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
+  const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
   const [loggedInUserRole, setLoggedInUserRole] = useState<AppUserRole>('user');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -37,6 +37,7 @@ export default function MainPage() {
   useEffect(() => {
     getCurrentUser().then((user) => {
       setLoggedInUsername(user?.username ?? null);
+      setLoggedInUserId(user?.id != null ? Number(user.id) : null);
       setLoggedInUserRole(normalizeUserRole(user?.role));
     });
   }, []);
@@ -118,6 +119,7 @@ export default function MainPage() {
 
     setLogoutStatus(null);
     setLoggedInUsername(null);
+    setLoggedInUserId(null);
     setIsLoggingOut(false);
     router.replace('/');
   }, [clearLogoutTimer]);
@@ -246,6 +248,9 @@ export default function MainPage() {
             <TreeDetailsDashboard
               tree={selectedTree}
               onClose={handleCloseTreeDetails}
+              currentUserId={loggedInUserId}
+              isGuardian={loggedInUserRole === 'guardian'}
+              isAdmin={loggedInUserRole === 'admin'}
             />
           ) : null}
 

@@ -23,6 +23,7 @@ export function useTreeMapState() {
   const [addValidationError, setAddValidationError] = useState<string | null>(null);
   const [isSubmittingTree, setIsSubmittingTree] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
+  const [searchCenter, setSearchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceFilterKm, setDistanceFilterKm] = useState<DistanceFilterKm>(null);
@@ -31,7 +32,7 @@ export function useTreeMapState() {
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
   const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
 
-  const showDimOverlay = mode !== 'explore' && mode !== 'add';
+  const showDimOverlay = mode !== 'explore' && mode !== 'add' ;
 
   const clearAddDraft = useCallback(() => {
     setDraftTreeDetails(null);
@@ -72,7 +73,7 @@ export function useTreeMapState() {
 
         const distance = haversineDistanceKm(
           { latitude: tree.latitude, longitude: tree.longitude },
-          CHARLTON_CENTER
+          searchCenter
         );
         const withinDistance = distanceKm === null || distance <= distanceKm;
 
@@ -87,16 +88,18 @@ export function useTreeMapState() {
       .sort((a, b) => {
         const aDistance = haversineDistanceKm(
           { latitude: a.latitude, longitude: a.longitude },
-          CHARLTON_CENTER
+          searchCenter
         );
         const bDistance = haversineDistanceKm(
           { latitude: b.latitude, longitude: b.longitude },
-          CHARLTON_CENTER
+          searchCenter
         );
 
         return aDistance - bDistance;
       });
-  }, []);
+    }, 
+    [searchCenter]
+  );
 
   const fetchTreesFromServer = useCallback(async () => {
     try {
@@ -160,9 +163,11 @@ export function useTreeMapState() {
   const getDistanceFromCenterKm = useCallback((tree: Tree) => {
     return haversineDistanceKm(
       { latitude: tree.latitude, longitude: tree.longitude },
-      CHARLTON_CENTER
+      searchCenter ?? CHARLTON_CENTER
     );
-  }, []);
+  }, 
+  [searchCenter]
+  );
 
   const clearAddValidationError = useCallback(() => {
     setAddValidationError(null);

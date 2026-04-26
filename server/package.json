@@ -16,9 +16,12 @@
     "check": "npm test"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "mysql2": "^3.14.5"
+    "mysql2": "^3.22.0",
+    "nodemailer": "^8.0.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"

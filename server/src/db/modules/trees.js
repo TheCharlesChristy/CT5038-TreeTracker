@@ -221,6 +221,37 @@ function createTreeEndpoints(ctx) {
       return this.getById(Number(result.insertId), tx);
     },
 
+    async getImpactTotals(tx) {
+      const row = await selectOne(
+        runtimeExecutor(tx),
+        `SELECT
+          COALESCE(SUM(avoided_runoff), 0) AS avoided_runoff_total,
+          COALESCE(SUM(carbon_dioxide_stored), 0) AS carbon_dioxide_stored_total,
+          COALESCE(SUM(carbon_dioxide_removed), 0) AS carbon_dioxide_removed_total,
+          COALESCE(SUM(water_intercepted), 0) AS water_intercepted_total,
+          COALESCE(SUM(air_quality_improvement), 0) AS air_quality_improvement_total,
+          COALESCE(SUM(leaf_area), 0) AS leaf_area_total,
+          COALESCE(SUM(evapotranspiration), 0) AS evapotranspiration_total,
+          COALESCE(SUM(trunk_circumference), 0) AS trunk_circumference_total,
+          COALESCE(SUM(trunk_diameter), 0) AS trunk_diameter_total,
+          COALESCE(SUM(tree_height), 0) AS tree_height_total
+        FROM tree_data`
+      );
+
+      return {
+        avoidedRunoff: Number(row?.avoided_runoff_total ?? 0),
+        carbonDioxideStored: Number(row?.carbon_dioxide_stored_total ?? 0),
+        carbonDioxideRemoved: Number(row?.carbon_dioxide_removed_total ?? 0),
+        waterIntercepted: Number(row?.water_intercepted_total ?? 0),
+        airQualityImprovement: Number(row?.air_quality_improvement_total ?? 0),
+        leafArea: Number(row?.leaf_area_total ?? 0),
+        evapotranspiration: Number(row?.evapotranspiration_total ?? 0),
+        trunkCircumference: Number(row?.trunk_circumference_total ?? 0),
+        trunkDiameter: Number(row?.trunk_diameter_total ?? 0),
+        treeHeight: Number(row?.tree_height_total ?? 0)
+      };
+    },
+
     async getById(id, tx) {
       ensurePositiveInt("id", id);
       return selectOne(runtimeExecutor(tx), "SELECT * FROM tree_data WHERE id = ?", [id]);

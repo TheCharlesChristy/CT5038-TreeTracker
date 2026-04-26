@@ -339,7 +339,8 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
       create: async () => {
         callLog.creationDataCreate += 1;
         return { id: 1 };
-      }
+      },
+      getByTreeId: async () => ({ id: 1 })
     },
     treeData: {
       create: async () => {
@@ -352,6 +353,16 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
         tree_height: 10,
         trunk_circumference: 30
       })
+    },
+    guardians: {
+      listByTree: async () => [],
+      add: async () => ({ added: true }),
+    },
+    admins: {
+      isAdmin: async () => false
+    },
+    guardianUsers: {
+      isGuardian: async () => false
     },
     comments: {
       create: async () => {
@@ -405,7 +416,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     }
   };
 
-  const httpServer = createHttpServer({ port: 0, db });
+  const httpServer = createHttpServer({ port: 0, db, frontendUrl: "http://localhost:3000" });
   const listening = await httpServer.start();
   listening.unref();
   const port = listening.address().port;
@@ -451,7 +462,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     assert.equal(Array.isArray(trees.body), true);
     assert.equal(trees.body[0].id, 77);
     assert.equal(trees.body[0].species, "Oak");
-    assert.deepEqual(trees.body[0].photos, ["https://example.com/photo.jpg"]);
+    assert.deepEqual(trees.body[0].photos, [{ id: 5, image_url: "https://example.com/photo.jpg" }]);
 
     const details = await sendRequest({ port, path: "/api/get-tree-details?tree_id=77" });
     assert.equal(details.status, 200);
@@ -480,7 +491,7 @@ test("legacy auth routes register login and return /api/me", async () => {
     health: async () => ({ ready: true }),
     transaction: async (fn) => fn({ __tx: true }),
     trees: { list: async () => [], getById: async () => null, create: async () => ({ id: 1 }) },
-    treeCreationData: { create: async () => ({ id: 1 }) },
+    treeCreationData: { create: async () => ({ id: 1 }), getByTreeId: async () => ({ id: 1 }) },
     treeData: { create: async () => ({ id: 1 }), getByTreeId: async () => null },
     comments: { create: async () => ({ id: 1 }) },
     seenObservations: { create: async () => ({ id: 1 }), listByTreeId: async () => [] },
@@ -518,7 +529,7 @@ test("legacy auth routes register login and return /api/me", async () => {
     }
   };
 
-  const httpServer = createHttpServer({ port: 0, db });
+  const httpServer = createHttpServer({ port: 0, db, frontendUrl: "http://localhost:3000" });
   const listening = await httpServer.start();
   listening.unref();
   const port = listening.address().port;

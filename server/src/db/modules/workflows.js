@@ -27,6 +27,26 @@ function createWorkflows(ctx) {
 
   const { ensurePositiveInt, ensureRequiredString, ensureHex64, normalizeListParams } = validators;
 
+  async function resolveTreeIdForComment(commentId, tx, visited = new Set()) {
+    ensurePositiveInt("commentId", commentId);
+
+    if (visited.has(commentId)) {
+      throw new Error("Cycle detected in comment reply chain");
+    }
+    visited.add(commentId);
+
+    const treeLink = await commentsTree.getByCommentId(commentId, tx);
+    if (treeLink?.tree_id) return treeLink.tree_id;
+
+    const parentIds = await commentReplies.listParentsOfComment(commentId, {}, tx);
+
+    if (parentIds.length > 0) {
+      return resolveTreeIdForComment(parentIds[0], tx, visited);
+    }
+
+    return null;
+  }
+
   return {
     auth: {
       async registerUser(payload) {
@@ -127,29 +147,80 @@ function createWorkflows(ctx) {
         return run(
           runtimeExecutor(),
           `
-            SELECT 'tree_comment' AS item_type, ct.comment_id, ct.created_at, ct.content, NULL AS extra
+            SELECT
+              'tree_comment' AS item_type,
+              ct.comment_id,
+              ct.created_at,
+              ct.content,
+              NULL AS extra,
+              c.user_id,
+              u.username
             FROM comments_tree ct
+            INNER JOIN comments c ON c.id = ct.comment_id
+            LEFT JOIN users u ON u.id = c.user_id
             WHERE ct.tree_id = ?
+
             UNION ALL
-            SELECT 'wildlife' AS item_type, wo.comment_id, c.created_at, wo.observation_notes AS content, wo.wildlife AS extra
+
+            SELECT
+              'wildlife' AS item_type,
+              wo.comment_id,
+              c.created_at,
+              wo.observation_notes AS content,
+              wo.wildlife AS extra,
+              c.user_id,
+              u.username
             FROM wildlife_observations wo
             INNER JOIN comments c ON c.id = wo.comment_id
+            LEFT JOIN users u ON u.id = c.user_id
             WHERE wo.tree_id = ?
+
             UNION ALL
-            SELECT 'disease' AS item_type, dobs.comment_id, c.created_at, dobs.evidence AS content, dobs.disease AS extra
+
+            SELECT
+              'disease' AS item_type,
+              dobs.comment_id,
+              c.created_at,
+              dobs.evidence AS content,
+              dobs.disease AS extra,
+              c.user_id,
+              u.username
             FROM disease_observations dobs
             INNER JOIN comments c ON c.id = dobs.comment_id
+            LEFT JOIN users u ON u.id = c.user_id
             WHERE dobs.tree_id = ?
+
             UNION ALL
-            SELECT 'seen' AS item_type, so.comment_id, c.created_at, so.observation_notes AS content, NULL AS extra
+
+            SELECT
+              'seen' AS item_type,
+              so.comment_id,
+              c.created_at,
+              so.observation_notes AS content,
+              NULL AS extra,
+              c.user_id,
+              u.username
             FROM seen_observations so
             INNER JOIN comments c ON c.id = so.comment_id
+            LEFT JOIN users u ON u.id = c.user_id
             WHERE so.tree_id = ?
+
             UNION ALL
-            SELECT 'reply' AS item_type, cr.comment_id, cr.created_at, cr.content, CAST(cr.parent_comment_id AS CHAR) AS extra
+
+            SELECT
+              'reply' AS item_type,
+              cr.comment_id,
+              cr.created_at,
+              cr.content,
+              CAST(cr.parent_comment_id AS CHAR) AS extra,
+              c.user_id,
+              u.username
             FROM comment_replies cr
+            INNER JOIN comments c ON c.id = cr.comment_id
+            LEFT JOIN users u ON u.id = c.user_id
             INNER JOIN comments_tree ct2 ON ct2.comment_id = cr.parent_comment_id
             WHERE ct2.tree_id = ?
+
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
           `,
@@ -206,6 +277,47 @@ function createWorkflows(ctx) {
           }
 
           return { commentId: comment.id };
+        });
+      },
+
+      async deleteTreeComment(payload) {
+        ensurePositiveInt("commentId", payload.commentId);
+        ensurePositiveInt("userId", payload.userId);
+
+        return transaction(async (tx) => {
+          const existing = await comments.getById(payload.commentId, tx);
+
+          if (!existing) {
+            throw new NotFoundError(`Comment ${payload.commentId} not found`);
+          }
+
+          // 🔥 Use helper
+          const treeId = await resolveTreeIdForComment(payload.commentId, tx);
+
+          if (!treeId) {
+            throw new NotFoundError(`Could not determine tree for comment ${payload.commentId}`);
+          }
+
+          const isOwner = Number(existing.user_id) === Number(payload.userId);
+          const isAdmin = await admins.isAdmin(payload.userId, tx);
+          const isGuardian = await guardians.exists(
+            { userId: payload.userId, treeId },
+            tx
+          );
+
+          if (!isOwner && !isAdmin && !isGuardian) {
+            const error = new Error(
+              "You can only delete your own comments unless you are an admin or guardian of this tree"
+            );
+            error.name = "ForbiddenError";
+            throw error;
+          }
+
+          await run(runtimeExecutor(tx), "DELETE FROM comments WHERE id = ?", [
+            payload.commentId
+          ]);
+
+          return { deleted: true };
         });
       },
 

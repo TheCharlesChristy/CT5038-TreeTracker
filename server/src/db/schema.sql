@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS tree_creation_data (
     CONSTRAINT fk_creation_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE,
     CONSTRAINT fk_creation_user FOREIGN KEY (creator_user_id)
-    REFERENCES users (id) ON DELETE RESTRICT
+    REFERENCES users (id) ON DELETE SET NULL -- (updated to handle deleting users)
 ) engine = InnoDB;
 
 -- Specific tree characteristics
@@ -70,18 +70,18 @@ CREATE TABLE IF NOT EXISTS tree_data (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     tree_id bigint unsigned NOT NULL,
     UNIQUE INDEX uq_tree_data_tree_id (tree_id),
-    tree_species varchar(255) NULL,
-    avoided_runoff decimal(10,2) NULL, -- in m^3
-    carbon_dioxide_stored decimal(10,2) NULL, -- in kg
-    carbon_dioxide_removed decimal(10,2) NULL, -- in kg
-    water_intercepted decimal(10,2) NULL, -- in m^3
-    air_quality_improvement decimal(10,2) NULL, -- in g/year
-    leaf_area decimal(10,2) NULL, -- in m^2
-    evapotranspiration decimal(10,2) NULL, -- in m^3
-    trunk_circumference decimal(10,2) NULL, -- in cm
-    trunk_diameter decimal(10,2) NULL, -- in cm
-    tree_height decimal(10,2) NULL, -- in m
-    health enum('excellent','good','ok','bad','terrible') NULL,
+    tree_species varchar(255) NULL, -- Species name (test)
+    avoided_runoff decimal(10,2) NULL, -- m^3
+    carbon_dioxide_stored decimal(10,2) NULL, -- kg
+    carbon_dioxide_removed decimal(10,2) NULL, -- kg
+    water_intercepted decimal(10,2) NULL, -- m^3
+    air_quality_improvement decimal(10,2) NULL, -- g/year
+    leaf_area decimal(10,2) NULL, -- m^2
+    evapotranspiration decimal(10,2) NULL, -- m^3
+    trunk_circumference decimal(10,2) NULL, -- cm
+    trunk_diameter decimal(10,2) NULL, -- cm
+    tree_height decimal(10,2) NULL, -- m
+    health enum('excellent','good','ok','bad','terrible') NULL, -- health rating (categorical)
     CONSTRAINT fk_data_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;

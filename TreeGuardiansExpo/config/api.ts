@@ -143,5 +143,11 @@ export const ENDPOINTS = {
   AUTH_REGISTER: "auth/register",
   VALIDATE_SESSION: "users/me",
   LOGOUT: "auth/logout",
-  USERS_ME: "users/me"
+  USERS_ME: "users/me",
+  ACCOUNT_USERNAME: "account/username",
+  ACCOUNT_EMAIL: "account/email",
+  ACCOUNT_PASSWORD: "account/password",
+  AUTH_VERIFY_EMAIL: "auth/verify-email",
+  AUTH_FORGOT_PASSWORD: "auth/forgot-password",
+  AUTH_RESET_PASSWORD: "auth/reset-password",
 } as const;

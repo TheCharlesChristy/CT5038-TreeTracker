@@ -8,7 +8,7 @@ const { createApiRouter } = require("./routes/api");
 const { createLogger, sanitizeForLog, serializeError } = require("./logging");
 const { DEFAULT_UPLOADS_DIR, ensureUploadsDirExists } = require("./routes/api/uploads");
 
-const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_JSON_BODY_BYTES = 1 * 1024 * 1024;
 const logger = createLogger("http");
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -31,7 +31,7 @@ const MIME_TYPES = {
 
 function applyCorsHeaders(res) {
   res.setHeader("access-control-allow-origin", "*");
-  res.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+  res.setHeader("access-control-allow-methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   res.setHeader("access-control-allow-headers", "content-type,authorization");
   res.setHeader("access-control-max-age", "86400");
 }
@@ -362,6 +362,7 @@ function createRequestId() {
 function createHttpServer({
   port,
   db,
+  frontendUrl = null,
   dbTestBenchEnabled = false,
   dbTestBenchToken = null,
   expoProxyEnabled = false,
@@ -431,6 +432,7 @@ function createHttpServer({
 
   app.use(express.json({ limit: MAX_JSON_BODY_BYTES }));
   app.use(express.urlencoded({ extended: true, limit: MAX_JSON_BODY_BYTES }));
+  // The global error handler at the bottom already handles entity too large. Which is why this block is removed
   app.use("/uploads", express.static(DEFAULT_UPLOADS_DIR));
 
   app.use(createHealthRouter({ db }));
@@ -444,7 +446,8 @@ function createHttpServer({
     createApiRouter({
       db,
       uploadsDir: DEFAULT_UPLOADS_DIR,
-      uploadPublicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || null
+      uploadPublicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || null,
+      frontendUrl: frontendUrl ?? process.env.FRONTEND_URL ?? null
     })
   );
 
