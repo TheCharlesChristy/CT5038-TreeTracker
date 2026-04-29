@@ -12,6 +12,7 @@ import {
   REGION_RING_LEAFLET,
   TILE_MAX_NATIVE_ZOOM,
 } from './MapComponent.types';
+import { fetchOtmTreesInBbox, OtmTree } from '@/lib/otmApi';
 
 type LeafletModule = typeof import('leaflet');
 type LeafletMapInstance = InstanceType<LeafletModule['Map']>;
@@ -45,6 +46,23 @@ const ensureLeafletCss = () => {
   document.head.appendChild(link);
 };
 
+function getOtmMarkerIconHtml(selected = false): string {
+  const size = selected ? 44 : 36;
+  return `<div style="
+    width:${size}px;height:${size}px;border-radius:50%;
+    background:rgba(202,104,20,0.88);
+    border:2.5px solid rgba(255,220,180,0.9);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(120,60,0,0.35);
+    cursor:pointer;
+  ">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="5" fill="rgba(255,255,255,0.9)"/>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="rgba(255,255,255,0.5)"/>
+    </svg>
+  </div>`;
+}
+
 export default function MapComponentWeb({
   onPress,
   onTreeClick,
@@ -62,8 +80,12 @@ export default function MapComponentWeb({
   const mapInstance = useRef<LeafletMapInstance | null>(null);
   const treeLayer = useRef<LeafletLayerGroupInstance | null>(null);
   const selectedLocationLayer = useRef<LeafletLayerGroupInstance | null>(null);
+  const otmLayer = useRef<LeafletLayerGroupInstance | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(MIN_ZOOM);
+  const [showOtmTrees, setShowOtmTrees] = useState(true);
+  const [otmTrees, setOtmTrees] = useState<OtmTree[]>([]);
+  const [selectedOtmTree, setSelectedOtmTree] = useState<OtmTree | null>(null);
 
   useEffect(() => {
     onPressRef.current = onPress;
@@ -120,6 +142,38 @@ export default function MapComponentWeb({
       });
     });
   }, [buildIconHtml, onTreeClick, plottedTrees]);
+
+  const syncOtmMarkers = useCallback(() => {
+    if (!otmLayer.current || !leafletRef.current) return;
+    const Leaflet = leafletRef.current;
+    otmLayer.current.clearLayers();
+    if (!showOtmTrees) return;
+
+    otmTrees.forEach((tree) => {
+      const icon = Leaflet.divIcon({
+        html: getOtmMarkerIconHtml(false),
+        className: '',
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+      const marker = Leaflet.marker([tree.latitude, tree.longitude], { icon }).addTo(otmLayer.current!);
+      const speciesLabel = tree.species ?? 'Unknown species';
+      const diameterLabel = tree.diameter != null ? `${tree.diameter}" DBH` : '';
+      const conditionLabel = tree.condition ?? '';
+      const otmLink = tree.otmUrl ? `<a href="${tree.otmUrl}" target="_blank" rel="noopener noreferrer" style="color:#b45309;">View on OTM ↗</a>` : '';
+      marker.bindPopup(`
+        <div style="min-width:180px;font-family:sans-serif;font-size:13px;">
+          <div style="font-weight:700;color:#92400e;margin-bottom:4px;">${speciesLabel}</div>
+          ${tree.scientificName ? `<div style="font-style:italic;color:#6b7280;margin-bottom:4px;">${tree.scientificName}</div>` : ''}
+          ${diameterLabel ? `<div style="color:#374151;">Diameter: ${diameterLabel}</div>` : ''}
+          ${conditionLabel ? `<div style="color:#374151;">Condition: ${conditionLabel}</div>` : ''}
+          <div style="margin-top:6px;font-size:11px;color:#9ca3af;">Source: OpenTreeMap</div>
+          ${otmLink ? `<div style="margin-top:4px;">${otmLink}</div>` : ''}
+        </div>
+      `);
+      marker.on('click', () => setSelectedOtmTree(tree));
+    });
+  }, [showOtmTrees, otmTrees]);
 
   const syncSelectedLocationMarker = useCallback(() => {
     if (!selectedLocationLayer.current || !leafletRef.current) {
@@ -220,6 +274,7 @@ export default function MapComponentWeb({
       }).addTo(map);
 
       treeLayer.current = Leaflet.layerGroup().addTo(map);
+      otmLayer.current = Leaflet.layerGroup().addTo(map);
       selectedLocationLayer.current = Leaflet.layerGroup().addTo(map);
       mapInstance.current = map;
       setCurrentZoom(map.getZoom());
@@ -284,10 +339,39 @@ export default function MapComponentWeb({
         mapInstance.current = null;
       }
       treeLayer.current = null;
+      otmLayer.current = null;
       selectedLocationLayer.current = null;
       leafletRef.current = null;
     };
   }, []);
+
+  // Fetch OTM trees whenever the map viewport changes (debounced via moveend)
+  useEffect(() => {
+    if (!isMapReady || !mapInstance.current) return;
+    const map = mapInstance.current;
+
+    const onMoveEnd = () => {
+      const bounds = map.getBounds();
+      fetchOtmTreesInBbox({
+        swLat: bounds.getSouth(),
+        swLng: bounds.getWest(),
+        neLat: bounds.getNorth(),
+        neLng: bounds.getEast(),
+      })
+        .then((trees) => setOtmTrees(trees))
+        .catch(() => {/* OTM unavailable — our trees continue to display normally */});
+    };
+
+    map.on('moveend', onMoveEnd);
+    onMoveEnd(); // initial fetch on mount
+
+    return () => { map.off('moveend', onMoveEnd); };
+  }, [isMapReady]);
+
+  useEffect(() => {
+    if (!isMapReady) return;
+    syncOtmMarkers();
+  }, [isMapReady, syncOtmMarkers]);
 
   useEffect(() => {
     if (!mapInstance.current) {
@@ -314,5 +398,31 @@ export default function MapComponentWeb({
     syncSelectedLocationMarker();
   }, [isMapReady, syncSelectedLocationMarker]);
 
-  return <div ref={mapRef} style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0 }} />;
+  return (
+    <div style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0 }}>
+      <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
+      {/* OTM toggle — bottom-left, above Leaflet controls */}
+      <button
+        onClick={() => setShowOtmTrees((v) => !v)}
+        title={showOtmTrees ? 'Hide OpenTreeMap trees' : 'Show OpenTreeMap trees'}
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          left: 12,
+          zIndex: 1000,
+          padding: '6px 10px',
+          borderRadius: 8,
+          border: '1px solid rgba(202,104,20,0.6)',
+          background: showOtmTrees ? 'rgba(202,104,20,0.88)' : 'rgba(255,255,255,0.9)',
+          color: showOtmTrees ? '#fff' : '#92400e',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+        }}
+      >
+        {showOtmTrees ? '🌳 OTM: On' : '🌳 OTM: Off'}
+      </button>
+    </div>
+  );
 }
