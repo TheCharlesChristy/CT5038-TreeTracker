@@ -199,7 +199,7 @@ function TreeOverview({
   activityCount: number;
   healthLabel: string;
   healthIcon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-  healthTone: 'healthy' | 'attention';
+  healthTone: 'healthy' | 'ok' | 'attention';
   observationItems: ActivityItem[];
 }) {
   const primaryPhoto = photos[0]?.image_url;
@@ -230,20 +230,30 @@ function TreeOverview({
               styles.healthBadge,
               healthTone === 'attention'
                 ? styles.healthBadgeAttention
-                : styles.healthBadgeHealthy,
+                : healthTone === 'ok'
+                  ? styles.healthBadgeOk
+                  : styles.healthBadgeHealthy,
             ]}
           >
             <MaterialCommunityIcons
               name={healthIcon}
               size={14}
-              color={healthTone === 'attention' ? '#8C2D04' : '#165B2A'}
+              color={
+                healthTone === 'attention'
+                  ? '#8C2D04'
+                  : healthTone === 'ok'
+                    ? '#7A5200'
+                    : '#165B2A'
+              }
             />
             <AppText
               style={[
                 styles.healthBadgeText,
                 healthTone === 'attention'
                   ? styles.healthBadgeTextAttention
-                  : styles.healthBadgeTextHealthy,
+                  : healthTone === 'ok'
+                    ? styles.healthBadgeTextOk
+                    : styles.healthBadgeTextHealthy,
               ]}
             >
               {healthLabel}
@@ -631,13 +641,37 @@ export default function TreeDetailsDashboard({
   }, [tree.id, tree.photos]);
 
   const needsAttention = cleanText(tree.disease).length > 0;
-  const healthLabel = tree.health
-    ? tree.health.replace(/^./, (letter) => letter.toUpperCase())
-    : needsAttention
-      ? 'Needs attention'
-      : 'Healthy';
-  const healthIcon = needsAttention ? 'alert-circle-outline' : 'check-decagram-outline';
-  const healthTone = needsAttention ? 'attention' : 'healthy';
+
+  const HEALTH_LABEL_MAP: Record<string, string> = {
+    excellent: 'Excellent',
+    good: 'Good',
+    ok: 'OK',
+    bad: 'Poor',
+    terrible: 'Critical',
+  };
+
+  const HEALTH_ICON_MAP: Record<string, React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
+    excellent: 'check-decagram',
+    good: 'check-circle-outline',
+    ok: 'minus-circle-outline',
+    bad: 'alert-circle-outline',
+    terrible: 'close-circle-outline',
+  };
+
+  const healthKey = tree.health ?? '';
+  const healthLabel = HEALTH_LABEL_MAP[healthKey]
+    ?? (needsAttention ? 'Needs Attention' : 'Healthy');
+
+  const healthIcon = HEALTH_ICON_MAP[healthKey]
+    ?? (needsAttention ? 'alert-circle-outline' : 'check-decagram-outline');
+
+  const isUnhealthyValue = healthKey === 'bad' || healthKey === 'terrible';
+  const healthTone: 'healthy' | 'ok' | 'attention' =
+    isUnhealthyValue || needsAttention
+      ? 'attention'
+      : healthKey === 'ok'
+        ? 'ok'
+        : 'healthy';
 
   const commentItems = activityItems.filter(isCommentActivity);
   const observationItems = activityItems.filter(isObservationActivity);
@@ -1316,11 +1350,19 @@ const styles = StyleSheet.create({
   healthBadgeHealthy: {
     borderWidth: 1,
     borderColor: '#B5D9BF',
+    backgroundColor: 'rgba(220, 245, 225, 0.92)',
+  },
+
+  healthBadgeOk: {
+    borderWidth: 1,
+    borderColor: '#E8C96A',
+    backgroundColor: 'rgba(255, 248, 220, 0.92)',
   },
 
   healthBadgeAttention: {
     borderWidth: 1,
     borderColor: '#F3C6B3',
+    backgroundColor: 'rgba(255, 235, 225, 0.92)',
   },
 
   healthBadgeText: {
@@ -1330,6 +1372,10 @@ const styles = StyleSheet.create({
 
   healthBadgeTextHealthy: {
     color: '#165B2A',
+  },
+
+  healthBadgeTextOk: {
+    color: '#7A5200',
   },
 
   healthBadgeTextAttention: {
