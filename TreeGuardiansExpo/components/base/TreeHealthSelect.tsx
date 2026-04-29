@@ -7,7 +7,7 @@ import { Theme } from '@/styles';
 export type TreeHealth = 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
 export type TreeHealthFilterOption = 'all' | 'healthy' | 'attention';
 
-type SelectOption<T extends string> = {
+export type SelectOption<T extends string> = {
   value: T;
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -16,7 +16,7 @@ type SelectOption<T extends string> = {
   textColor: string;
 };
 
-const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
+export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'excellent',
     label: 'Excellent',
@@ -58,6 +58,14 @@ const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
     textColor: '#8F2520',
   },
 ];
+
+export function getTreeHealthOption(value?: TreeHealth) {
+  return (
+    TREE_HEALTH_OPTIONS.find((option) => option.value === value) ??
+    TREE_HEALTH_OPTIONS.find((option) => option.value === 'ok') ??
+    TREE_HEALTH_OPTIONS[0]
+  );
+}
 
 const TREE_HEALTH_FILTER_OPTIONS: SelectOption<TreeHealthFilterOption>[] = [
   {

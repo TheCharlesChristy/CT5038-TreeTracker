@@ -16,6 +16,7 @@ import { AppButton } from './AppButton';
 import { AppText } from './AppText';
 import { StatusMessageBox, StatusMessage } from './StatusMessageBox';
 import { TreeDataStats } from './TreeDataStats';
+import { getTreeHealthOption } from './TreeHealthSelect';
 import { Tree, TreePhoto } from '@/objects/TreeDetails';
 import {
   addTreeComment,
@@ -62,10 +63,6 @@ const TABS: {
   { key: 'photos', label: 'Photos', icon: 'image-multiple-outline' },
   { key: 'activity', label: 'Activity', icon: 'message-badge-outline' },
 ];
-
-function cleanText(value: string | undefined) {
-  return value?.trim() ?? '';
-}
 
 function formatFeedMeta(item: TreeFeedItem): string {
   const username = item.username?.trim() || 'Unknown user';
@@ -187,18 +184,14 @@ function TreeOverview({
   photos,
   photoCount,
   activityCount,
-  healthLabel,
-  healthIcon,
-  healthTone,
+  healthMeta,
   observationItems,
 }: {
   tree: Tree;
   photos: TreePhoto[];
   photoCount: number;
   activityCount: number;
-  healthLabel: string;
-  healthIcon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-  healthTone: 'healthy' | 'attention';
+  healthMeta: ReturnType<typeof getTreeHealthOption>;
   observationItems: ActivityItem[];
 }) {
   const primaryPhoto = photos[0]?.image_url;
@@ -226,25 +219,19 @@ function TreeOverview({
           <View
             style={[
               styles.healthBadge,
-              healthTone === 'attention'
-                ? styles.healthBadgeAttention
-                : styles.healthBadgeHealthy,
+              {
+                borderColor: healthMeta.borderColor,
+                backgroundColor: healthMeta.backgroundColor,
+              },
             ]}
           >
             <MaterialCommunityIcons
-              name={healthIcon}
-              size={14}
-              color={healthTone === 'attention' ? '#8C2D04' : '#165B2A'}
+              name={healthMeta.icon}
+              size={16}
+              color={healthMeta.textColor}
             />
-            <AppText
-              style={[
-                styles.healthBadgeText,
-                healthTone === 'attention'
-                  ? styles.healthBadgeTextAttention
-                  : styles.healthBadgeTextHealthy,
-              ]}
-            >
-              {healthLabel}
+            <AppText style={[styles.healthBadgeText, { color: healthMeta.textColor }]}>
+              {healthMeta.label}
             </AppText>
           </View>
         </View>
@@ -649,14 +636,7 @@ export default function TreeDetailsDashboard({
     setPhotos(tree.photos ?? []);
   }, [tree.id, tree.photos]);
 
-  const needsAttention = cleanText(tree.disease).length > 0;
-  const healthLabel = tree.health
-    ? tree.health.replace(/^./, (letter) => letter.toUpperCase())
-    : needsAttention
-      ? 'Needs attention'
-      : 'Healthy';
-  const healthIcon = needsAttention ? 'alert-circle-outline' : 'check-decagram-outline';
-  const healthTone = needsAttention ? 'attention' : 'healthy';
+  const healthMeta = getTreeHealthOption(tree.health);
 
   const commentItems = activityItems.filter(isCommentActivity);
   const observationItems = activityItems.filter(isObservationActivity);
@@ -1075,9 +1055,7 @@ export default function TreeDetailsDashboard({
               photos={photos}
               photoCount={photos.length}
               activityCount={activityItems.length}
-              healthLabel={healthLabel}
-              healthIcon={healthIcon}
-              healthTone={healthTone}
+              healthMeta={healthMeta}
               observationItems={observationItems}
             />
           ) : null}
@@ -1347,33 +1325,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
+    borderRadius: 12,
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-  },
-
-  healthBadgeHealthy: {
-    borderWidth: 1,
-    borderColor: '#B5D9BF',
-  },
-
-  healthBadgeAttention: {
-    borderWidth: 1,
-    borderColor: '#F3C6B3',
   },
 
   healthBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  healthBadgeTextHealthy: {
-    color: '#165B2A',
-  },
-
-  healthBadgeTextAttention: {
-    color: '#8C2D04',
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    lineHeight: 18,
   },
 
   summaryChipRow: {
