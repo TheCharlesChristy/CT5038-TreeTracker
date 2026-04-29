@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Modal,
@@ -16,7 +16,7 @@ import { AppButton } from './AppButton';
 import { AppText } from './AppText';
 import { StatusMessageBox, StatusMessage } from './StatusMessageBox';
 import { TreeDataStats } from './TreeDataStats';
-import { Tree } from '@/objects/TreeDetails';
+import { Tree, TreePhoto } from '@/objects/TreeDetails';
 import {
   addTreeComment,
   deleteTreeComment,
@@ -29,7 +29,6 @@ import {
 } from '@/lib/treeApi';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
-import { TreePhoto } from '@/objects/TreeDetails';
 import { router } from 'expo-router';
 
 type PopupTab = 'overview' | 'photos' | 'activity';
@@ -203,7 +202,6 @@ function TreeOverview({
   observationItems: ActivityItem[];
 }) {
   const primaryPhoto = photos[0]?.image_url;
-  const latestObservation = observationItems[0];
 
   return (
     <View style={styles.sectionStack}>
