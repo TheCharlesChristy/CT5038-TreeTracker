@@ -5,6 +5,8 @@ import {
 	ActivityIndicator,
 	TextInput,
 	ScrollView,
+	type TextStyle,
+	type ViewStyle,
 } from 'react-native';
 import { router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
@@ -21,13 +23,13 @@ const ROLE_LABEL: Record<UserRole, string> = {
 	admin: 'Admin',
 };
 
-const ROLE_BADGE_STYLE: Record<UserRole, object> = {
+const ROLE_BADGE_STYLE: Record<UserRole, ViewStyle> = {
 	registered_user: { backgroundColor: 'rgba(44, 92, 179, 0.12)', borderColor: 'rgba(44, 92, 179, 0.3)' },
 	guardian: { backgroundColor: 'rgba(25, 76, 34, 0.12)', borderColor: 'rgba(25, 76, 34, 0.3)' },
 	admin: { backgroundColor: 'rgba(122, 74, 0, 0.12)', borderColor: 'rgba(122, 74, 0, 0.35)' },
 };
 
-const ROLE_TEXT_STYLE: Record<UserRole, object> = {
+const ROLE_TEXT_STYLE: Record<UserRole, TextStyle> = {
 	registered_user: { color: '#2C5CB3' },
 	guardian: { color: '#194C22' },
 	admin: { color: '#7A4A00' },
@@ -41,10 +43,12 @@ type PasswordForm = {
 
 export default function MyProfilePage() {
 	const { user, isLoading } = useSessionUser();
+	const [profileUser, setProfileUser] = useState(user);
+
 	useEffect(() => {
-	if (!isLoading && !user) {
-		router.replace('/login');
-	}
+		if (!isLoading && !user) {
+			router.replace('/login');
+		}
 	}, [isLoading, user]);
 
 	const [isEditingUsername, setIsEditingUsername] = useState(false);
@@ -53,6 +57,14 @@ export default function MyProfilePage() {
 
 	const [username, setUsername] = useState(user?.username ?? '');
 	const [email, setEmail] = useState(user?.email ?? '');
+
+	useEffect(() => {
+		if (user) {
+			setProfileUser(user);
+			setUsername(user.username);
+			setEmail(user.email ?? '');
+		}
+	}, [user]);
 
 	const [passwordForm, setPasswordForm] = useState<PasswordForm>({
 		currentPassword: '',
@@ -117,6 +129,9 @@ export default function MyProfilePage() {
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
+			setProfileUser(updatedUser);
+			setUsername(updatedUser.username);
+			setEmail(updatedUser.email ?? '');
 			setUsernameSuccess('Username updated successfully.');
 			setIsEditingUsername(false);
 		} catch (error) {
@@ -155,6 +170,9 @@ export default function MyProfilePage() {
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
+			setProfileUser(updatedUser);
+			setUsername(updatedUser.username);
+			setEmail(updatedUser.email ?? '');
 			setEmailSuccess('Email updated successfully.');
 			setIsEditingEmail(false);
 		} catch (error) {
@@ -219,7 +237,8 @@ export default function MyProfilePage() {
 		}
 	}
 
-	const avatarLetter = user.username.charAt(0).toUpperCase();
+	const currentUser = profileUser ?? user;
+	const avatarLetter = currentUser.username.charAt(0).toUpperCase();
 
 	return (
 		<AppContainer noPadding>
@@ -240,19 +259,19 @@ export default function MyProfilePage() {
 						<View style={styles.avatarCircle}>
 							<AppText style={styles.avatarLetter}>{avatarLetter}</AppText>
 						</View>
-						<AppText style={styles.heroUsername}>{user.username}</AppText>
-						<View style={[styles.roleBadge, ROLE_BADGE_STYLE[user.role]]}>
-							<AppText style={[styles.roleBadgeText, ROLE_TEXT_STYLE[user.role]]}>
-								{ROLE_LABEL[user.role]}
+						<AppText style={styles.heroUsername}>{currentUser.username}</AppText>
+						<View style={[styles.roleBadge, ROLE_BADGE_STYLE[currentUser.role]]}>
+							<AppText style={[styles.roleBadgeText, ROLE_TEXT_STYLE[currentUser.role]]}>
+								{ROLE_LABEL[currentUser.role]}
 							</AppText>
 						</View>
 						<View style={styles.heroMeta}>
 							<View style={styles.heroMetaRow}>
 								<AppText style={styles.heroMetaLabel}>Email</AppText>
-								<AppText style={styles.heroMetaValue}>{user.email ?? 'Not provided'}</AppText>
+								<AppText style={styles.heroMetaValue}>{currentUser.email ?? 'Not provided'}</AppText>
 							</View>
 						</View>
-						<AppText style={styles.userId}>ID #{user.id}</AppText>
+						<AppText style={styles.userId}>ID #{currentUser.id}</AppText>
 					</View>
 
 					{/* Username card */}
@@ -266,7 +285,7 @@ export default function MyProfilePage() {
 										title="Change Username"
 										variant="primary"
 										onPress={() => {
-											setUsername(user.username);
+											setUsername(currentUser.username);
 											setUsernameError(null);
 											setUsernameSuccess(null);
 											setIsEditingUsername(true);
@@ -297,7 +316,7 @@ export default function MyProfilePage() {
 										title="Cancel"
 										variant="secondary"
 										onPress={() => {
-											setUsername(user.username);
+											setUsername(currentUser.username);
 											setUsernameError(null);
 											setUsernameSuccess(null);
 											setIsEditingUsername(false);
@@ -319,7 +338,7 @@ export default function MyProfilePage() {
 										title="Change Email"
 										variant="primary"
 										onPress={() => {
-											setEmail(user.email ?? '');
+											setEmail(currentUser.email ?? '');
 											setEmailError(null);
 											setEmailSuccess(null);
 											setIsEditingEmail(true);
@@ -351,7 +370,7 @@ export default function MyProfilePage() {
 										title="Cancel"
 										variant="secondary"
 										onPress={() => {
-											setEmail(user.email ?? '');
+											setEmail(currentUser.email ?? '');
 											setEmailError(null);
 											setEmailSuccess(null);
 											setIsEditingEmail(false);
