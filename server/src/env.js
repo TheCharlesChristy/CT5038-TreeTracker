@@ -54,12 +54,19 @@ function loadEnvFile(envPath, targetEnv = process.env) {
   const contents = fs.readFileSync(resolvedPath, "utf-8");
   const parsed = parseEnvText(contents);
   const appliedKeys = [];
+  const replacedBlankKeys = [];
   const skippedKeys = [];
 
   for (const [key, value] of Object.entries(parsed)) {
     if (targetEnv[key] === undefined) {
       targetEnv[key] = value;
       appliedKeys.push(key);
+      continue;
+    }
+
+    if (targetEnv[key] === "") {
+      targetEnv[key] = value;
+      replacedBlankKeys.push(key);
       continue;
     }
 
@@ -70,6 +77,7 @@ function loadEnvFile(envPath, targetEnv = process.env) {
     envPath: resolvedPath,
     parsedKeys: Object.keys(parsed).length,
     appliedKeyCount: appliedKeys.length,
+    replacedBlankKeyCount: replacedBlankKeys.length,
     skippedKeyCount: skippedKeys.length
   });
 

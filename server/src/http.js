@@ -386,6 +386,8 @@ function createHttpServer({
 
   logger.info("server.configure", {
     port,
+    frontendUrl,
+    frontendUrlConfigured: Boolean(frontendUrl),
     dbTestBenchEnabled,
     expoProxyEnabled,
     expoStaticEnabled,

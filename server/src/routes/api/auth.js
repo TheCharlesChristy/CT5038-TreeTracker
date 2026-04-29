@@ -79,12 +79,13 @@ function createAuthRoute({ db, frontendUrl }) {
   const router = express.Router();
   
   function getFrontendUrl() {           
-    if (!frontendUrl) {
+    const resolvedFrontendUrl = String(frontendUrl || process.env.FRONTEND_URL || "").trim();
+    if (!resolvedFrontendUrl) {
       throw new AuthConfigurationError("FRONTEND_URL not configured", {
         missingVars: ["FRONTEND_URL"]
       });
     }
-    return frontendUrl.replace(/\/+$/, "");
+    return resolvedFrontendUrl.replace(/\/+$/, "");
   }
   
   function signActionToken(payload, expiresIn) {

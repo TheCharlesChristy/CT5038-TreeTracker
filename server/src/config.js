@@ -27,6 +27,16 @@ function required(name) {
   return value;
 }
 
+function optionalTrimmed(name) {
+  const value = process.env[name];
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const trimmed = String(value).trim();
+  return trimmed || null;
+}
+
 function loadConfig() {
   const root = path.resolve(__dirname, "..", "..");
   const startExpo = parseBool("START_EXPO", process.env.NODE_ENV !== "production");
@@ -36,6 +46,7 @@ function loadConfig() {
     nodeEnv: process.env.NODE_ENV || "development",
     port: parseNumber("PORT", 4000),
     jwtSecret: required("JWT_SECRET"),
+    frontendUrl: optionalTrimmed("FRONTEND_URL"),
     db: {
       host: required("DB_HOST"),
       port: parseNumber("DB_PORT", 3306),
@@ -74,6 +85,8 @@ function loadConfig() {
     expoStaticEnabled: config.expoStaticEnabled,
     expoWebDistPath: config.expoWebDistPath,
     expoAutoPrepare: config.expoAutoPrepare,
+    frontendUrl: config.frontendUrl,
+    frontendUrlConfigured: Boolean(config.frontendUrl),
     jwtSecretConfigured: Boolean(config.jwtSecret),
     seedDevUsersEnabled: config.seedDevUsersEnabled,
     dbTestBenchEnabled: config.dbTestBenchEnabled,
