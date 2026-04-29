@@ -13,7 +13,25 @@ import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
-import { updateUsername, updateEmail, updatePassword } from '@/utilities/authHelper';
+import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
+
+const ROLE_LABEL: Record<UserRole, string> = {
+	registered_user: 'Member',
+	guardian: 'Guardian',
+	admin: 'Admin',
+};
+
+const ROLE_BADGE_STYLE: Record<UserRole, object> = {
+	registered_user: { backgroundColor: '#EEF4FF', borderColor: '#C3D5F5' },
+	guardian: { backgroundColor: '#EEFAF0', borderColor: '#B8D8BC' },
+	admin: { backgroundColor: '#FFF4E5', borderColor: '#F5C97A' },
+};
+
+const ROLE_TEXT_STYLE: Record<UserRole, object> = {
+	registered_user: { color: '#2C5CB3' },
+	guardian: { color: '#194C22' },
+	admin: { color: '#7A4A00' },
+};
 
 type PasswordForm = {
 	currentPassword: string;
@@ -222,10 +240,23 @@ export default function MyProfilePage() {
 					<AppText variant="subtitle" style={styles.sectionTitle}>
 						Account Overview
 					</AppText>
-					<AppText style={styles.body}>Username: {user.username}</AppText>
-					<AppText style={styles.body}>Email: {user.email ?? 'Not provided'}</AppText>
-					<AppText style={styles.body}>Role: {user.role}</AppText>
-					<AppText style={styles.body}>User ID: {user.id}</AppText>
+					<View style={styles.overviewRow}>
+						<AppText style={styles.overviewLabel}>Username</AppText>
+						<AppText style={styles.overviewValue}>{user.username}</AppText>
+					</View>
+					<View style={styles.overviewRow}>
+						<AppText style={styles.overviewLabel}>Email</AppText>
+						<AppText style={styles.overviewValue}>{user.email ?? 'Not provided'}</AppText>
+					</View>
+					<View style={styles.overviewRow}>
+						<AppText style={styles.overviewLabel}>Role</AppText>
+						<View style={[styles.roleBadge, ROLE_BADGE_STYLE[user.role]]}>
+							<AppText style={[styles.roleBadgeText, ROLE_TEXT_STYLE[user.role]]}>
+								{ROLE_LABEL[user.role]}
+							</AppText>
+						</View>
+					</View>
+					<AppText style={styles.userId}>ID #{user.id}</AppText>
 				</View>
 
 				<View style={styles.card}>
@@ -498,5 +529,42 @@ const styles = StyleSheet.create({
 	successText: {
 		marginTop: Theme.Spacing.small,
 		color: '#027A48',
+	},
+	overviewRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		paddingVertical: 6,
+		borderBottomWidth: 1,
+		borderBottomColor: '#EAF0EA',
+	},
+	overviewLabel: {
+		color: Theme.Colours.textMuted,
+		fontSize: 13,
+	},
+	overviewValue: {
+		color: Theme.Colours.textPrimary,
+		fontSize: 13,
+		fontFamily: 'Poppins_600SemiBold',
+		flexShrink: 1,
+		textAlign: 'right',
+		marginLeft: 8,
+	},
+	roleBadge: {
+		borderWidth: 1,
+		borderRadius: 20,
+		paddingHorizontal: 10,
+		paddingVertical: 2,
+	},
+	roleBadgeText: {
+		fontSize: 12,
+		fontFamily: 'Poppins_600SemiBold',
+	},
+	userId: {
+		marginTop: 8,
+		fontSize: 11,
+		color: Theme.Colours.textMuted,
+		opacity: 0.6,
+		textAlign: 'right',
 	},
 });
