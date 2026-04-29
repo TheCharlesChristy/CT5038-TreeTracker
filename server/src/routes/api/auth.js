@@ -13,6 +13,49 @@ function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.auth", extra) : logger.child(extra);
 }
 
+function shouldReturnVerboseEmailErrors() {
+  if (process.env.HTTP_VERBOSE_ERRORS === "1") {
+    return true;
+  }
+
+  if (process.env.HTTP_VERBOSE_ERRORS === "0") {
+    return false;
+  }
+
+  return process.env.NODE_ENV === "development";
+}
+
+function buildEmailErrorPayload(error, fallbackMessage) {
+  const statusCode = error?.statusCode || 500;
+  const payload = {
+    error: fallbackMessage,
+    code: error?.name || error?.code || "EmailSendFailed"
+  };
+
+  if (shouldReturnVerboseEmailErrors()) {
+    payload.debug = {
+      message: error?.message || null,
+      details: error?.details || null
+    };
+
+    if (error?.cause) {
+      payload.debug.cause = {
+        name: error.cause.name || null,
+        code: error.cause.code || null,
+        command: error.cause.command || null,
+        responseCode: error.cause.responseCode || null,
+        response: error.cause.response || null,
+        message: error.cause.message || null
+      };
+    }
+  }
+
+  return {
+    statusCode,
+    payload
+  };
+}
+
 function createAuthRoute({ db, frontendUrl }) {
   const router = express.Router();
   
@@ -107,7 +150,9 @@ function createAuthRoute({ db, frontendUrl }) {
         } catch (emailError) {
           routeLog.warn("register.email_send_failed", {
             userId: user.id,
-            error: emailError.message
+            code: emailError.code || null,
+            error: emailError.message,
+            details: emailError.details || null
           });
         }
       }
@@ -237,12 +282,29 @@ function createAuthRoute({ db, frontendUrl }) {
 
       const resetUrl = `${getFrontendUrl()}/reset-password?token=${resetToken}`;
 
-      await sendEmail({
-        to: email,
-        subject: "Reset your password",
-        html: `<h3>Reset your password</h3>
-               <a href="${resetUrl}">Reset Password</a>`
-      });
+      try {
+        await sendEmail({
+          to: email,
+          subject: "Reset your password",
+          html: `<h3>Reset your password</h3>
+                 <a href="${resetUrl}">Reset Password</a>`
+        });
+      } catch (emailError) {
+        const { statusCode, payload } = buildEmailErrorPayload(
+          emailError,
+          "Could not send password reset email. Check the server mail configuration."
+        );
+
+        routeLog.error("forgot.email_send_failed", {
+          userId: user.id,
+          email,
+          code: emailError.code || null,
+          error: emailError.message,
+          details: emailError.details || null
+        });
+
+        return res.status(statusCode).json(payload);
+      }
 
       routeLog.info("forgot.email_sent", { userId: user.id });
 

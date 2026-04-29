@@ -623,3 +623,85 @@ test("legacy auth routes register login and return /api/me", async () => {
     }
   }
 });
+
+test("forgot password reports mail configuration failures clearly", async () => {
+  const previousSecret = process.env.JWT_SECRET;
+  const previousVerboseErrors = process.env.HTTP_VERBOSE_ERRORS;
+  const previousSmtp = {
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_FROM: process.env.SMTP_FROM
+  };
+
+  process.env.JWT_SECRET = "unit-test-secret";
+  process.env.HTTP_VERBOSE_ERRORS = "1";
+  delete process.env.SMTP_HOST;
+  delete process.env.SMTP_PORT;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASS;
+  delete process.env.SMTP_FROM;
+
+  const db = {
+    health: async () => ({ ready: true }),
+    users: {
+      getByEmail: async (email) => (
+        email === "charles@example.com"
+          ? { id: 1, username: "charles", email: "charles@example.com" }
+          : null
+      ),
+      getById: async () => null
+    },
+    trees: { list: async () => [] },
+    userSessions: { deleteByToken: async () => ({ deleted: true }) }
+  };
+
+  const httpServer = createHttpServer({ port: 0, db, frontendUrl: "https://trees.example.com" });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+
+  try {
+    const response = await sendRequest({
+      port,
+      method: "POST",
+      path: "/api/auth/forgot-password",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "charles@example.com" })
+    });
+
+    assert.equal(response.status, 503);
+    assert.equal(response.body.code, "EmailConfigurationError");
+    assert.match(response.body.error, /Could not send password reset email/);
+    assert.deepEqual(response.body.debug.details.missingVars, [
+      "SMTP_HOST",
+      "SMTP_PORT",
+      "SMTP_USER",
+      "SMTP_PASS",
+      "SMTP_FROM"
+    ]);
+  } finally {
+    await httpServer.stop();
+
+    if (previousSecret === undefined) {
+      delete process.env.JWT_SECRET;
+    } else {
+      process.env.JWT_SECRET = previousSecret;
+    }
+
+    if (previousVerboseErrors === undefined) {
+      delete process.env.HTTP_VERBOSE_ERRORS;
+    } else {
+      process.env.HTTP_VERBOSE_ERRORS = previousVerboseErrors;
+    }
+
+    for (const [key, value] of Object.entries(previousSmtp)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+});
