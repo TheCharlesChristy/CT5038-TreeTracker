@@ -67,8 +67,18 @@ function getToneStyles(tone: StatTone) {
   };
 }
 
-export function TreeDataStats({ tree }: { tree: Tree }) {
+type OtmBenefits = Record<string, number> | null | undefined;
+
+function resolveEcoValue(otmKey: string, treeValue: number | undefined, otmBenefits: OtmBenefits): number | undefined {
+  if (otmBenefits && typeof otmBenefits[otmKey] === 'number') {
+    return otmBenefits[otmKey];
+  }
+  return treeValue;
+}
+
+export function TreeDataStats({ tree, otmBenefits }: { tree: Tree; otmBenefits?: OtmBenefits }) {
   const treeHealthMeta = getTreeHealthOption(tree.health);
+  const hasOtmData = Boolean(otmBenefits && Object.keys(otmBenefits).length > 0);
 
   const items = useMemo<StatItem[]>(() => ([
     {
@@ -106,7 +116,7 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'avoidedRunoff',
       label: 'Avoided Runoff',
-      value: tree.avoidedRunoff,
+      value: resolveEcoValue('avoided_runoff', tree.avoidedRunoff, otmBenefits),
       unit: 'm3',
       tone: 'environment',
       icon: 'waves-arrow-up',
@@ -114,7 +124,7 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'carbonDioxideStored',
       label: 'CO2 Stored',
-      value: tree.carbonDioxideStored,
+      value: resolveEcoValue('co2_storage', tree.carbonDioxideStored, otmBenefits),
       unit: 'kg',
       tone: 'environment',
       icon: 'molecule-co2',
@@ -122,7 +132,7 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'carbonDioxideRemoved',
       label: 'CO2 Removed',
-      value: tree.carbonDioxideRemoved,
+      value: resolveEcoValue('co2_sequestered', tree.carbonDioxideRemoved, otmBenefits),
       unit: 'kg',
       tone: 'environment',
       icon: 'leaf-circle-outline',
@@ -130,7 +140,7 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'waterIntercepted',
       label: 'Water Intercepted',
-      value: tree.waterIntercepted,
+      value: resolveEcoValue('stormwater', tree.waterIntercepted, otmBenefits),
       unit: 'm3',
       tone: 'environment',
       icon: 'water-outline',
@@ -138,7 +148,7 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'airQualityImprovement',
       label: 'Air Quality Gain',
-      value: tree.airQualityImprovement,
+      value: resolveEcoValue('aq_ozone_dep', tree.airQualityImprovement, otmBenefits),
       unit: 'g/year',
       tone: 'environment',
       icon: 'weather-windy',
@@ -146,7 +156,7 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'leafArea',
       label: 'Leaf Area',
-      value: tree.leafArea,
+      value: resolveEcoValue('leaf_area', tree.leafArea, otmBenefits),
       unit: 'm2',
       tone: 'environment',
       icon: 'leaf',
@@ -154,7 +164,7 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'evapotranspiration',
       label: 'Evapotranspiration',
-      value: tree.evapotranspiration,
+      value: resolveEcoValue('electricity', tree.evapotranspiration, otmBenefits),
       unit: 'm3',
       tone: 'environment',
       icon: 'water-plus',
@@ -177,6 +187,15 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
       <View style={styles.sectionHeader}>
         <AppText style={styles.sectionTitle}>Tree Data</AppText>
       </View>
+      {hasOtmData ? (
+        <AppText style={styles.otmAttribution}>
+          Calculated using iTree / OpenTreeMap data
+        </AppText>
+      ) : tree.otmPlotId ? null : (
+        <AppText style={styles.otmAttribution}>
+          Environmental estimates are approximations — link tree to OpenTreeMap for accurate iTree figures.
+        </AppText>
+      )}
 
       <View style={styles.featuredStack}>
         {featuredItems.map((item) => {
@@ -402,6 +421,14 @@ const styles = StyleSheet.create({
 
   healthBadgeText: {
     color: '#8C2D04',
+  },
+
+  otmAttribution: {
+    ...Theme.Typography.caption,
+    fontSize: 11,
+    color: '#b45309',
+    fontStyle: 'italic',
+    marginTop: -4,
   },
 
   label: {

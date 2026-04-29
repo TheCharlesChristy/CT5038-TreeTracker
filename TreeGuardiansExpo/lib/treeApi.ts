@@ -28,6 +28,7 @@ type ServerTreeItem = {
   leafArea?: number;
   evapotranspiration?: number;
   health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
+  otmPlotId?: string | null;
   photos?: ServerPhoto[];
   latitude?: number;
   longitude?: number;
@@ -156,6 +157,7 @@ const normalizeTree = (
   leafArea: treeItem.leafArea ?? undefined,
   evapotranspiration: treeItem.evapotranspiration ?? undefined,
   health: treeItem.health ?? undefined,
+  otmPlotId: treeItem.otmPlotId ?? null,
   photos: normalizePhotos(treeItem.photos),
   latitude: Number(treeItem.latitude),
   longitude: Number(treeItem.longitude),

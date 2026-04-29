@@ -25,7 +25,8 @@ export type TreeDetails = {
     airQualityImprovement?: number,
     leafArea?: number,
     evapotranspiration?: number,
-    health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible'
+    health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible',
+    otmPlotId?: string | null,
 }
 
 // when the tree is successfully placed

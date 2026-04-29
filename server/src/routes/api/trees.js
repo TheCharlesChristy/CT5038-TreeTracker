@@ -90,6 +90,7 @@ function mapTreeRow(tree, dataRow, seenRows, wildlifeRows, diseaseRows, photos, 
     leafArea: dataRow ? dataRow.leaf_area : null,
     evapotranspiration: dataRow ? dataRow.evapotranspiration : null,
     health: dataRow ? dataRow.health : null,
+    otmPlotId: dataRow ? (dataRow.otm_plot_id ?? null) : null,
     notes: seenRows[0] ? seenRows[0].observation_notes : null,
     wildlife: joinObservationValues(wildlifeRows, "wildlife"),
     disease: joinObservationValues(diseaseRows, "disease"),
@@ -371,7 +372,8 @@ function createTreesRoute({ db, otmSyncQueue }) {
       air_quality_improvement: dataRow ? dataRow.air_quality_improvement : null,
       leaf_area: dataRow ? dataRow.leaf_area : null,
       evapotranspiration: dataRow ? dataRow.evapotranspiration : null,
-      health: dataRow ? dataRow.health : null
+      health: dataRow ? dataRow.health : null,
+      otm_plot_id: dataRow ? (dataRow.otm_plot_id ?? null) : null
     });
   };
 

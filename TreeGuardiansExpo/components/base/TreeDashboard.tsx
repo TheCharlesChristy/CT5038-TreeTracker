@@ -31,6 +31,7 @@ import {
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import { fetchOtmEcoservice } from '@/lib/otmApi';
 
 type PopupTab = 'overview' | 'photos' | 'activity';
 type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
@@ -186,6 +187,7 @@ function TreeOverview({
   activityCount,
   healthMeta,
   observationItems,
+  otmBenefits,
 }: {
   tree: Tree;
   photos: TreePhoto[];
@@ -193,6 +195,7 @@ function TreeOverview({
   activityCount: number;
   healthMeta: ReturnType<typeof getTreeHealthOption>;
   observationItems: ActivityItem[];
+  otmBenefits?: Record<string, number> | null;
 }) {
   const primaryPhoto = photos[0]?.image_url;
 
@@ -263,7 +266,7 @@ function TreeOverview({
         </View>
       </View>
 
-      <TreeDataStats tree={tree} />
+      <TreeDataStats tree={tree} otmBenefits={otmBenefits} />
 
       <View style={styles.sectionStack}>
         <View style={styles.sectionHeaderRow}>
@@ -598,7 +601,17 @@ export default function TreeDetailsDashboard({
   const [photos, setPhotos] = useState<TreePhoto[]>(tree.photos ?? []);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
+  const [otmBenefits, setOtmBenefits] = useState<Record<string, number> | null>(null);
   const deleteRedirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!tree.otmPlotId) return;
+    fetchOtmEcoservice(tree.otmPlotId)
+      .then((result) => {
+        if (result?.benefits) setOtmBenefits(result.benefits as Record<string, number>);
+      })
+      .catch(() => { /* OTM unavailable — fall back to internal estimates silently */ });
+  }, [tree.otmPlotId]);
   const isGuardian = Array.isArray(tree.guardian_user_ids)
     && tree.guardian_user_ids.includes(Number(currentUserId));
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
@@ -1057,6 +1070,7 @@ export default function TreeDetailsDashboard({
               activityCount={activityItems.length}
               healthMeta={healthMeta}
               observationItems={observationItems}
+              otmBenefits={otmBenefits}
             />
           ) : null}
 
