@@ -15,7 +15,8 @@ import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
 import { TreeDataStats } from './TreeDataStats';
-import { Tree } from '@/objects/TreeDetails';
+import { getTreeHealthOption } from './TreeHealthSelect';
+import { Tree, TreePhoto } from '@/objects/TreeDetails';
 import {
   addTreeComment,
   deleteTreeComment,
@@ -29,7 +30,6 @@ import {
 import { showAlert } from '@/utilities/showAlert';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
-import { TreePhoto } from '@/objects/TreeDetails';
 import { router } from 'expo-router';
 
 type PopupTab = 'overview' | 'photos' | 'activity';
@@ -63,10 +63,6 @@ const TABS: {
   { key: 'photos', label: 'Photos', icon: 'image-multiple-outline' },
   { key: 'activity', label: 'Activity', icon: 'message-badge-outline' },
 ];
-
-function cleanText(value: string | undefined) {
-  return value?.trim() ?? '';
-}
 
 function formatFeedMeta(item: TreeFeedItem): string {
   const username = item.username?.trim() || 'Unknown user';
@@ -188,22 +184,17 @@ function TreeOverview({
   photos,
   photoCount,
   activityCount,
-  healthLabel,
-  healthIcon,
-  healthTone,
+  healthMeta,
   observationItems,
 }: {
   tree: Tree;
   photos: TreePhoto[];
   photoCount: number;
   activityCount: number;
-  healthLabel: string;
-  healthIcon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-  healthTone: 'healthy' | 'ok' | 'attention';
+  healthMeta: ReturnType<typeof getTreeHealthOption>;
   observationItems: ActivityItem[];
 }) {
   const primaryPhoto = photos[0]?.image_url;
-  const latestObservation = observationItems[0];
 
   return (
     <View style={styles.sectionStack}>
@@ -228,35 +219,19 @@ function TreeOverview({
           <View
             style={[
               styles.healthBadge,
-              healthTone === 'attention'
-                ? styles.healthBadgeAttention
-                : healthTone === 'ok'
-                  ? styles.healthBadgeOk
-                  : styles.healthBadgeHealthy,
+              {
+                borderColor: healthMeta.borderColor,
+                backgroundColor: healthMeta.backgroundColor,
+              },
             ]}
           >
             <MaterialCommunityIcons
-              name={healthIcon}
-              size={14}
-              color={
-                healthTone === 'attention'
-                  ? '#8C2D04'
-                  : healthTone === 'ok'
-                    ? '#7A5200'
-                    : '#165B2A'
-              }
+              name={healthMeta.icon}
+              size={16}
+              color={healthMeta.textColor}
             />
-            <AppText
-              style={[
-                styles.healthBadgeText,
-                healthTone === 'attention'
-                  ? styles.healthBadgeTextAttention
-                  : healthTone === 'ok'
-                    ? styles.healthBadgeTextOk
-                    : styles.healthBadgeTextHealthy,
-              ]}
-            >
-              {healthLabel}
+            <AppText style={[styles.healthBadgeText, { color: healthMeta.textColor }]}>
+              {healthMeta.label}
             </AppText>
           </View>
         </View>
@@ -640,38 +615,7 @@ export default function TreeDetailsDashboard({
     setPhotos(tree.photos ?? []);
   }, [tree.id, tree.photos]);
 
-  const needsAttention = cleanText(tree.disease).length > 0;
-
-  const HEALTH_LABEL_MAP: Record<string, string> = {
-    excellent: 'Excellent',
-    good: 'Good',
-    ok: 'OK',
-    bad: 'Poor',
-    terrible: 'Critical',
-  };
-
-  const HEALTH_ICON_MAP: Record<string, React.ComponentProps<typeof MaterialCommunityIcons>['name']> = {
-    excellent: 'check-decagram',
-    good: 'check-circle-outline',
-    ok: 'minus-circle-outline',
-    bad: 'alert-circle-outline',
-    terrible: 'close-circle-outline',
-  };
-
-  const healthKey = tree.health ?? '';
-  const healthLabel = HEALTH_LABEL_MAP[healthKey]
-    ?? (needsAttention ? 'Needs Attention' : 'Healthy');
-
-  const healthIcon = HEALTH_ICON_MAP[healthKey]
-    ?? (needsAttention ? 'alert-circle-outline' : 'check-decagram-outline');
-
-  const isUnhealthyValue = healthKey === 'bad' || healthKey === 'terrible';
-  const healthTone: 'healthy' | 'ok' | 'attention' =
-    isUnhealthyValue || needsAttention
-      ? 'attention'
-      : healthKey === 'ok'
-        ? 'ok'
-        : 'healthy';
+  const healthMeta = getTreeHealthOption(tree.health);
 
   const commentItems = activityItems.filter(isCommentActivity);
   const observationItems = activityItems.filter(isObservationActivity);
@@ -1069,9 +1013,7 @@ export default function TreeDetailsDashboard({
               photos={photos}
               photoCount={photos.length}
               activityCount={activityItems.length}
-              healthLabel={healthLabel}
-              healthIcon={healthIcon}
-              healthTone={healthTone}
+              healthMeta={healthMeta}
               observationItems={observationItems}
             />
           ) : null}
@@ -1341,45 +1283,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
+    borderRadius: 12,
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-  },
-
-  healthBadgeHealthy: {
-    borderWidth: 1,
-    borderColor: '#B5D9BF',
-    backgroundColor: 'rgba(220, 245, 225, 0.92)',
-  },
-
-  healthBadgeOk: {
-    borderWidth: 1,
-    borderColor: '#E8C96A',
-    backgroundColor: 'rgba(255, 248, 220, 0.92)',
-  },
-
-  healthBadgeAttention: {
-    borderWidth: 1,
-    borderColor: '#F3C6B3',
-    backgroundColor: 'rgba(255, 235, 225, 0.92)',
   },
 
   healthBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  healthBadgeTextHealthy: {
-    color: '#165B2A',
-  },
-
-  healthBadgeTextOk: {
-    color: '#7A5200',
-  },
-
-  healthBadgeTextAttention: {
-    color: '#8C2D04',
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    lineHeight: 18,
   },
 
   summaryChipRow: {
