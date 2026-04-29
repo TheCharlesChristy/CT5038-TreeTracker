@@ -82,8 +82,21 @@ CREATE TABLE IF NOT EXISTS tree_data (
     trunk_diameter decimal(10,2) NULL, -- cm
     tree_height decimal(10,2) NULL, -- m
     health enum('excellent','good','ok','bad','terrible') NULL, -- health rating (categorical)
+    otm_plot_id varchar(64) NULL, -- OTM Plot ID after successful sync
+    otm_sync_status enum('pending','synced','failed','needs_review') NULL, -- OTM contribution status
     CONSTRAINT fk_data_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE
+) engine = InnoDB;
+
+-- OTM species cache
+CREATE TABLE IF NOT EXISTS otm_species (
+    id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
+    otm_id varchar(64) NOT NULL UNIQUE,
+    common_name varchar(255) NOT NULL,
+    scientific_name varchar(255) NOT NULL,
+    usda_symbol varchar(32) NOT NULL,
+    itree_code varchar(32) NOT NULL,
+    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) engine = InnoDB;
 
 -- Relationship: Users watching over specific trees

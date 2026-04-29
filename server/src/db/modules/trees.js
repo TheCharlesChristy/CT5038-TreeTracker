@@ -301,6 +301,24 @@ function createTreeEndpoints(ctx) {
     async list(params = {}, tx) {
       const { limit, offset } = normalizeListParams(params);
       return run(runtimeExecutor(tx), "SELECT * FROM tree_data ORDER BY id DESC LIMIT ? OFFSET ?", [limit, offset]);
+    },
+
+    async setOtmPlotId(treeId, plotId, tx) {
+      ensurePositiveInt("treeId", treeId);
+      await run(
+        runtimeExecutor(tx),
+        "UPDATE tree_data SET otm_plot_id = ?, otm_sync_status = 'synced' WHERE tree_id = ?",
+        [String(plotId), treeId]
+      );
+    },
+
+    async setOtmSyncStatus(treeId, status, tx) {
+      ensurePositiveInt("treeId", treeId);
+      await run(
+        runtimeExecutor(tx),
+        "UPDATE tree_data SET otm_sync_status = ? WHERE tree_id = ?",
+        [status, treeId]
+      );
     }
   };
 

@@ -108,7 +108,7 @@ function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.trees", extra) : logger.child(extra);
 }
 
-function createTreesRoute({ db }) {
+function createTreesRoute({ db, otmSyncQueue }) {
   const router = express.Router();
 
   const createTreeHandler = async (req, res) => {
@@ -216,9 +216,19 @@ function createTreesRoute({ db }) {
       return tree.id;
     });
 
-    routeLog.info("tree.create.success", {
-      treeId
-    });
+    routeLog.info("tree.create.success", { treeId });
+
+    if (otmSyncQueue) {
+      otmSyncQueue.enqueue({
+        treeId,
+        latitude,
+        longitude,
+        species: treeDataFields.treeSpecies,
+        diameterCm: treeDataFields.trunkDiameter || null,
+        health: treeDataFields.health,
+        createdAt: new Date()
+      });
+    }
 
     res.json({ success: true, tree_id: treeId });
   };

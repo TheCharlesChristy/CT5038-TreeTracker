@@ -7,6 +7,10 @@ const { createDbTestBenchRouter } = require("./routes/db-testbench");
 const { createApiRouter } = require("./routes/api");
 const { createLogger, sanitizeForLog, serializeError } = require("./logging");
 const { DEFAULT_UPLOADS_DIR, ensureUploadsDirExists } = require("./routes/api/uploads");
+const { loadOtmConfig } = require("./otm/config");
+const { createOtmClient } = require("./otm/client");
+const { createTtlCache } = require("./otm/cache");
+const { createOtmSyncQueue } = require("./otm/syncQueue");
 
 const MAX_JSON_BODY_BYTES = 1 * 1024 * 1024;
 const logger = createLogger("http");
@@ -370,6 +374,11 @@ function createHttpServer({
   expoWebDistPath = null,
   expoProxyTarget = null
 }) {
+  const otmConfig = loadOtmConfig();
+  const otmClient = createOtmClient(otmConfig);
+  const otmTreeCache = createTtlCache(otmConfig.cacheTtlMs);
+  const otmSpeciesCache = createTtlCache(otmConfig.speciesCacheTtlMs);
+  const otmSyncQueue = createOtmSyncQueue({ otmClient, otmConfig, db });
   if (dbTestBenchEnabled && !dbTestBenchToken) {
     throw new Error(
       "DB_TEST_BENCH_ENABLED is set but no DB_TEST_BENCH_TOKEN was provided. " +
@@ -447,7 +456,12 @@ function createHttpServer({
       db,
       uploadsDir: DEFAULT_UPLOADS_DIR,
       uploadPublicBaseUrl: process.env.UPLOAD_PUBLIC_BASE_URL || null,
-      frontendUrl: frontendUrl ?? process.env.FRONTEND_URL ?? null
+      frontendUrl: frontendUrl ?? process.env.FRONTEND_URL ?? null,
+      otmClient,
+      otmConfig,
+      otmTreeCache,
+      otmSpeciesCache,
+      otmSyncQueue
     })
   );
 
