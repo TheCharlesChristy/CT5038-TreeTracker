@@ -11,8 +11,8 @@ import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
+import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { Theme } from '@/styles/theme';
-import { showAlert } from '@/utilities/showAlert';
 import { showConfirm } from '@/utilities/showConfirm';
 import { canAccessManageUsers, useSessionUser } from '@/lib/session';
 import {
@@ -41,6 +41,16 @@ export default function ManageUsersPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [treeInputByUser, setTreeInputByUser] = useState<Record<number, string>>({});
 	const [searchQuery, setSearchQuery] = useState('');
+	const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
+
+	const showStatusMessage = (title: string, message: string, variant: 'success' | 'error') => {
+		setStatusMessage({
+			title,
+			message,
+			variant,
+			createdAt: Date.now(),
+		});
+	};
 
 	const loadData = useCallback(async () => {
 		try {
@@ -109,7 +119,11 @@ export default function ManageUsersPage() {
 			await updateUserRole(targetUser.id, role);
 			await loadData();
 		} catch (err) {
-			showAlert('Role update failed', err instanceof Error ? err.message : 'Unknown error.');
+			showStatusMessage(
+				'Role update failed',
+				err instanceof Error ? err.message : 'Unknown error.',
+				'error'
+			);
 		} finally {
 			setBusyKey(null);
 		}
@@ -119,14 +133,14 @@ export default function ManageUsersPage() {
 		const rawTreeId = treeInputByUser[targetUser.id]?.trim();
 
 		if (!rawTreeId) {
-			showAlert('Missing tree id', 'Enter a tree ID first.');
+			showStatusMessage('Missing tree id', 'Enter a tree ID first.', 'error');
 			return;
 		}
 
 		const treeId = Number(rawTreeId);
 
 		if (!Number.isInteger(treeId) || treeId <= 0) {
-			showAlert('Invalid tree id', 'Tree ID must be a positive number.');
+			showStatusMessage('Invalid tree id', 'Tree ID must be a positive number.', 'error');
 			return;
 		}
 
@@ -136,7 +150,11 @@ export default function ManageUsersPage() {
 			setUserTreeInput(targetUser.id, '');
 			await loadData();
 		} catch (err) {
-			showAlert('Assignment failed', err instanceof Error ? err.message : 'Unknown error.');
+			showStatusMessage(
+				'Assignment failed',
+				err instanceof Error ? err.message : 'Unknown error.',
+				'error'
+			);
 		} finally {
 			setBusyKey(null);
 		}
@@ -148,36 +166,41 @@ export default function ManageUsersPage() {
 			await removeGuardianFromTree(targetUser.id, treeId);
 			await loadData();
 		} catch (err) {
-			showAlert('Removal failed', err instanceof Error ? err.message : 'Unknown error.');
+			showStatusMessage(
+				'Removal failed',
+				err instanceof Error ? err.message : 'Unknown error.',
+				'error'
+			);
 		} finally {
 			setBusyKey(null);
 		}
 	};
 
 	const handleDeleteUser = async (targetUser: ManagedUser) => {
-	if (sessionUser?.id === targetUser.id) {
-		showAlert('Action blocked', 'You cannot delete your own admin account.');
-		return;
-	}
+		if (sessionUser?.id === targetUser.id) {
+			showStatusMessage('Action blocked', 'You cannot delete your own admin account.', 'error');
+			return;
+		}
 
-	showConfirm(
-		"Delete User",
-		`Are you sure you want to delete ${targetUser.username}? This cannot be undone.`,
-		async () => {
-		try {
-			setBusyKey(`delete-${targetUser.id}`);
-			await deleteManagedUser(targetUser.id);
-			await loadData();
-		} catch (err) {
-			showAlert(
-			'Delete failed',
-			err instanceof Error ? err.message : 'Unknown error.'
-			);
-		} finally {
-			setBusyKey(null);
-		}
-		}
-	);
+		showConfirm(
+			'Delete User',
+			`Are you sure you want to delete ${targetUser.username}? This cannot be undone.`,
+			async () => {
+				try {
+					setBusyKey(`delete-${targetUser.id}`);
+					await deleteManagedUser(targetUser.id);
+					await loadData();
+				} catch (err) {
+					showStatusMessage(
+						'Delete failed',
+						err instanceof Error ? err.message : 'Unknown error.',
+						'error'
+					);
+				} finally {
+					setBusyKey(null);
+				}
+			}
+		);
 	};
 
 	if (isLoading) {
@@ -217,6 +240,8 @@ export default function ManageUsersPage() {
 
 	return (
 		<AppContainer>
+			<StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
+
 			<View style={styles.topBar}>
 				<NavigationButton onPress={() => router.push('/mainPage')}>
 					Back to Map

@@ -6,17 +6,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
 import type { AppUserRole } from '@/utilities/authHelper';
 import React, { useState, useMemo } from 'react';
-import { fetchCharltonKingsWeather } from '@/lib/weatherApi';
+import { fetchCharltonKingsWeather, WeatherData, DailyForecast } from '@/lib/weatherApi';
 import { fetchRecentTreeActivity, LocalActivityItem } from '@/lib/activityApi';
 
 type PopupType = 'weather' | 'activity' | null;
-
-type WeatherData = {
-  temperature: number;
-  humidity: number;
-  chanceOfRain: number;
-  time?: string;
-};
 
 type DashboardPanelProps = {
   userRole: AppUserRole;
@@ -27,6 +20,44 @@ type DashboardPanelProps = {
   onLogout: () => Promise<void> | void;
   isLoggingOut?: boolean;
 };
+
+function wmoEmoji(code: number): string {
+  if (code === 0) return '☀️';
+  if (code === 1) return '🌤️';
+  if (code === 2) return '⛅';
+  if (code === 3) return '☁️';
+  if (code === 45 || code === 48) return '🌫️';
+  if (code >= 51 && code <= 57) return '🌦️';
+  if (code >= 61 && code <= 67) return '🌧️';
+  if (code >= 71 && code <= 77) return '❄️';
+  if (code >= 80 && code <= 82) return '🌦️';
+  if (code === 85 || code === 86) return '🌨️';
+  if (code >= 95) return '⛈️';
+  return '🌡️';
+}
+
+function rainColour(chance: number): string {
+  if (chance >= 70) return '#1565C0';
+  if (chance >= 40) return '#1976D2';
+  return '#42A5F5';
+}
+
+function ForecastCard({ day }: { day: DailyForecast }) {
+  return (
+    <View style={styles.forecastCard}>
+      <AppText style={styles.forecastDay}>{day.dayLabel}</AppText>
+      <AppText style={styles.forecastEmoji}>{wmoEmoji(day.weatherCode)}</AppText>
+      <AppText style={styles.forecastCondition}>{day.condition}</AppText>
+      <View style={styles.forecastTemps}>
+        <AppText style={styles.forecastTempHigh}>{day.tempHigh}°</AppText>
+        <AppText style={styles.forecastTempLow}>{day.tempLow}°</AppText>
+      </View>
+      <View style={[styles.forecastRainBadge, { backgroundColor: rainColour(day.rainChance) }]}>
+        <AppText style={styles.forecastRainText}>💧 {day.rainChance}%</AppText>
+      </View>
+    </View>
+  );
+}
 
 export function DashboardPanel({
   userRole,
@@ -209,22 +240,52 @@ export function DashboardPanel({
                   <AppText style={styles.closeText}>Close</AppText>
                 </TouchableOpacity>
               </View>
-              <ScrollView>
-                
+              <ScrollView showsVerticalScrollIndicator={false}>
+
                 {activePopup === 'weather' && (
                   <>
                     {weatherLoading ? (
-                      <ActivityIndicator />
+                      <ActivityIndicator style={styles.weatherLoader} size="large" color="#1976D2" />
                     ) : weatherError ? (
-                      <AppText>{weatherError}</AppText>
+                      <AppText style={styles.weatherErrorText}>{weatherError}</AppText>
                     ) : weatherData ? (
                       <>
-                        <AppText>Temperature: {weatherData.temperature}°C</AppText>
-                        <AppText>Humidity: {weatherData.humidity}%</AppText>
-                        <AppText>Chance of Rain: {weatherData.chanceOfRain}%</AppText>
+                        {/* Current conditions hero */}
+                        <View style={styles.weatherHero}>
+                          <AppText style={styles.weatherEmoji}>{wmoEmoji(weatherData.weatherCode)}</AppText>
+                          <AppText style={styles.weatherTempBig}>{weatherData.temperature}°C</AppText>
+                          <AppText style={styles.weatherConditionLabel}>{weatherData.condition}</AppText>
+
+                          <View style={styles.weatherDetailRow}>
+                            <View style={styles.weatherDetailChip}>
+                              <AppText style={styles.weatherDetailLabel}>💧 Humidity</AppText>
+                              <AppText style={styles.weatherDetailValue}>{weatherData.humidity}%</AppText>
+                            </View>
+                            <View style={styles.weatherDetailChip}>
+                              <AppText style={styles.weatherDetailLabel}>🌧️ Rain</AppText>
+                              <AppText style={styles.weatherDetailValue}>{weatherData.chanceOfRain}%</AppText>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Multi-day forecast */}
+                        {weatherData.forecast.length > 0 ? (
+                          <>
+                            <AppText style={styles.forecastHeading}>4-Day Forecast</AppText>
+                            <ScrollView
+                              horizontal
+                              showsHorizontalScrollIndicator={false}
+                              contentContainerStyle={styles.forecastRow}
+                            >
+                              {weatherData.forecast.map((day) => (
+                                <ForecastCard key={day.date} day={day} />
+                              ))}
+                            </ScrollView>
+                          </>
+                        ) : null}
                       </>
                     ) : (
-                      <AppText>No weather data</AppText>
+                      <AppText style={styles.weatherErrorText}>No weather data available.</AppText>
                     )}
                   </>
                 )}
@@ -295,22 +356,164 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '90%',
     maxWidth: 500,
-    maxHeight: '80%',
+    maxHeight: '85%',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
   },
 
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 14,
   },
 
   closeText: {
     color: Theme.Colours.primary,
+    fontWeight: '600',
   },
 
+  /* Weather */
+  weatherLoader: {
+    marginVertical: 32,
+  },
+
+  weatherErrorText: {
+    color: Theme.Colours.error,
+    marginVertical: 12,
+    textAlign: 'center',
+  },
+
+  weatherHero: {
+    borderRadius: 16,
+    backgroundColor: '#1565C0',
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  weatherEmoji: {
+    fontSize: 48,
+    marginBottom: 4,
+  },
+
+  weatherTempBig: {
+    fontSize: 44,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 52,
+  },
+
+  weatherConditionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#BBDEFB',
+    marginTop: 4,
+    marginBottom: 14,
+  },
+
+  weatherDetailRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+
+  weatherDetailChip: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+
+  weatherDetailLabel: {
+    fontSize: 12,
+    color: '#BBDEFB',
+    fontWeight: '600',
+  },
+
+  weatherDetailValue: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    marginTop: 2,
+  },
+
+  forecastHeading: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Theme.Colours.textPrimary,
+    marginBottom: 10,
+  },
+
+  forecastRow: {
+    gap: 10,
+    paddingBottom: 4,
+  },
+
+  forecastCard: {
+    width: 100,
+    borderRadius: 14,
+    backgroundColor: '#EEF4FB',
+    borderWidth: 1,
+    borderColor: '#BBDEFB',
+    padding: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  forecastDay: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1565C0',
+    textAlign: 'center',
+  },
+
+  forecastEmoji: {
+    fontSize: 26,
+    marginVertical: 4,
+  },
+
+  forecastCondition: {
+    fontSize: 11,
+    color: '#455A64',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+
+  forecastTemps: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+  },
+
+  forecastTempHigh: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#C62828',
+  },
+
+  forecastTempLow: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1565C0',
+  },
+
+  forecastRainBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+  },
+
+  forecastRainText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+
+  /* Activity */
   activityCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -362,6 +565,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
 
+  /* Dashboard layout */
   dashboardWrap: {
     position: 'absolute',
     top: 12,

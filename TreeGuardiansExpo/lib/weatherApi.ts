@@ -3,19 +3,122 @@ export type WeatherData = {
   humidity: number;
   chanceOfRain: number;
   time?: string;
+  condition: string;
+  weatherCode: number;
+  forecast: DailyForecast[];
+};
+
+export type DailyForecast = {
+  date: string;
+  dayLabel: string;
+  weatherCode: number;
+  condition: string;
+  tempHigh: number;
+  tempLow: number;
+  rainChance: number;
 };
 
 const CHARLTON_KINGS_LAT = 51.883;
 const CHARLTON_KINGS_LON = -2.043;
+const WEATHER_TIME_ZONE = 'Europe/London';
+
+type CalendarDate = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+function wmoCondition(code: number): string {
+  if (code === 0) return 'Clear sky';
+  if (code === 1) return 'Mainly clear';
+  if (code === 2) return 'Partly cloudy';
+  if (code === 3) return 'Overcast';
+  if (code === 45 || code === 48) return 'Foggy';
+  if (code >= 51 && code <= 57) return 'Drizzle';
+  if (code >= 61 && code <= 67) return 'Rain';
+  if (code >= 71 && code <= 77) return 'Snow';
+  if (code >= 80 && code <= 82) return 'Rain showers';
+  if (code === 85 || code === 86) return 'Snow showers';
+  if (code >= 95 && code <= 99) return 'Thunderstorm';
+  return 'Unknown';
+}
+
+function parseCalendarDate(dateStr: string): CalendarDate | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+  };
+}
+
+function calendarDateToKey(date: CalendarDate): string {
+  return `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+}
+
+function londonCalendarDateFromDate(date: Date): CalendarDate {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: WEATHER_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+  };
+}
+
+function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
+  const nextDate = new Date(Date.UTC(date.year, date.month - 1, date.day + days, 12));
+  return londonCalendarDateFromDate(nextDate);
+}
+
+function calendarDateToLondonNoon(date: CalendarDate): Date {
+  return new Date(Date.UTC(date.year, date.month - 1, date.day, 12));
+}
+
+function formatDayLabel(dateStr: string): string {
+  const date = parseCalendarDate(dateStr);
+
+  if (!date) {
+    return dateStr;
+  }
+
+  const today = londonCalendarDateFromDate(new Date());
+  const tomorrow = addCalendarDays(today, 1);
+  const dateKey = calendarDateToKey(date);
+
+  if (dateKey === calendarDateToKey(today)) return 'Today';
+  if (dateKey === calendarDateToKey(tomorrow)) return 'Tomorrow';
+
+  return calendarDateToLondonNoon(date).toLocaleDateString('en-GB', {
+    timeZone: WEATHER_TIME_ZONE,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
 
 export async function fetchCharltonKingsWeather(): Promise<WeatherData> {
   const url =
     `https://api.open-meteo.com/v1/forecast` +
     `?latitude=${CHARLTON_KINGS_LAT}` +
     `&longitude=${CHARLTON_KINGS_LON}` +
-    `&current=temperature_2m,relative_humidity_2m` +
+    `&current=temperature_2m,relative_humidity_2m,weather_code` +
     `&hourly=precipitation_probability` +
-    `&timezone=Europe%2FLondon`;
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+    `&timezone=Europe%2FLondon` +
+    `&forecast_days=4`;
 
   const response = await fetch(url);
 
@@ -26,7 +129,6 @@ export async function fetchCharltonKingsWeather(): Promise<WeatherData> {
   const data = await response.json();
   const current = data?.current;
 
-  // Find the closest hour index
   const currentTime = current?.time;
   const timeIndex = data?.hourly?.time?.findIndex((t: string) => t === currentTime);
 
@@ -35,10 +137,31 @@ export async function fetchCharltonKingsWeather(): Promise<WeatherData> {
       ? data?.hourly?.precipitation_probability?.[timeIndex]
       : 0;
 
+  const currentCode = Number(current?.weather_code ?? 0);
+
+  const dailyDates: string[] = data?.daily?.time ?? [];
+  const dailyCodes: number[] = data?.daily?.weather_code ?? [];
+  const dailyHigh: number[] = data?.daily?.temperature_2m_max ?? [];
+  const dailyLow: number[] = data?.daily?.temperature_2m_min ?? [];
+  const dailyRain: number[] = data?.daily?.precipitation_probability_max ?? [];
+
+  const forecast: DailyForecast[] = dailyDates.slice(0, 4).map((date, i) => ({
+    date,
+    dayLabel: formatDayLabel(date),
+    weatherCode: Number(dailyCodes[i] ?? 0),
+    condition: wmoCondition(Number(dailyCodes[i] ?? 0)),
+    tempHigh: Math.round(Number(dailyHigh[i] ?? 0)),
+    tempLow: Math.round(Number(dailyLow[i] ?? 0)),
+    rainChance: Number(dailyRain[i] ?? 0),
+  }));
+
   return {
     temperature: Number(current?.temperature_2m ?? 0),
     humidity: Number(current?.relative_humidity_2m ?? 0),
     chanceOfRain: Number(chanceOfRain ?? 0),
     time: current?.time ?? '',
+    condition: wmoCondition(currentCode),
+    weatherCode: currentCode,
+    forecast,
   };
 }
