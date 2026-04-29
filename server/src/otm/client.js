@@ -3,8 +3,9 @@ const http = require("http");
 const { URL } = require("url");
 const { signRequest } = require("./hmac");
 const { createLogger } = require("../logging");
+const { createCapturingLogger } = require("./logStore");
 
-const logger = createLogger("otm.client");
+const logger = createCapturingLogger("otm.client", createLogger("otm.client"));
 
 function doRequest(options, body, timeoutMs) {
   return new Promise((resolve, reject) => {

@@ -2,8 +2,9 @@ const express = require("express");
 const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { requireAuthenticatedUser } = require("./utils/auth");
+const { createCapturingLogger, getEntries, getTotal } = require("../../otm/logStore");
 
-const logger = createLogger("routes.api.otm");
+const logger = createCapturingLogger("routes.api.otm", createLogger("routes.api.otm"));
 
 function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.otm", extra) : logger.child(extra);
@@ -168,6 +169,22 @@ function createOtmRoute({ otmClient, otmConfig, otmSpeciesCache, otmTreeCache, o
         benefits,
         source: "OpenTreeMap / iTree"
       });
+    })
+  );
+
+  // Admin: in-memory OTM interaction log (last 500 entries)
+  // ?limit=200&after=0&level=info|warn|error
+  router.get(
+    "/otm/logs",
+    asyncHandler(async (req, res) => {
+      await requireAuthenticatedUser({ req, db: null, routeLog: getRouteLogger(req, { route: "otm-logs" }) });
+
+      const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
+      const after = Number(req.query.after) || 0;
+      const level = ["info", "warn", "error"].includes(req.query.level) ? req.query.level : null;
+
+      const logEntries = getEntries({ limit, after, level });
+      res.json({ entries: logEntries, total: getTotal() });
     })
   );
 

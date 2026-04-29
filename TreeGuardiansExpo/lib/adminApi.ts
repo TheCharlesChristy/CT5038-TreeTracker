@@ -182,6 +182,51 @@ export async function removeGuardianFromTree(userId: number, treeId: number): Pr
   }
 }
 
+export type OtmLogLevel = 'info' | 'warn' | 'error';
+
+export type OtmLogEntry = {
+  id: number;
+  timestamp: string;
+  level: OtmLogLevel;
+  scope: string;
+  event: string;
+  meta: Record<string, unknown> | null;
+};
+
+export type OtmLogsResponse = {
+  entries: OtmLogEntry[];
+  total: number;
+};
+
+export async function fetchOtmLogs(opts: {
+  limit?: number;
+  after?: number;
+  level?: OtmLogLevel | null;
+} = {}): Promise<OtmLogsResponse> {
+  const params = new URLSearchParams();
+  if (opts.limit) params.set('limit', String(opts.limit));
+  if (opts.after) params.set('after', String(opts.after));
+  if (opts.level) params.set('level', opts.level);
+
+  const qs = params.toString();
+  const response = await fetch(buildApiUrl(`otm/logs${qs ? `?${qs}` : ''}`), {
+    headers: await getAuthHeaders(),
+  });
+
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody);
+
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to fetch OTM logs.', response, rawBody));
+  }
+
+  const data = parsed && typeof parsed === 'object' ? (parsed as OtmLogsResponse) : { entries: [], total: 0 };
+  return {
+    entries: Array.isArray(data.entries) ? data.entries : [],
+    total: Number(data.total ?? 0),
+  };
+}
+
 export async function deleteManagedUser(userId: number): Promise<void> {
   const response = await fetch(buildApiUrl(`admin/users/${userId}`), {
     method: 'DELETE',

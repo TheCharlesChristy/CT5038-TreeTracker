@@ -1,7 +1,8 @@
 const { createLogger } = require("../logging");
+const { createCapturingLogger } = require("./logStore");
 const { speciesLabelToUsda } = require("./speciesMap");
 
-const logger = createLogger("otm.syncQueue");
+const logger = createCapturingLogger("otm.syncQueue", createLogger("otm.syncQueue"));
 
 const STATUS_PENDING = "pending";
 const STATUS_SYNCED = "synced";
