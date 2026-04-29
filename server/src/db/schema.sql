@@ -207,4 +207,4 @@ CREATE TABLE IF NOT EXISTS guardians (
 ) engine = InnoDB;
 
 CREATE INDEX idx_comments_tree_created_at
-ON comments_tree (created_at DESC, comment_id, tree_id);
+ON comments_tree (created_at DESC,comment_id,tree_id);
