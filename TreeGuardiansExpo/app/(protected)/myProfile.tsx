@@ -5,6 +5,8 @@ import {
 	ActivityIndicator,
 	TextInput,
 	ScrollView,
+	type TextStyle,
+	type ViewStyle,
 } from 'react-native';
 import { router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
@@ -13,7 +15,25 @@ import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
-import { updateUsername, updateEmail, updatePassword } from '@/utilities/authHelper';
+import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
+
+const ROLE_LABEL: Record<UserRole, string> = {
+	registered_user: 'Member',
+	guardian: 'Guardian',
+	admin: 'Admin',
+};
+
+const ROLE_BADGE_STYLE: Record<UserRole, ViewStyle> = {
+	registered_user: { backgroundColor: 'rgba(44, 92, 179, 0.12)', borderColor: 'rgba(44, 92, 179, 0.3)' },
+	guardian: { backgroundColor: 'rgba(25, 76, 34, 0.12)', borderColor: 'rgba(25, 76, 34, 0.3)' },
+	admin: { backgroundColor: 'rgba(122, 74, 0, 0.12)', borderColor: 'rgba(122, 74, 0, 0.35)' },
+};
+
+const ROLE_TEXT_STYLE: Record<UserRole, TextStyle> = {
+	registered_user: { color: '#2C5CB3' },
+	guardian: { color: '#194C22' },
+	admin: { color: '#7A4A00' },
+};
 
 type PasswordForm = {
 	currentPassword: string;
@@ -23,10 +43,12 @@ type PasswordForm = {
 
 export default function MyProfilePage() {
 	const { user, isLoading } = useSessionUser();
+	const [profileUser, setProfileUser] = useState(user);
+
 	useEffect(() => {
-	if (!isLoading && !user) {
-		router.replace('/login');
-	}
+		if (!isLoading && !user) {
+			router.replace('/login');
+		}
 	}, [isLoading, user]);
 
 	const [isEditingUsername, setIsEditingUsername] = useState(false);
@@ -35,6 +57,14 @@ export default function MyProfilePage() {
 
 	const [username, setUsername] = useState(user?.username ?? '');
 	const [email, setEmail] = useState(user?.email ?? '');
+
+	useEffect(() => {
+		if (user) {
+			setProfileUser(user);
+			setUsername(user.username);
+			setEmail(user.email ?? '');
+		}
+	}, [user]);
 
 	const [passwordForm, setPasswordForm] = useState<PasswordForm>({
 		currentPassword: '',
@@ -59,7 +89,7 @@ export default function MyProfilePage() {
 			<AppContainer>
 				<View style={styles.loadingRow}>
 					<ActivityIndicator color={Theme.Colours.primary} />
-					<AppText style={styles.body}>Loading profile...</AppText>
+					<AppText style={styles.loadingText}>Loading profile...</AppText>
 				</View>
 			</AppContainer>
 		);
@@ -92,12 +122,16 @@ export default function MyProfilePage() {
 		try {
 			setIsSavingUsername(true);
 
-			await updateUsername({ 
-				username: trimmedUsername 
+			const updatedUser = await updateUsername({
+				username: trimmedUsername
 			});
+			setUsername(updatedUser.username);
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
+			setProfileUser(updatedUser);
+			setUsername(updatedUser.username);
+			setEmail(updatedUser.email ?? '');
 			setUsernameSuccess('Username updated successfully.');
 			setIsEditingUsername(false);
 		} catch (error) {
@@ -128,12 +162,17 @@ export default function MyProfilePage() {
 		try {
 			setIsSavingEmail(true);
 
-			await updateEmail({ 
-				email: trimmedEmail 
+			const updatedUser = await updateEmail({
+				email: trimmedEmail
 			});
+
+			setEmail(updatedUser.email ?? trimmedEmail);
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
+			setProfileUser(updatedUser);
+			setUsername(updatedUser.username);
+			setEmail(updatedUser.email ?? '');
 			setEmailSuccess('Email updated successfully.');
 			setIsEditingEmail(false);
 		} catch (error) {
@@ -180,9 +219,9 @@ export default function MyProfilePage() {
 		try {
 			setIsSavingPassword(true);
 
-			await updatePassword({ 
-				currentPassword, 
-				newPassword 
+			await updatePassword({
+				currentPassword,
+				newPassword
 			});
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
@@ -198,268 +237,271 @@ export default function MyProfilePage() {
 		}
 	}
 
+	const currentUser = profileUser ?? user;
+	const avatarLetter = currentUser.username.charAt(0).toUpperCase();
+
 	return (
-		<AppContainer>
+		<AppContainer noPadding>
 			<ScrollView
+				style={styles.scroll}
 				contentContainerStyle={styles.scrollContent}
-				showsVerticalScrollIndicator={true}
+				showsVerticalScrollIndicator={false}
 			>
-				<View style={styles.topBar}>
-					<NavigationButton onPress={() => router.push('/mainPage')}>
-						Back to Map
-					</NavigationButton>
-				</View>
+				<View style={styles.inner}>
+					<View style={styles.topBar}>
+						<NavigationButton onPress={() => router.push('/mainPage')}>
+							Back to Map
+						</NavigationButton>
+					</View>
 
-				<AppText variant="title" style={styles.title}>
-					My Profile
-				</AppText>
-
-				<AppText style={styles.subtitle}>
-					Manage your username, email, and password separately.
-				</AppText>
-
-				<View style={styles.card}>
-					<AppText variant="subtitle" style={styles.sectionTitle}>
-						Account Overview
-					</AppText>
-					<AppText style={styles.body}>Username: {user.username}</AppText>
-					<AppText style={styles.body}>Email: {user.email ?? 'Not provided'}</AppText>
-					<AppText style={styles.body}>Role: {user.role}</AppText>
-					<AppText style={styles.body}>User ID: {user.id}</AppText>
-				</View>
-
-				<View style={styles.card}>
-					{!isEditingUsername ? (
-						<>
-							{usernameSuccess ? <AppText style={styles.successText}>{usernameSuccess}</AppText> : null}
-							<View style={styles.actions}>
-								<AppButton
-									title="Change Username"
-									variant="primary"
-									onPress={() => {
-										setUsername(user.username);
-										setUsernameError(null);
-										setUsernameSuccess(null);
-										setIsEditingUsername(true);
-									}}
-								/>
+					{/* Hero overview card */}
+					<View style={styles.heroCard}>
+						<View style={styles.avatarCircle}>
+							<AppText style={styles.avatarLetter}>{avatarLetter}</AppText>
+						</View>
+						<AppText style={styles.heroUsername}>{currentUser.username}</AppText>
+						<View style={[styles.roleBadge, ROLE_BADGE_STYLE[currentUser.role]]}>
+							<AppText style={[styles.roleBadgeText, ROLE_TEXT_STYLE[currentUser.role]]}>
+								{ROLE_LABEL[currentUser.role]}
+							</AppText>
+						</View>
+						<View style={styles.heroMeta}>
+							<View style={styles.heroMetaRow}>
+								<AppText style={styles.heroMetaLabel}>Email</AppText>
+								<AppText style={styles.heroMetaValue}>{currentUser.email ?? 'Not provided'}</AppText>
 							</View>
-						</>
-					) : (
-						<>
-							<View style={styles.fieldGroup}>
-								<AppText style={styles.label}>New Username</AppText>
-								<TextInput
-									value={username}
-									onChangeText={setUsername}
-									placeholder="Enter new username"
-									style={styles.input}
-									autoCapitalize="none"
-								/>
-							</View>
+						</View>
+						<AppText style={styles.userId}>ID #{currentUser.id}</AppText>
+					</View>
 
-							{usernameError ? <AppText style={styles.errorText}>{usernameError}</AppText> : null}
+					{/* Username card */}
+					<View style={styles.card}>
+						<AppText style={styles.cardTitle}>Username</AppText>
+						{!isEditingUsername ? (
+							<>
+								{usernameSuccess ? <AppText style={styles.successText}>{usernameSuccess}</AppText> : null}
+								<View style={styles.actions}>
+									<AppButton
+										title="Change Username"
+										variant="primary"
+										onPress={() => {
+											setUsername(currentUser.username);
+											setUsernameError(null);
+											setUsernameSuccess(null);
+											setIsEditingUsername(true);
+										}}
+									/>
+								</View>
+							</>
+						) : (
+							<>
+								<View style={styles.fieldGroup}>
+									<AppText style={styles.label}>New Username</AppText>
+									<TextInput
+										value={username}
+										onChangeText={setUsername}
+										placeholder="Enter new username"
+										style={styles.input}
+										autoCapitalize="none"
+									/>
+								</View>
+								{usernameError ? <AppText style={styles.errorText}>{usernameError}</AppText> : null}
+								<View style={styles.actions}>
+									<AppButton
+										title={isSavingUsername ? 'Saving...' : 'Save Username'}
+										variant="primary"
+										onPress={handleSaveUsername}
+									/>
+									<AppButton
+										title="Cancel"
+										variant="secondary"
+										onPress={() => {
+											setUsername(currentUser.username);
+											setUsernameError(null);
+											setUsernameSuccess(null);
+											setIsEditingUsername(false);
+										}}
+									/>
+								</View>
+							</>
+						)}
+					</View>
 
-							<View style={styles.actions}>
-								<AppButton
-									title={isSavingUsername ? 'Saving...' : 'Save Username'}
-									variant="primary"
-									onPress={handleSaveUsername}
-								/>
-								<AppButton
-									title="Cancel"
-									variant="secondary"
-									onPress={() => {
-										setUsername(user.username);
-										setUsernameError(null);
-										setUsernameSuccess(null);
-										setIsEditingUsername(false);
-									}}
-								/>
-							</View>
-						</>
-					)}
-				</View>
+					{/* Email card */}
+					<View style={styles.card}>
+						<AppText style={styles.cardTitle}>Email</AppText>
+						{!isEditingEmail ? (
+							<>
+								{emailSuccess ? <AppText style={styles.successText}>{emailSuccess}</AppText> : null}
+								<View style={styles.actions}>
+									<AppButton
+										title="Change Email"
+										variant="primary"
+										onPress={() => {
+											setEmail(currentUser.email ?? '');
+											setEmailError(null);
+											setEmailSuccess(null);
+											setIsEditingEmail(true);
+										}}
+									/>
+								</View>
+							</>
+						) : (
+							<>
+								<View style={styles.fieldGroup}>
+									<AppText style={styles.label}>New Email</AppText>
+									<TextInput
+										value={email}
+										onChangeText={setEmail}
+										placeholder="Enter new email"
+										style={styles.input}
+										autoCapitalize="none"
+										keyboardType="email-address"
+									/>
+								</View>
+								{emailError ? <AppText style={styles.errorText}>{emailError}</AppText> : null}
+								<View style={styles.actions}>
+									<AppButton
+										title={isSavingEmail ? 'Saving...' : 'Save Email'}
+										variant="primary"
+										onPress={handleSaveEmail}
+									/>
+									<AppButton
+										title="Cancel"
+										variant="secondary"
+										onPress={() => {
+											setEmail(currentUser.email ?? '');
+											setEmailError(null);
+											setEmailSuccess(null);
+											setIsEditingEmail(false);
+										}}
+									/>
+								</View>
+							</>
+						)}
+					</View>
 
-				<View style={styles.card}>
-					{!isEditingEmail ? (
-						<>
-							{emailSuccess ? <AppText style={styles.successText}>{emailSuccess}</AppText> : null}
-							<View style={styles.actions}>
-								<AppButton
-									title="Change Email"
-									variant="primary"
-									onPress={() => {
-										setEmail(user.email ?? '');
-										setEmailError(null);
-										setEmailSuccess(null);
-										setIsEditingEmail(true);
-									}}
-								/>
-							</View>
-						</>
-					) : (
-						<>
-							<View style={styles.fieldGroup}>
-								<AppText style={styles.label}>New Email</AppText>
-								<TextInput
-									value={email}
-									onChangeText={setEmail}
-									placeholder="Enter new email"
-									style={styles.input}
-									autoCapitalize="none"
-									keyboardType="email-address"
-								/>
-							</View>
+					{/* Password card */}
+					<View style={styles.card}>
+						<AppText style={styles.cardTitle}>Password</AppText>
+						{!isChangingPassword ? (
+							<>
+								{passwordSuccess ? <AppText style={styles.successText}>{passwordSuccess}</AppText> : null}
+								<View style={styles.actions}>
+									<AppButton
+										title="Change Password"
+										variant="primary"
+										onPress={() => {
+											setPasswordError(null);
+											setPasswordSuccess(null);
+											setIsChangingPassword(true);
+										}}
+									/>
+								</View>
+							</>
+						) : (
+							<>
+								<View style={styles.fieldGroup}>
+									<AppText style={styles.label}>Current Password</AppText>
+									<TextInput
+										value={passwordForm.currentPassword}
+										onChangeText={(value) =>
+											setPasswordForm((current) => ({ ...current, currentPassword: value }))
+										}
+										placeholder="Enter current password"
+										style={styles.input}
+										secureTextEntry
+										autoCapitalize="none"
+									/>
+								</View>
+								<View style={styles.fieldGroup}>
+									<AppText style={styles.label}>New Password</AppText>
+									<TextInput
+										value={passwordForm.newPassword}
+										onChangeText={(value) =>
+											setPasswordForm((current) => ({ ...current, newPassword: value }))
+										}
+										placeholder="Enter new password"
+										style={styles.input}
+										secureTextEntry
+										autoCapitalize="none"
+									/>
+								</View>
+								<View style={styles.fieldGroup}>
+									<AppText style={styles.label}>Confirm New Password</AppText>
+									<TextInput
+										value={passwordForm.confirmNewPassword}
+										onChangeText={(value) =>
+											setPasswordForm((current) => ({ ...current, confirmNewPassword: value }))
+										}
+										placeholder="Confirm new password"
+										style={styles.input}
+										secureTextEntry
+										autoCapitalize="none"
+									/>
+								</View>
+								{passwordError ? <AppText style={styles.errorText}>{passwordError}</AppText> : null}
+								<View style={styles.actions}>
+									<AppButton
+										title={isSavingPassword ? 'Saving...' : 'Save Password'}
+										variant="primary"
+										onPress={handleChangePassword}
+									/>
+									<AppButton
+										title="Cancel"
+										variant="secondary"
+										onPress={() => {
+											resetPasswordForm();
+											setPasswordError(null);
+											setPasswordSuccess(null);
+											setIsChangingPassword(false);
+										}}
+									/>
+								</View>
+							</>
+						)}
+					</View>
 
-							{emailError ? <AppText style={styles.errorText}>{emailError}</AppText> : null}
-
-							<View style={styles.actions}>
-								<AppButton
-									title={isSavingEmail ? 'Saving...' : 'Save Email'}
-									variant="primary"
-									onPress={handleSaveEmail}
-								/>
-								<AppButton
-									title="Cancel"
-									variant="secondary"
-									onPress={() => {
-										setEmail(user.email ?? '');
-										setEmailError(null);
-										setEmailSuccess(null);
-										setIsEditingEmail(false);
-									}}
-								/>
-							</View>
-						</>
-					)}
-				</View>
-
-				<View style={styles.card}>
-					{!isChangingPassword ? (
-						<>
-							{passwordSuccess ? <AppText style={styles.successText}>{passwordSuccess}</AppText> : null}
-							<View style={styles.actions}>
-								<AppButton
-									title="Change Password"
-									variant="primary"
-									onPress={() => {
-										setPasswordError(null);
-										setPasswordSuccess(null);
-										setIsChangingPassword(true);
-									}}
-								/>
-							</View>
-						</>
-					) : (
-						<>
-							<View style={styles.fieldGroup}>
-								<AppText style={styles.label}>Current Password</AppText>
-								<TextInput
-									value={passwordForm.currentPassword}
-									onChangeText={(value) =>
-										setPasswordForm((current) => ({ ...current, currentPassword: value }))
-									}
-									placeholder="Enter current password"
-									style={styles.input}
-									secureTextEntry
-									autoCapitalize="none"
-								/>
-							</View>
-
-							<View style={styles.fieldGroup}>
-								<AppText style={styles.label}>New Password</AppText>
-								<TextInput
-									value={passwordForm.newPassword}
-									onChangeText={(value) =>
-										setPasswordForm((current) => ({ ...current, newPassword: value }))
-									}
-									placeholder="Enter new password"
-									style={styles.input}
-									secureTextEntry
-									autoCapitalize="none"
-								/>
-							</View>
-
-							<View style={styles.fieldGroup}>
-								<AppText style={styles.label}>Confirm New Password</AppText>
-								<TextInput
-									value={passwordForm.confirmNewPassword}
-									onChangeText={(value) =>
-										setPasswordForm((current) => ({ ...current, confirmNewPassword: value }))
-									}
-									placeholder="Confirm new password"
-									style={styles.input}
-									secureTextEntry
-									autoCapitalize="none"
-								/>
-							</View>
-
-							{passwordError ? <AppText style={styles.errorText}>{passwordError}</AppText> : null}
-
-							<View style={styles.actions}>
-								<AppButton
-									title={isSavingPassword ? 'Saving...' : 'Save Password'}
-									variant="primary"
-									onPress={handleChangePassword}
-								/>
-								<AppButton
-									title="Cancel"
-									variant="secondary"
-									onPress={() => {
-										resetPasswordForm();
-										setPasswordError(null);
-										setPasswordSuccess(null);
-										setIsChangingPassword(false);
-									}}
-								/>
-							</View>
-						</>
-					)}
-				</View>
-
-				<View style={styles.footerActions}>
-					<AppButton
-						title="Return to Map"
-						variant="secondary"
-						onPress={() => router.push('/mainPage')}
-					/>
+					<View style={styles.footerActions}>
+						<AppButton
+							title="Return to Map"
+							variant="secondary"
+							onPress={() => router.push('/mainPage')}
+						/>
+					</View>
 				</View>
 			</ScrollView>
 		</AppContainer>
 	);
 }
 
+const GLASS_CARD = {
+	backgroundColor: 'rgba(250, 253, 250, 0.96)',
+	borderRadius: 18,
+	borderWidth: 1,
+	borderColor: 'rgba(183, 210, 185, 0.7)',
+	borderTopColor: 'rgba(255, 255, 255, 0.88)',
+	shadowColor: '#0D1F10',
+	shadowOffset: { width: 0, height: 10 },
+	shadowOpacity: 0.14,
+	shadowRadius: 18,
+	elevation: 12,
+} as const;
+
 const styles = StyleSheet.create({
+	scroll: {
+		flex: 1,
+		backgroundColor: '#E8F0E9',
+	},
 	scrollContent: {
-		paddingBottom: Theme.Spacing.extraLarge,
+		paddingBottom: 40,
 	},
-	topBar: {
-		marginBottom: Theme.Spacing.medium,
-	},
-	title: {
-		color: Theme.Colours.primary,
-		marginBottom: Theme.Spacing.small,
-	},
-	subtitle: {
-		color: Theme.Colours.textMuted,
-		marginBottom: Theme.Spacing.large,
-	},
-	card: {
-		borderRadius: Theme.Radius.medium,
-		borderWidth: 1,
-		borderColor: '#D7E4D7',
-		backgroundColor: '#F9FCF9',
-		padding: Theme.Spacing.medium,
-		marginBottom: Theme.Spacing.small,
-	},
-	sectionTitle: {
-		marginBottom: Theme.Spacing.small,
-		color: Theme.Colours.textPrimary,
-	},
-	body: {
-		color: Theme.Colours.textMuted,
-		marginBottom: Theme.Spacing.extraSmall,
+	inner: {
+		paddingHorizontal: 16,
+		paddingTop: 12,
+		maxWidth: 560,
+		alignSelf: 'center',
+		width: '100%',
 	},
 	loadingRow: {
 		flex: 1,
@@ -467,36 +509,137 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		gap: Theme.Spacing.small,
 	},
+	loadingText: {
+		color: Theme.Colours.textMuted,
+	},
+	topBar: {
+		marginBottom: 16,
+	},
+
+	/* Hero card */
+	heroCard: {
+		...GLASS_CARD,
+		padding: 24,
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	avatarCircle: {
+		width: 64,
+		height: 64,
+		borderRadius: 32,
+		backgroundColor: Theme.Colours.primary,
+		borderWidth: 2.5,
+		borderColor: 'rgba(255,255,255,0.5)',
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginBottom: 12,
+		shadowColor: '#0D1F10',
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.22,
+		shadowRadius: 8,
+		elevation: 6,
+	},
+	avatarLetter: {
+		fontSize: 28,
+		fontFamily: 'Poppins_600SemiBold',
+		color: '#FFFFFF',
+		lineHeight: 34,
+	},
+	heroUsername: {
+		fontSize: 22,
+		fontFamily: 'Poppins_600SemiBold',
+		color: Theme.Colours.textPrimary,
+		marginBottom: 8,
+	},
+	roleBadge: {
+		borderWidth: 1,
+		borderRadius: 20,
+		paddingHorizontal: 12,
+		paddingVertical: 3,
+		marginBottom: 16,
+	},
+	roleBadgeText: {
+		fontSize: 12,
+		fontFamily: 'Poppins_600SemiBold',
+	},
+	heroMeta: {
+		width: '100%',
+		borderTopWidth: 1,
+		borderTopColor: 'rgba(183, 210, 185, 0.5)',
+		paddingTop: 12,
+	},
+	heroMetaRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		paddingVertical: 4,
+	},
+	heroMetaLabel: {
+		fontSize: 13,
+		color: Theme.Colours.textMuted,
+	},
+	heroMetaValue: {
+		fontSize: 13,
+		fontFamily: 'Poppins_600SemiBold',
+		color: Theme.Colours.textPrimary,
+		flexShrink: 1,
+		textAlign: 'right',
+		marginLeft: 8,
+	},
+	userId: {
+		marginTop: 10,
+		fontSize: 11,
+		color: Theme.Colours.textMuted,
+		opacity: 0.55,
+	},
+
+	/* Action cards */
+	card: {
+		...GLASS_CARD,
+		padding: 18,
+		marginBottom: 10,
+	},
+	cardTitle: {
+		fontSize: 13,
+		fontFamily: 'Poppins_600SemiBold',
+		color: Theme.Colours.textMuted,
+		textTransform: 'uppercase',
+		letterSpacing: 0.6,
+		marginBottom: 12,
+	},
 	fieldGroup: {
-		marginBottom: Theme.Spacing.medium,
+		marginBottom: 14,
 	},
 	label: {
-		marginBottom: Theme.Spacing.extraSmall,
+		marginBottom: 6,
+		fontSize: 13,
 		color: Theme.Colours.textPrimary,
-		fontWeight: '600',
+		fontFamily: 'Poppins_600SemiBold',
 	},
 	input: {
 		borderWidth: 1,
-		borderColor: '#C9D7C9',
-		borderRadius: Theme.Radius.small,
+		borderColor: 'rgba(183, 210, 185, 0.8)',
+		borderRadius: 12,
 		paddingHorizontal: Theme.Spacing.medium,
-		paddingVertical: Theme.Spacing.small,
-		backgroundColor: '#FFFFFF',
+		paddingVertical: 10,
+		backgroundColor: 'rgba(255, 255, 255, 0.82)',
 		color: Theme.Colours.textPrimary,
+		fontSize: 14,
 	},
 	actions: {
-		marginTop: Theme.Spacing.medium,
 		gap: Theme.Spacing.small,
 	},
 	footerActions: {
-		marginTop: Theme.Spacing.small,
+		marginTop: 4,
 	},
 	errorText: {
-		marginTop: Theme.Spacing.small,
+		marginTop: 6,
+		fontSize: 13,
 		color: '#B42318',
 	},
 	successText: {
-		marginTop: Theme.Spacing.small,
-		color: '#027A48',
+		marginBottom: 8,
+		fontSize: 13,
+		color: '#1B6B2A',
 	},
 });
