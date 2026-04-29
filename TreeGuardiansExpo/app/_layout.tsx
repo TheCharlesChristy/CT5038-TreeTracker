@@ -1,9 +1,12 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 
-void SplashScreen.preventAutoHideAsync();
+if (Platform.OS !== 'web') {
+  void SplashScreen.preventAutoHideAsync();
+}
 
 export default function Layout() {
   const [fontsLoaded] = useFonts({
@@ -14,12 +17,15 @@ export default function Layout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded && Platform.OS !== 'web') {
       void SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) return null;
+  // On web, fonts load via CSS so we never block the render — doing so causes
+  // a hydration mismatch (#418) because the static export pre-renders with
+  // fonts resolved but the browser's first render sees fontsLoaded=false.
+  if (!fontsLoaded && Platform.OS !== 'web') return null;
 
   return (
     <Stack
