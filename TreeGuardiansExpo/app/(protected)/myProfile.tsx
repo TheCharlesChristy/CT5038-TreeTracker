@@ -147,9 +147,11 @@ export default function MyProfilePage() {
 		try {
 			setIsSavingEmail(true);
 
-			await updateEmail({
+			const updatedUser = await updateEmail({
 				email: trimmedEmail
 			});
+
+			setEmail(updatedUser.email ?? trimmedEmail);
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
