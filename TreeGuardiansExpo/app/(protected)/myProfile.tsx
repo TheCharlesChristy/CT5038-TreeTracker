@@ -110,9 +110,10 @@ export default function MyProfilePage() {
 		try {
 			setIsSavingUsername(true);
 
-			await updateUsername({
+			const updatedUser = await updateUsername({
 				username: trimmedUsername
 			});
+			setUsername(updatedUser.username);
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
