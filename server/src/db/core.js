@@ -155,11 +155,9 @@ async function applyMigrations(executor, schemaPath) {
     } catch (err) {
       const alreadyExists =
         err?.cause?.code === "ER_DUP_KEYNAME" ||
-        err?.cause?.code === "ER_TABLE_EXISTS_ERROR" ||
-        (err?.cause?.errno === 1061) ||
-        (err?.cause?.errno === 1050);
+        err?.cause?.code === "ER_TABLE_EXISTS_ERROR";
       if (!alreadyExists) throw err;
-      logger.warn("migration.already-exists", { version: migration.version, code: err?.cause?.code });
+      logger.warn("migration.already-exists", { version: migration.version, code: err.cause.code });
     }
     await run(executor, "INSERT INTO schema_migrations (version) VALUES (?)", [migration.version]);
   }

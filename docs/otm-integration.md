@@ -107,6 +107,12 @@ Once the server is running, hit the health endpoint:
 GET /api/otm/health
 ```
 
+Using curl:
+
+```bash
+curl https://s4413710-ct5051.uogs.co.uk/api/otm/health
+```
+
 A healthy response looks like:
 
 ```json
