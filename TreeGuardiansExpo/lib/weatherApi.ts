@@ -20,6 +20,13 @@ export type DailyForecast = {
 
 const CHARLTON_KINGS_LAT = 51.883;
 const CHARLTON_KINGS_LON = -2.043;
+const WEATHER_TIME_ZONE = 'Europe/London';
+
+type CalendarDate = {
+  year: number;
+  month: number;
+  day: number;
+};
 
 function wmoCondition(code: number): string {
   if (code === 0) return 'Clear sky';
@@ -36,17 +43,70 @@ function wmoCondition(code: number): string {
   return 'Unknown';
 }
 
+function parseCalendarDate(dateStr: string): CalendarDate | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+  };
+}
+
+function calendarDateToKey(date: CalendarDate): string {
+  return `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+}
+
+function londonCalendarDateFromDate(date: Date): CalendarDate {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: WEATHER_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+  };
+}
+
+function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
+  const nextDate = new Date(Date.UTC(date.year, date.month - 1, date.day + days, 12));
+  return londonCalendarDateFromDate(nextDate);
+}
+
+function calendarDateToLondonNoon(date: CalendarDate): Date {
+  return new Date(Date.UTC(date.year, date.month - 1, date.day, 12));
+}
+
 function formatDayLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
+  const date = parseCalendarDate(dateStr);
 
-  if (date.toDateString() === today.toDateString()) return 'Today';
-  if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+  if (!date) {
+    return dateStr;
+  }
 
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  const today = londonCalendarDateFromDate(new Date());
+  const tomorrow = addCalendarDays(today, 1);
+  const dateKey = calendarDateToKey(date);
+
+  if (dateKey === calendarDateToKey(today)) return 'Today';
+  if (dateKey === calendarDateToKey(tomorrow)) return 'Tomorrow';
+
+  return calendarDateToLondonNoon(date).toLocaleDateString('en-GB', {
+    timeZone: WEATHER_TIME_ZONE,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 }
 
 export async function fetchCharltonKingsWeather(): Promise<WeatherData> {
