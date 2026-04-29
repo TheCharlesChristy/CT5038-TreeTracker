@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Modal,
@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
+import { StatusMessageBox, StatusMessage } from './StatusMessageBox';
 import { TreeDataStats } from './TreeDataStats';
 import { getTreeHealthOption } from './TreeHealthSelect';
 import { Tree, TreePhoto } from '@/objects/TreeDetails';
@@ -27,7 +28,6 @@ import {
   TreeFeedItem,
   uploadTreePhotos,
 } from '@/lib/treeApi';
-import { showAlert } from '@/utilities/showAlert';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -597,15 +597,36 @@ export default function TreeDetailsDashboard({
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [photos, setPhotos] = useState<TreePhoto[]>(tree.photos ?? []);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
+  const deleteRedirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isGuardian = Array.isArray(tree.guardian_user_ids)
     && tree.guardian_user_ids.includes(Number(currentUserId));
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
   const canManagePhotos = isGuardian || isAdmin;
   const canDeleteTree = isGuardian || isAdmin;
 
+  const showStatusMessage = (
+    title: string,
+    message: string,
+    variant: 'success' | 'error'
+  ) => {
+    setStatusMessage({
+      title,
+      message,
+      variant,
+      createdAt: Date.now(),
+    });
+  };
+
   useEffect(() => {
     setActiveTab('overview');
   }, [tree.id, tree.latitude, tree.longitude]);
+
+  useEffect(() => () => {
+    if (deleteRedirectTimer.current) {
+      clearTimeout(deleteRedirectTimer.current);
+    }
+  }, []);
 
   const maxPhotos = 5;
   const remainingPhotoSlots = Math.max(0, maxPhotos - photos.length);
@@ -676,12 +697,12 @@ export default function TreeDetailsDashboard({
     const treeId = tree.id;
 
     if (typeof treeId !== 'number') {
-      showAlert('Delete Failed', 'This tree does not have a valid ID.');
+      showStatusMessage('Delete Failed', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     if (typeof photo.id !== 'number') {
-      showAlert('Delete Failed', 'This photo does not have a valid backend ID.');
+      showStatusMessage('Delete Failed', 'This photo does not have a valid backend ID.', 'error');
       return;
     }
 
@@ -703,9 +724,10 @@ export default function TreeDetailsDashboard({
             setPhotos([]);
           }
         } catch (error) {
-          showAlert(
+          showStatusMessage(
             'Delete Failed',
-            error instanceof Error ? error.message : 'Unable to delete photo.'
+            error instanceof Error ? error.message : 'Unable to delete photo.',
+            'error'
           );
         }
       }
@@ -716,26 +738,31 @@ export default function TreeDetailsDashboard({
     const treeId = tree.id;
 
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to add photos.');
+      showStatusMessage('Login Required', 'You need to sign in to add photos.', 'error');
       return;
     }
 
     if (typeof treeId !== 'number') {
-      showAlert('Photo Error', 'This tree does not have a valid ID.');
+      showStatusMessage('Photo Error', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     if (isPhotoLimitReached) {
-      showAlert('Limit Reached', 'This tree already has the maximum of 5 photos.');
+      showStatusMessage(
+        'Limit Reached',
+        'This tree already has the maximum of 5 photos.',
+        'error'
+      );
       return;
     }
 
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
-      showAlert(
+      showStatusMessage(
         'Permission Required',
-        'Photo library permission is needed to upload tree photos.'
+        'Photo library permission is needed to upload tree photos.',
+        'error'
       );
       return;
     }
@@ -770,9 +797,10 @@ export default function TreeDetailsDashboard({
         })
         .join(', ');
 
-      showAlert(
+      showStatusMessage(
         'Unsupported Image Type',
-        `${getSupportedImageTypesMessage()}\n\nUnsupported selection: ${unsupportedList}`
+        `${getSupportedImageTypesMessage()}\n\nUnsupported selection: ${unsupportedList}`,
+        'error'
       );
     }
 
@@ -800,12 +828,13 @@ export default function TreeDetailsDashboard({
         setPhotos([]);
       }
 
-      showAlert('Success', 'Photo(s) uploaded successfully.');
+      showStatusMessage('Success', 'Photo(s) uploaded successfully.', 'success');
       setActiveTab('photos');
     } catch (error) {
-      showAlert(
+      showStatusMessage(
         'Upload Failed',
-        error instanceof Error ? error.message : 'Unable to upload photos.'
+        error instanceof Error ? error.message : 'Unable to upload photos.',
+        'error'
       );
     } finally {
       setIsUploadingPhotos(false);
@@ -814,7 +843,7 @@ export default function TreeDetailsDashboard({
 
   const handleAddComment = () => {
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to add a comment.');
+      showStatusMessage('Login Required', 'You need to sign in to add a comment.', 'error');
       return;
     }
 
@@ -844,19 +873,28 @@ export default function TreeDetailsDashboard({
 
   const confirmDeleteTree = async () => {
     if (typeof tree.id !== 'number') {
-      showAlert('Delete Failed', 'This tree does not have a valid ID.');
+      showStatusMessage('Delete Failed', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     try {
       await deleteTree(tree.id);
-      showAlert('Success', 'Tree deleted successfully.');
+      showStatusMessage('Success', 'Tree deleted successfully.', 'success');
 
-      router.replace('/mainPage');
+      if (deleteRedirectTimer.current) {
+        clearTimeout(deleteRedirectTimer.current);
+        deleteRedirectTimer.current = null;
+      }
+
+      deleteRedirectTimer.current = setTimeout(() => {
+        deleteRedirectTimer.current = null;
+        router.replace('/mainPage');
+      }, 1200);
     } catch (err) {
-      showAlert(
+      showStatusMessage(
         'Delete failed',
-        err instanceof Error ? err.message : 'Unknown error'
+        err instanceof Error ? err.message : 'Unknown error',
+        'error'
       );
     }
   };
@@ -870,9 +908,10 @@ export default function TreeDetailsDashboard({
           await deleteTreeComment(item.commentId);
           await reloadActivity();
         } catch (error) {
-          showAlert(
+          showStatusMessage(
             'Delete Failed',
-            error instanceof Error ? error.message : 'Unable to delete comment.'
+            error instanceof Error ? error.message : 'Unable to delete comment.',
+            'error'
           );
         }
       }
@@ -881,19 +920,19 @@ export default function TreeDetailsDashboard({
 
   const handleSubmitComment = async () => {
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to add a comment.');
+      showStatusMessage('Login Required', 'You need to sign in to add a comment.', 'error');
       return;
     }
 
     const trimmedComment = commentText.trim();
 
     if (!tree.id) {
-      showAlert('Comment Error', 'This tree does not have a valid ID.');
+      showStatusMessage('Comment Error', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     if (!trimmedComment) {
-      showAlert('Comment Required', 'Please enter a comment before submitting.');
+      showStatusMessage('Comment Required', 'Please enter a comment before submitting.', 'error');
       return;
     }
 
@@ -905,9 +944,10 @@ export default function TreeDetailsDashboard({
       setCommentText('');
       setActiveTab('activity');
     } catch (error) {
-      showAlert(
+      showStatusMessage(
         'Add Comment Failed',
         error instanceof Error ? error.message : 'Unable to add comment.',
+        'error'
       );
     } finally {
       setIsSubmittingComment(false);
@@ -951,6 +991,8 @@ export default function TreeDetailsDashboard({
 
   return (
     <View style={styles.wrapper} pointerEvents="box-none">
+      <StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
+
       <View style={[styles.card, { width: cardWidth, maxHeight: cardMaxHeight }]}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>

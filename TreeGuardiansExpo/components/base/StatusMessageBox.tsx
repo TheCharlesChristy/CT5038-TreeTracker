@@ -6,6 +6,8 @@ import { AppText } from '@/components/base/AppText';
 import { CircularCountdown } from '@/components/base/CircularCountdown';
 import { Theme } from '@/styles';
 
+const SUCCESS_AUTO_DISMISS_MS = 4000;
+
 type StatusVariant = 'success' | 'error';
 
 export type StatusMessage = {
@@ -36,9 +38,17 @@ export function StatusMessageBox({
   const [copyFeedback, setCopyFeedback] = useState('');
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
+  const autoDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCloseRef = useRef(onClose);
+  const statusCreatedAt = status?.createdAt;
+  const statusVariant = status?.variant;
 
   useEffect(() => {
-    if (status) {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (statusCreatedAt !== undefined && statusVariant) {
       setCopyFeedback('');
       opacity.setValue(0);
       translateY.setValue(-20);
@@ -46,8 +56,22 @@ export function StatusMessageBox({
         Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
         Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
       ]).start();
+
+      if (statusVariant === 'success') {
+        if (autoDismissTimer.current) clearTimeout(autoDismissTimer.current);
+        autoDismissTimer.current = setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+            Animated.timing(translateY, { toValue: -20, duration: 200, useNativeDriver: true }),
+          ]).start(() => onCloseRef.current());
+        }, SUCCESS_AUTO_DISMISS_MS);
+      }
     }
-  }, [opacity, status, translateY]);
+
+    return () => {
+      if (autoDismissTimer.current) clearTimeout(autoDismissTimer.current);
+    };
+  }, [opacity, statusCreatedAt, statusVariant, translateY]);
 
   if (!status) {
     return null;
@@ -57,7 +81,7 @@ export function StatusMessageBox({
     Animated.parallel([
       Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
       Animated.timing(translateY, { toValue: -20, duration: 200, useNativeDriver: true }),
-    ]).start(() => onClose());
+    ]).start(() => onCloseRef.current());
   };
 
   const handleCopy = async () => {
