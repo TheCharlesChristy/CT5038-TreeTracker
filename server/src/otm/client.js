@@ -41,7 +41,24 @@ function createOtmClient(config) {
 
   const base = new URL(config.baseUrl);
 
+  // Sliding-window rate limiter — tracks request timestamps over the last 60 s
+  const requestTimestamps = [];
+  function checkRateLimit() {
+    const now = Date.now();
+    const windowStart = now - 60000;
+    while (requestTimestamps.length > 0 && requestTimestamps[0] < windowStart) {
+      requestTimestamps.shift();
+    }
+    if (requestTimestamps.length >= config.rateLimitRpm) {
+      const err = new Error(`OTM rate limit reached: ${config.rateLimitRpm} requests/minute`);
+      err.name = "RateLimitError";
+      throw err;
+    }
+    requestTimestamps.push(now);
+  }
+
   async function request(method, path, bodyObject) {
+    checkRateLimit();
     const authHeaders = signRequest({ method, path, apiUser: config.apiUser, apiKey: config.apiKey });
     const body = bodyObject ? JSON.stringify(bodyObject) : null;
     const startedAt = Date.now();
@@ -130,11 +147,19 @@ function createOtmClient(config) {
     }
   }
 
+  function getRateLimitStatus() {
+    const now = Date.now();
+    const windowStart = now - 60000;
+    const recent = requestTimestamps.filter((t) => t >= windowStart).length;
+    return { requestsInLastMinute: recent, limitRpm: config.rateLimitRpm };
+  }
+
   return {
     get: (path) => request("GET", path),
     post: (path, body) => request("POST", path, body),
     put: (path, body) => request("PUT", path, body),
-    health
+    health,
+    getRateLimitStatus
   };
 }
 

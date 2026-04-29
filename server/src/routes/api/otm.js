@@ -171,12 +171,14 @@ function createOtmRoute({ otmClient, otmConfig, otmSpeciesCache, otmTreeCache, o
     })
   );
 
-  // Admin: OTM sync status
+  // Admin: OTM sync status + rate-limit metrics
   router.get(
     "/otm/sync-status",
     asyncHandler(async (req, res) => {
       await requireAuthenticatedUser({ req, db: null, routeLog: getRouteLogger(req, { route: "otm-sync-status" }) });
-      res.json(otmSyncQueue.getStatus());
+      const syncStatus = otmSyncQueue.getStatus();
+      const rateLimit = otmClient.getRateLimitStatus ? otmClient.getRateLimitStatus() : null;
+      res.json({ ...syncStatus, rateLimit });
     })
   );
 

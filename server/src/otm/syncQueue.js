@@ -92,8 +92,9 @@ function createOtmSyncQueue({ otmClient, otmConfig, db }) {
     try {
       const result = await submitToOtm(item);
 
-      if (!result.queued === false && result.reason === "no-species-match") {
+      if (result.reason === "no-species-match") {
         item.status = STATUS_REVIEW;
+        pending -= 1;
         failedRecords.push({ treeId, reason: "no-species-match", at: new Date().toISOString() });
         logger.warn("otm.sync.queued-for-review", { treeId });
         return;
