@@ -205,3 +205,6 @@ CREATE TABLE IF NOT EXISTS guardians (
     CONSTRAINT fk_guardians_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
+
+CREATE INDEX idx_comments_tree_created_at
+ON comments_tree (created_at DESC,comment_id,tree_id);
