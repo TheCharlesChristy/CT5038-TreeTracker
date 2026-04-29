@@ -39,9 +39,16 @@ export function StatusMessageBox({
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
   const autoDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCloseRef = useRef(onClose);
+  const statusCreatedAt = status?.createdAt;
+  const statusVariant = status?.variant;
 
   useEffect(() => {
-    if (status) {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (statusCreatedAt !== undefined && statusVariant) {
       setCopyFeedback('');
       opacity.setValue(0);
       translateY.setValue(-20);
@@ -50,13 +57,13 @@ export function StatusMessageBox({
         Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
       ]).start();
 
-      if (status.variant === 'success') {
+      if (statusVariant === 'success') {
         if (autoDismissTimer.current) clearTimeout(autoDismissTimer.current);
         autoDismissTimer.current = setTimeout(() => {
           Animated.parallel([
             Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
             Animated.timing(translateY, { toValue: -20, duration: 200, useNativeDriver: true }),
-          ]).start(() => onClose());
+          ]).start(() => onCloseRef.current());
         }, SUCCESS_AUTO_DISMISS_MS);
       }
     }
@@ -64,7 +71,7 @@ export function StatusMessageBox({
     return () => {
       if (autoDismissTimer.current) clearTimeout(autoDismissTimer.current);
     };
-  }, [opacity, status, translateY, onClose]);
+  }, [opacity, statusCreatedAt, statusVariant, translateY]);
 
   if (!status) {
     return null;
@@ -74,7 +81,7 @@ export function StatusMessageBox({
     Animated.parallel([
       Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
       Animated.timing(translateY, { toValue: -20, duration: 200, useNativeDriver: true }),
-    ]).start(() => onClose());
+    ]).start(() => onCloseRef.current());
   };
 
   const handleCopy = async () => {
