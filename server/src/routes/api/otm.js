@@ -10,7 +10,7 @@ function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.otm", extra) : logger.child(extra);
 }
 
-function createOtmRoute({ otmClient, otmConfig, otmSpeciesCache, otmTreeCache, otmSyncQueue }) {
+function createOtmRoute({ db, otmClient, otmConfig, otmSpeciesCache, otmTreeCache, otmSyncQueue }) {
   const router = express.Router();
 
   // Health check — verify OTM connectivity
@@ -177,7 +177,7 @@ function createOtmRoute({ otmClient, otmConfig, otmSpeciesCache, otmTreeCache, o
   router.get(
     "/otm/logs",
     asyncHandler(async (req, res) => {
-      await requireAuthenticatedUser({ req, db: null, routeLog: getRouteLogger(req, { route: "otm-logs" }) });
+      await requireAuthenticatedUser({ req, db, routeLog: getRouteLogger(req, { route: "otm-logs" }) });
 
       const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
       const after = Number(req.query.after) || 0;
@@ -192,7 +192,7 @@ function createOtmRoute({ otmClient, otmConfig, otmSpeciesCache, otmTreeCache, o
   router.get(
     "/otm/sync-status",
     asyncHandler(async (req, res) => {
-      await requireAuthenticatedUser({ req, db: null, routeLog: getRouteLogger(req, { route: "otm-sync-status" }) });
+      await requireAuthenticatedUser({ req, db, routeLog: getRouteLogger(req, { route: "otm-sync-status" }) });
       const syncStatus = otmSyncQueue.getStatus();
       const rateLimit = otmClient.getRateLimitStatus ? otmClient.getRateLimitStatus() : null;
       res.json({ ...syncStatus, rateLimit });
