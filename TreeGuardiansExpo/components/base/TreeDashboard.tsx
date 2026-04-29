@@ -900,7 +900,14 @@ export default function TreeDetailsDashboard({
     try {
       await deleteTree(tree.id);
       showStatusMessage('Success', 'Tree deleted successfully.', 'success');
+
+      if (deleteRedirectTimer.current) {
+        clearTimeout(deleteRedirectTimer.current);
+        deleteRedirectTimer.current = null;
+      }
+
       deleteRedirectTimer.current = setTimeout(() => {
+        deleteRedirectTimer.current = null;
         router.replace('/mainPage');
       }, 1200);
     } catch (err) {
