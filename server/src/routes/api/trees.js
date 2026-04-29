@@ -161,11 +161,6 @@ function createTreesRoute({ db }) {
         tx
       );
 
-      await db.guardians.add(
-        { treeId: tree.id, userId: Number(auth.user.id) },
-        tx
-      );
-
       await db.treeData.create(
         {
           treeId: tree.id,
@@ -409,6 +404,13 @@ function createTreesRoute({ db }) {
         routeLog,
       });
 
+      const isAdmin = await db.admins.isAdmin(Number(auth.user.id));
+      if (!isAdmin) {
+        const error = new Error("Only admins can delete trees.");
+        error.name = "ForbiddenError";
+        throw error;
+      }
+
       let deleted = false;
 
       await db.transaction(async (tx) => {
@@ -457,7 +459,7 @@ function createTreesRoute({ db }) {
 
         if (!photo || !linkedToTree) {
           const error = new Error("Photo not found for this tree.");
-          error.statusCode = 404;
+          error.name = "NotFoundError";
           throw error;
         }
 
@@ -468,7 +470,7 @@ function createTreesRoute({ db }) {
 
         if (!isAdmin && !isGuardian) {
           const error = new Error("Only admins or guardians of this tree can delete its photos.");
-          error.statusCode = 403;
+          error.name = "ForbiddenError";
           throw error;
         }
 

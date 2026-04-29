@@ -616,7 +616,7 @@ export default function TreeDetailsDashboard({
     && tree.guardian_user_ids.includes(Number(currentUserId));
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
   const canManagePhotos = isGuardian || isAdmin;
-  const canDeleteTree = isGuardian || isAdmin;
+  const canDeleteTree = isAdmin;
 
   useEffect(() => {
     setActiveTab('overview');
