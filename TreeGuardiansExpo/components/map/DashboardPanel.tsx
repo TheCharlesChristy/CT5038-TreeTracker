@@ -2,11 +2,12 @@ import { ScrollView, StyleSheet, View, TouchableOpacity, ActivityIndicator, Moda
 import { router } from 'expo-router';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
 import type { AppUserRole } from '@/utilities/authHelper';
 import React, { useState, useMemo } from 'react';
 import { fetchCharltonKingsWeather } from '@/lib/weatherApi';
-import { fetchRecentTreeActivity, LocalTreeActivityItem } from '@/lib/activityApi';
+import { fetchRecentTreeActivity, LocalActivityItem } from '@/lib/activityApi';
 
 type PopupType = 'weather' | 'activity' | null;
 
@@ -42,7 +43,7 @@ export function DashboardPanel({
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
-  const [activityItems, setActivityItems] = useState<LocalTreeActivityItem[]>([]);
+  const [activityItems, setActivityItems] = useState<LocalActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
 
@@ -231,18 +232,40 @@ export function DashboardPanel({
                 {activePopup === 'activity' && (
                   <>
                     {activityLoading ? (
-                      <ActivityIndicator />
+                      <ActivityIndicator style={styles.activityLoader} />
                     ) : activityError ? (
-                      <AppText>{activityError}</AppText>
+                      <AppText style={styles.activityErrorText}>{activityError}</AppText>
                     ) : activityItems.length > 0 ? (
                       activityItems.map((item) => (
-                        <View key={item.id} style={styles.activityCard}>
-                          <AppText>{item.title}</AppText>
-                          <AppText style={styles.activityMeta}>{item.subtitle}</AppText>
-                        </View>
+                        <TouchableOpacity
+                          key={item.id}
+                          style={styles.activityCard}
+                          activeOpacity={item.treeId ? 0.75 : 1}
+                          onPress={() => {
+                            if (item.treeId) {
+                              closePopup();
+                              router.push(`/treeDashboard/${item.treeId}` as never);
+                            }
+                          }}
+                        >
+                          <View style={styles.activityCardIcon}>
+                            <MaterialCommunityIcons
+                              name={item.type === 'comment' ? 'message-text-outline' : 'tree-outline'}
+                              size={18}
+                              color={item.type === 'comment' ? '#2E6B3E' : '#1B5E20'}
+                            />
+                          </View>
+                          <View style={styles.activityCardBody}>
+                            <AppText style={styles.activityTitle}>{item.title}</AppText>
+                            <AppText style={styles.activityMeta}>{item.subtitle}</AppText>
+                          </View>
+                          {item.treeId ? (
+                            <MaterialCommunityIcons name="chevron-right" size={16} color="#9EB59E" />
+                          ) : null}
+                        </TouchableOpacity>
                       ))
                     ) : (
-                      <AppText>No activity found</AppText>
+                      <AppText style={styles.activityEmptyText}>No recent activity found.</AppText>
                     )}
                   </>
                 )}
@@ -289,14 +312,54 @@ const styles = StyleSheet.create({
   },
 
   activityCard: {
-    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E8F0E8',
+  },
+
+  activityCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EBF5EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+  activityCardBody: {
+    flex: 1,
+  },
+
+  activityTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Theme.Colours.textPrimary,
+    marginBottom: 2,
   },
 
   activityMeta: {
     color: Theme.Colours.textMuted,
     fontSize: 12,
+    lineHeight: 16,
+  },
+
+  activityLoader: {
+    marginVertical: 20,
+  },
+
+  activityErrorText: {
+    color: Theme.Colours.error,
+    marginVertical: 10,
+  },
+
+  activityEmptyText: {
+    color: Theme.Colours.textMuted,
+    marginVertical: 10,
   },
 
   dashboardWrap: {
