@@ -72,6 +72,13 @@ export type UpdateTreeDataPayload = {
   diameter?: number | null;
   height?: number | null;
   circumference?: number | null;
+  avoidedRunoff?: number | null;
+  carbonDioxideStored?: number | null;
+  carbonDioxideRemoved?: number | null;
+  waterIntercepted?: number | null;
+  airQualityImprovement?: number | null;
+  leafArea?: number | null;
+  evapotranspiration?: number | null;
   health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
 };
 
