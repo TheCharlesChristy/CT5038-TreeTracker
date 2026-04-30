@@ -18,8 +18,12 @@ CREATE TABLE IF NOT EXISTS users (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     username varchar(100) NOT NULL UNIQUE,
     email varchar(255),
-    phone varchar(50)
+    phone varchar(50),
+    email_consent tinyint(1) NOT NULL DEFAULT 0
 ) engine = InnoDB;
+
+-- Migration: add email_consent if upgrading from an older schema
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS email_consent tinyint(1) NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS user_passwords (
     user_id bigint unsigned PRIMARY KEY,

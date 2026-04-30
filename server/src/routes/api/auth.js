@@ -37,6 +37,7 @@ function createAuthRoute({ db, frontendUrl }) {
     const username = String(req.body.username || "").trim();
     const email = String(req.body.email || "").trim();
     const password = String(req.body.password || "");
+    const emailConsent = Boolean(req.body.emailConsent);
 
     routeLog.info("register.attempt", { username, email });
 
@@ -77,7 +78,7 @@ function createAuthRoute({ db, frontendUrl }) {
           }
         }
 
-        const createdUser = await db.users.create({ username, email: email || null }, tx);
+        const createdUser = await db.users.create({ username, email: email || null, emailConsent }, tx);
         await db.userPasswords.setForUser(createdUser.id, passwordHash, tx);
         await db.userSessions.create({
           userId: createdUser.id,

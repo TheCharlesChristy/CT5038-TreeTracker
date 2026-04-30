@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   ScrollView,
@@ -336,8 +337,15 @@ function TreePhotos({
     <View style={styles.sectionStack}>
       <View style={styles.sectionHeaderRow}>
         <AppText style={styles.sectionTitle}>Photo Gallery</AppText>
-        <AppText style={styles.sectionMeta}>{photos.length} items</AppText>
+        <AppText style={styles.sectionMeta}>{photos.length} / 5 photos</AppText>
       </View>
+
+      {isUploadingPhotos ? (
+        <View style={styles.uploadingCard}>
+          <ActivityIndicator size="small" color="#1B5E20" />
+          <AppText style={styles.uploadingText}>Uploading photos…</AppText>
+        </View>
+      ) : null}
 
       {photos.length > 0 ? (
         <ScrollView
@@ -374,6 +382,7 @@ function TreePhotos({
               style={styles.addPhotoTile}
               onPress={onAddPhoto}
               activeOpacity={0.85}
+              disabled={isUploadingPhotos}
             >
               <MaterialCommunityIcons
                 name="camera-plus-outline"
@@ -382,44 +391,41 @@ function TreePhotos({
               />
               <AppText style={styles.addPhotoTitle}>Add photo</AppText>
               <AppText style={styles.addPhotoText}>
-                You can upload up to 5 images for this tree.
+                Up to 5 photos per tree.
               </AppText>
             </TouchableOpacity>
           ) : null}
         </ScrollView>
       ) : (
-        <View style={styles.emptyStateCard}>
-          <MaterialCommunityIcons name="image-off-outline" size={30} color="#4A4A4A" />
-          <AppText style={styles.emptyStateTitle}>No photos yet</AppText>
-          <AppText style={styles.emptyStateBody}>
-            When images are added, they will appear here in a swipeable gallery.
-          </AppText>
+        <View style={styles.emptyPhotoState}>
+          <View style={styles.emptyStateCard}>
+            <MaterialCommunityIcons name="image-off-outline" size={30} color="#4A4A4A" />
+            <AppText style={styles.emptyStateTitle}>No photos yet</AppText>
+            <AppText style={styles.emptyStateBody}>
+              Images added here will appear in a swipeable gallery.
+            </AppText>
+          </View>
+
+          {canAddPhoto ? (
+            <TouchableOpacity
+              style={styles.addPhotoTileStandalone}
+              onPress={onAddPhoto}
+              activeOpacity={0.85}
+              disabled={isUploadingPhotos}
+            >
+              <MaterialCommunityIcons name="camera-plus-outline" size={22} color="#1B5E20" />
+              <AppText style={styles.addPhotoTitle}>Add first photo</AppText>
+            </TouchableOpacity>
+          ) : null}
         </View>
       )}
 
       <View style={styles.infoSection}>
         <AppText style={styles.sectionTitle}>Photo Notes</AppText>
         <AppText style={styles.infoText}>
-          Scroll horizontally to view more than two Photos!
+          Scroll horizontally to browse all photos. Tap the Add photo tile to upload more.
         </AppText>
       </View>
-
-      {canAddPhoto ? (
-        <AppButton
-          title={
-            isUploadingPhotos
-              ? 'Uploading...'
-              : isPhotoLimitReached
-                ? 'Photo Limit Reached'
-                : 'Add Photo'
-          }
-          variant="secondary"
-          onPress={onAddPhoto}
-          disabled={isPhotoLimitReached || isUploadingPhotos}
-          style={styles.sectionActionWrap}
-          buttonStyle={styles.sectionActionButton}
-        />
-      ) : null}
     </View>
   );
 }
@@ -1732,5 +1738,39 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+
+  uploadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#EEF6EB',
+    borderWidth: 1,
+    borderColor: '#D0E5CC',
+  },
+
+  uploadingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1B5E20',
+  },
+
+  emptyPhotoState: {
+    gap: 10,
+  },
+
+  addPhotoTileStandalone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#E4F0DF',
+    borderWidth: 1,
+    borderColor: '#CFE0CA',
   },
 });

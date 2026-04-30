@@ -8,27 +8,28 @@ function createAccountEndpoints(ctx) {
       ensureStringMax("email", payload.email, 255);
       ensureStringMax("phone", payload.phone, 50);
       const executor = runtimeExecutor(tx);
+      const emailConsent = payload.emailConsent ? 1 : 0;
       const result = await run(
         executor,
-        "INSERT INTO users (username, email, phone) VALUES (?, ?, ?)",
-        [payload.username, payload.email || null, payload.phone || null]
+        "INSERT INTO users (username, email, phone, email_consent) VALUES (?, ?, ?, ?)",
+        [payload.username, payload.email || null, payload.phone || null, emailConsent]
       );
       return this.getById(Number(result.insertId), tx);
     },
 
     async getById(id, tx) {
       ensurePositiveInt("id", id);
-      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE id = ?", [id]);
+      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone, email_consent FROM users WHERE id = ?", [id]);
     },
 
     async getByUsername(username, tx) {
       ensureRequiredString("username", username, 100);
-      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE username = ?", [username]);
+      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone, email_consent FROM users WHERE username = ?", [username]);
     },
 
     async getByEmail(email, tx) {
       ensureRequiredString("email", email, 255);
-      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE email = ?", [email]);
+      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone, email_consent FROM users WHERE email = ?", [email]);
     },
 
     async getRoleById(id, tx) {
@@ -52,7 +53,7 @@ function createAccountEndpoints(ctx) {
 
     async list(params = {}, tx) {
       const { limit, offset } = normalizeListParams(params);
-      return run(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users ORDER BY id DESC LIMIT ? OFFSET ?", [
+      return run(runtimeExecutor(tx), "SELECT id, username, email, phone, email_consent FROM users ORDER BY id DESC LIMIT ? OFFSET ?", [
         limit,
         offset
       ]);
@@ -72,7 +73,8 @@ function createAccountEndpoints(ctx) {
       const { updates, params } = buildUpdate(fields, {
         username: "username",
         email: "email",
-        phone: "phone"
+        phone: "phone",
+        emailConsent: "email_consent"
       });
 
       const result = await run(runtimeExecutor(tx), `UPDATE users SET ${updates.join(", ")} WHERE id = ?`, [...params, id]);

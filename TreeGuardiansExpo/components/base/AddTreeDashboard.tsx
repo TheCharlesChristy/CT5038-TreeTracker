@@ -438,33 +438,38 @@ export default function PlotDashboard({
 
             <View style={styles.metricsRow}>
               <View style={styles.metricField}>
+                <AppText style={styles.metricLabel}>Diameter</AppText>
                 <AppInput
-                  placeholder="Diameter (cm)"
+                  placeholder="0"
                   value={diameter}
                   onChangeText={(value) => handleNumericChange(value, 'diameter', setDiameter)}
                   keyboardType="numeric"
                   invalid={!!errors.diameter}
                   style={styles.input}
+                  rightAdornment={<AppText style={styles.unitLabel}>cm</AppText>}
                 />
                 {errors.diameter ? <AppText style={styles.errorText}>{errors.diameter}</AppText> : null}
               </View>
 
               <View style={styles.metricField}>
+                <AppText style={styles.metricLabel}>Height</AppText>
                 <AppInput
-                  placeholder="Height (m)"
+                  placeholder="0"
                   value={height}
                   onChangeText={(value) => handleNumericChange(value, 'height', setHeight)}
                   keyboardType="numeric"
                   invalid={!!errors.height}
                   style={styles.input}
+                  rightAdornment={<AppText style={styles.unitLabel}>m</AppText>}
                 />
                 {errors.height ? <AppText style={styles.errorText}>{errors.height}</AppText> : null}
               </View>
             </View>
 
             <View style={styles.metricField}>
+              <AppText style={styles.metricLabel}>Circumference</AppText>
               <AppInput
-                placeholder="Circumference (cm)"
+                placeholder="0"
                 value={circumference}
                 onChangeText={(value) =>
                   handleNumericChange(value, 'circumference', setCircumference)
@@ -472,6 +477,7 @@ export default function PlotDashboard({
                 keyboardType="numeric"
                 invalid={!!errors.circumference}
                 style={styles.input}
+                rightAdornment={<AppText style={styles.unitLabel}>cm</AppText>}
               />
               {errors.circumference ? (
                 <AppText style={styles.errorText}>{errors.circumference}</AppText>
@@ -968,5 +974,20 @@ const styles = StyleSheet.create({
   estimateItem: {
     ...Theme.Typography.caption,
     color: '#35503B',
+  },
+
+  metricLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 4,
+  },
+
+  unitLabel: {
+    ...Theme.Typography.body,
+    color: Theme.Colours.textMuted,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    paddingRight: 4,
   },
 });

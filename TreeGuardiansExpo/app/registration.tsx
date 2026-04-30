@@ -28,6 +28,7 @@ export default function CreateAccount() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailConsent, setEmailConsent] = useState(false);
 
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -44,7 +45,7 @@ export default function CreateAccount() {
   const usernameError = getUsernameError(trimmedUsername);
   const emailError = trimmedEmail ? getEmailError(trimmedEmail) : null;
   const passwordError = getPasswordError(password);
-  const canSubmit = Boolean(trimmedUsername && password) && !usernameError && !emailError && !passwordError;
+  const canSubmit = Boolean(trimmedUsername && password) && !usernameError && !emailError && !passwordError && emailConsent;
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,6 +95,7 @@ export default function CreateAccount() {
           username: trimmedUsername,
           email: trimmedEmail || null,
           password,
+          emailConsent,
         }),
       });
 
@@ -309,8 +311,25 @@ export default function CreateAccount() {
                   <PasswordStrengthIndicator password={password} />
                 </View>
 
+                <Pressable
+                  onPress={() => setEmailConsent((prev) => !prev)}
+                  style={styles.consentRow}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: emailConsent }}
+                >
+                  <View style={[styles.checkbox, emailConsent && styles.checkboxChecked]}>
+                    {emailConsent ? (
+                      <AppText variant="caption" style={styles.checkboxTick}>✓</AppText>
+                    ) : null}
+                  </View>
+                  <AppText variant="caption" style={styles.consentText}>
+                    I agree to receive occasional emails about account activity and important updates.
+                    You can unsubscribe at any time.
+                  </AppText>
+                </Pressable>
+
                 <AppButton
-                  title="Join the Community"
+                  title={loading ? 'Creating account…' : 'Join the Community'}
                   onPress={handleCreateAccount}
                   disabled={!canSubmit || loading}
                   style={styles.submitButton}
@@ -566,6 +585,39 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#B3261E',
+  },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Theme.Spacing.small,
+    marginBottom: Theme.Spacing.medium,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: 'rgba(46, 125, 50, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
+  },
+  checkboxTick: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  consentText: {
+    flex: 1,
+    color: '#2D3A2D',
+    lineHeight: 19,
   },
   submitButton: {
     marginTop: Theme.Spacing.small,
