@@ -17,7 +17,7 @@ import { AppInput } from './AppInput';
 import { AppText } from './AppText';
 import { StatusMessageBox, StatusMessage } from './StatusMessageBox';
 import { TreeDataStats } from './TreeDataStats';
-import { getTreeHealthOption } from './TreeHealthSelect';
+import { getTreeHealthOption, TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
 import { Tree, TreePhoto } from '@/objects/TreeDetails';
 import {
   addTreeComment,
@@ -33,7 +33,6 @@ import {
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
 import { TreeSpeciesSelect } from './TreeSpeciesSelect';
 import { estimateTreeEcoStats } from '@/lib/treeEcoEstimates';
 
