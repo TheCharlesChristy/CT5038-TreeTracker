@@ -21,7 +21,7 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'excellent',
     label: 'Excellent',
-    description: 'Full, lush canopy with vibrant leaves. No visible damage, disease, or structural concerns.',
+    description: 'Full canopy, vibrant leaves, no visible damage or disease.',
     icon: 'leaf-circle',
     borderColor: '#78C57D',
     backgroundColor: '#EDF9EE',
@@ -30,7 +30,7 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'good',
     label: 'Good',
-    description: 'Healthy overall appearance with minor cosmetic issues. No significant threats to the tree.',
+    description: 'Healthy appearance with minor cosmetic issues, no significant threats.',
     icon: 'leaf',
     borderColor: '#A2CF5F',
     backgroundColor: '#F5FAE8',
@@ -39,7 +39,7 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'ok',
     label: 'OK',
-    description: 'Some stress signs visible — sparse foliage, minor deadwood, or surface wounds. Worth monitoring.',
+    description: 'Some stress signs visible, sparse foliage or minor deadwood. Worth monitoring.',
     icon: 'checkbox-marked-circle-outline',
     borderColor: '#E1C14C',
     backgroundColor: '#FFF8E1',
@@ -48,7 +48,7 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'bad',
     label: 'Bad',
-    description: 'Noticeable decline — significant deadwood, crown dieback, or signs of pest or disease activity.',
+    description: 'Noticeable decline, significant deadwood, crown dieback, or pest and disease activity.',
     icon: 'alert-outline',
     borderColor: '#F1A25E',
     backgroundColor: '#FFF0E4',
@@ -57,7 +57,7 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'terrible',
     label: 'Terrible',
-    description: 'Severe structural failure risk or advanced disease. Likely requires urgent professional assessment.',
+    description: 'Severe structural risk or advanced disease. Requires urgent professional assessment.',
     icon: 'alert-octagon-outline',
     borderColor: '#E07A74',
     backgroundColor: '#FFF0F0',
@@ -290,6 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: Theme.Spacing.medium,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -299,6 +300,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   optionCopy: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
