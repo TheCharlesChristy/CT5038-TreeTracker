@@ -47,6 +47,35 @@ function createAnalyticsRoute({ db }) {
 
   router.get("/analytics", asyncHandler(analyticsHandler));
 
+  router.get("/analytics/activity", asyncHandler(async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "analytics-activity" });
+    const auth = await requireAuthenticatedUser({ req, db, routeLog });
+
+    if (auth.user.role !== "admin") {
+      const error = new Error("Admin access required");
+      error.name = "ForbiddenError";
+      throw error;
+    }
+
+    const days = Math.min(Number(req.query.days) || 30, 90);
+    const trend = await db.workflows.analytics.getActivityTrend(days);
+    res.json(trend);
+  }));
+
+  router.get("/analytics/users", asyncHandler(async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "analytics-users" });
+    const auth = await requireAuthenticatedUser({ req, db, routeLog });
+
+    if (auth.user.role !== "admin") {
+      const error = new Error("Admin access required");
+      error.name = "ForbiddenError";
+      throw error;
+    }
+
+    const analytics = await db.workflows.analytics.getUserAnalytics();
+    res.json(analytics);
+  }));
+
   return router;
 }
 
