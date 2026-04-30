@@ -181,6 +181,50 @@ test("tree creation requires an authenticated user", async () => {
   }
 });
 
+test("recent comments route returns JSON and rejects invalid limits", async () => {
+  const calls = [];
+  const rows = [
+    {
+      comment_id: 10,
+      tree_id: 4,
+      content: "Canopy looking good",
+      created_at: "2026-04-29T10:00:00.000Z",
+      user_id: 2,
+      username: "tester"
+    }
+  ];
+  const db = {
+    ...createDbStub(),
+    workflows: {
+      trees: {
+        getRecentComments: async (params) => {
+          calls.push(params);
+          return rows;
+        }
+      }
+    }
+  };
+  const httpServer = createHttpServer({ port: 0, db });
+  const listening = await httpServer.start();
+  listening.unref();
+  const port = listening.address().port;
+
+  try {
+    const ok = await sendRequest({ port, path: "/api/comments/recent?limit=2" });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body, rows);
+    assert.deepEqual(calls, [{ limit: 2, offset: 0 }]);
+
+    const invalid = await sendRequest({ port, path: "/api/comments/recent?limit=abc" });
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.body.code, "ValidationError");
+    assert.match(invalid.body.error, /limit must be a positive integer/);
+    assert.equal(calls.length, 1);
+  } finally {
+    await httpServer.stop();
+  }
+});
+
 test("unmatched routes proxy to the Expo dev server when enabled", async () => {
   const expoServer = http.createServer((req, res) => {
     res.writeHead(200, { "content-type": "text/plain" });

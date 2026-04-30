@@ -78,6 +78,29 @@ test("getTreeDetails throws not found and users profile aggregates", async () =>
   });
 });
 
+test("getRecentComments normalizes list params and queries newest tree comments", async () => {
+  const calls = [];
+  const executor = { name: "runtime" };
+  const expectedRows = [{ comment_id: 9, tree_id: 2, content: "Nice tree" }];
+  const ctx = createCtx({
+    runtimeExecutor: () => executor,
+    run: async (...args) => {
+      calls.push(args);
+      return expectedRows;
+    }
+  });
+  const workflows = createWorkflows(ctx);
+
+  const rows = await workflows.trees.getRecentComments({ limit: "12", offset: "3" });
+
+  assert.equal(rows, expectedRows);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], executor);
+  assert.match(calls[0][1], /FROM comments_tree ct/);
+  assert.match(calls[0][1], /ORDER BY ct\.created_at DESC/);
+  assert.deepEqual(calls[0][2], [12, 3]);
+});
+
 test("validateSession handles valid invalid and expired", async () => {
   const workflowsInvalid = createWorkflows(createCtx({ userSessions: { getByToken: async () => null } }));
   const invalid = await workflowsInvalid.auth.validateSession({ sessionToken: "a".repeat(64) });

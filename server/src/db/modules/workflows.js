@@ -140,6 +140,29 @@ function createWorkflows(ctx) {
         };
       },
 
+      async getRecentComments(params = {}) {
+        const { limit, offset } = normalizeListParams(params);
+
+        return run(
+          runtimeExecutor(),
+          `
+            SELECT
+              ct.comment_id,
+              ct.tree_id,
+              ct.content,
+              ct.created_at,
+              c.user_id,
+              u.username
+            FROM comments_tree ct
+            INNER JOIN comments c ON c.id = ct.comment_id
+            LEFT JOIN users u ON u.id = c.user_id
+            ORDER BY ct.created_at DESC
+            LIMIT ? OFFSET ?
+          `,
+          [limit, offset]
+        );
+      },
+
       async getTreeFeed(treeId, params = {}) {
         ensurePositiveInt("treeId", treeId);
         const { limit, offset } = normalizeListParams(params);

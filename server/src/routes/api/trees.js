@@ -625,6 +625,15 @@ function createTreesRoute({ db }) {
   );
 
   router.get(
+    "/comments/recent",
+    asyncHandler(async (req, res) => {
+      const limit = parsePositiveInt(req.query.limit || 8, "limit");
+      const items = await db.workflows.trees.getRecentComments({ limit, offset: 0 });
+      res.json(items);
+    })
+  );
+
+  router.get(
     "/trees/:treeId/feed",
     asyncHandler(async (req, res) => {
       const treeId = parsePositiveInt(req.params.treeId, "treeId");

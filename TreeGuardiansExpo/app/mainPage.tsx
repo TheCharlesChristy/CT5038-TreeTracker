@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Alert,
   View,
   StyleSheet,
   TouchableOpacity,
@@ -111,9 +110,13 @@ export default function MainPage() {
     const didLogout = await logoutUser();
 
     if (!didLogout) {
-      setLogoutStatus(null);
       setIsLoggingOut(false);
-      Alert.alert('Logout Failed', 'We could not log you out. Please try again.');
+      setLogoutStatus({
+        title: 'Logout Failed',
+        message: 'We could not log you out. Please try again.',
+        variant: 'error',
+        createdAt: Date.now(),
+      });
       return;
     }
 
@@ -172,7 +175,7 @@ export default function MainPage() {
 
           <StatusMessageBox
             status={logoutStatus}
-            redirectDuration={logoutStatus ? 3 : undefined}
+            redirectDuration={logoutStatus?.title === 'Logout Pending' ? 3 : undefined}
             countdownLabel="Logging out…"
             closeLabel="Cancel"
             showCopyButton={false}

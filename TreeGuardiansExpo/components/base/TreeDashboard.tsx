@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Modal,
@@ -14,8 +14,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
+import { StatusMessageBox, StatusMessage } from './StatusMessageBox';
 import { TreeDataStats } from './TreeDataStats';
-import { Tree } from '@/objects/TreeDetails';
+import { getTreeHealthOption } from './TreeHealthSelect';
+import { Tree, TreePhoto } from '@/objects/TreeDetails';
 import {
   addTreeComment,
   deleteTreeComment,
@@ -27,10 +29,8 @@ import {
   updateTreeData,
   uploadTreePhotos,
 } from '@/lib/treeApi';
-import { showAlert } from '@/utilities/showAlert';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
-import { TreePhoto } from '@/objects/TreeDetails';
 import { router } from 'expo-router';
 import { TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
 
@@ -65,10 +65,6 @@ const TABS: {
   { key: 'photos', label: 'Photos', icon: 'image-multiple-outline' },
   { key: 'activity', label: 'Activity', icon: 'message-badge-outline' },
 ];
-
-function cleanText(value: string | undefined) {
-  return value?.trim() ?? '';
-}
 
 function formatFeedMeta(item: TreeFeedItem): string {
   const username = item.username?.trim() || 'Unknown user';
@@ -190,22 +186,17 @@ function TreeOverview({
   photos,
   photoCount,
   activityCount,
-  healthLabel,
-  healthIcon,
-  healthTone,
+  healthMeta,
   observationItems,
 }: {
   tree: Tree;
   photos: TreePhoto[];
   photoCount: number;
   activityCount: number;
-  healthLabel: string;
-  healthIcon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-  healthTone: 'healthy' | 'attention';
+  healthMeta: ReturnType<typeof getTreeHealthOption>;
   observationItems: ActivityItem[];
 }) {
   const primaryPhoto = photos[0]?.image_url;
-  const latestObservation = observationItems[0];
 
   return (
     <View style={styles.sectionStack}>
@@ -230,25 +221,19 @@ function TreeOverview({
           <View
             style={[
               styles.healthBadge,
-              healthTone === 'attention'
-                ? styles.healthBadgeAttention
-                : styles.healthBadgeHealthy,
+              {
+                borderColor: healthMeta.borderColor,
+                backgroundColor: healthMeta.backgroundColor,
+              },
             ]}
           >
             <MaterialCommunityIcons
-              name={healthIcon}
-              size={14}
-              color={healthTone === 'attention' ? '#8C2D04' : '#165B2A'}
+              name={healthMeta.icon}
+              size={16}
+              color={healthMeta.textColor}
             />
-            <AppText
-              style={[
-                styles.healthBadgeText,
-                healthTone === 'attention'
-                  ? styles.healthBadgeTextAttention
-                  : styles.healthBadgeTextHealthy,
-              ]}
-            >
-              {healthLabel}
+            <AppText style={[styles.healthBadgeText, { color: healthMeta.textColor }]}>
+              {healthMeta.label}
             </AppText>
           </View>
         </View>
@@ -627,6 +612,8 @@ export default function TreeDetailsDashboard({
   const [editCircumference, setEditCircumference] = useState(
     tree.circumference === undefined || tree.circumference === null ? '' : String(tree.circumference)
   );
+  const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
+  const deleteRedirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
   const canManagePhotos = isAdmin;
   const canDeleteTree = isAdmin;
@@ -635,9 +622,28 @@ export default function TreeDetailsDashboard({
     setDisplayTree(tree);
   }, [tree]);
 
+  const showStatusMessage = (
+    title: string,
+    message: string,
+    variant: 'success' | 'error'
+  ) => {
+    setStatusMessage({
+      title,
+      message,
+      variant,
+      createdAt: Date.now(),
+    });
+  };
+
   useEffect(() => {
     setActiveTab('overview');
   }, [tree.id, tree.latitude, tree.longitude]);
+
+  useEffect(() => () => {
+    if (deleteRedirectTimer.current) {
+      clearTimeout(deleteRedirectTimer.current);
+    }
+  }, []);
 
   const maxPhotos = 5;
   const remainingPhotoSlots = Math.max(0, maxPhotos - photos.length);
@@ -647,14 +653,7 @@ export default function TreeDetailsDashboard({
     setPhotos(tree.photos ?? []);
   }, [tree.id, tree.photos]);
 
-  const needsAttention = cleanText(displayTree.disease).length > 0;
-  const healthLabel = displayTree.health
-    ? displayTree.health.replace(/^./, (letter) => letter.toUpperCase())
-    : needsAttention
-      ? 'Needs attention'
-      : 'Healthy';
-  const healthIcon = needsAttention ? 'alert-circle-outline' : 'check-decagram-outline';
-  const healthTone = needsAttention ? 'attention' : 'healthy';
+  const healthMeta = getTreeHealthOption(displayTree.health);
 
   const commentItems = activityItems.filter(isCommentActivity);
   const observationItems = activityItems.filter(isObservationActivity);
@@ -715,12 +714,12 @@ export default function TreeDetailsDashboard({
     const treeId = tree.id;
 
     if (typeof treeId !== 'number') {
-      showAlert('Delete Failed', 'This tree does not have a valid ID.');
+      showStatusMessage('Delete Failed', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     if (typeof photo.id !== 'number') {
-      showAlert('Delete Failed', 'This photo does not have a valid backend ID.');
+      showStatusMessage('Delete Failed', 'This photo does not have a valid backend ID.', 'error');
       return;
     }
 
@@ -742,9 +741,10 @@ export default function TreeDetailsDashboard({
             setPhotos([]);
           }
         } catch (error) {
-          showAlert(
+          showStatusMessage(
             'Delete Failed',
-            error instanceof Error ? error.message : 'Unable to delete photo.'
+            error instanceof Error ? error.message : 'Unable to delete photo.',
+            'error'
           );
         }
       }
@@ -755,26 +755,31 @@ export default function TreeDetailsDashboard({
     const treeId = tree.id;
 
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to add photos.');
+      showStatusMessage('Login Required', 'You need to sign in to add photos.', 'error');
       return;
     }
 
     if (typeof treeId !== 'number') {
-      showAlert('Photo Error', 'This tree does not have a valid ID.');
+      showStatusMessage('Photo Error', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     if (isPhotoLimitReached) {
-      showAlert('Limit Reached', 'This tree already has the maximum of 5 photos.');
+      showStatusMessage(
+        'Limit Reached',
+        'This tree already has the maximum of 5 photos.',
+        'error'
+      );
       return;
     }
 
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permissionResult.granted) {
-      showAlert(
+      showStatusMessage(
         'Permission Required',
-        'Photo library permission is needed to upload tree photos.'
+        'Photo library permission is needed to upload tree photos.',
+        'error'
       );
       return;
     }
@@ -809,9 +814,10 @@ export default function TreeDetailsDashboard({
         })
         .join(', ');
 
-      showAlert(
+      showStatusMessage(
         'Unsupported Image Type',
-        `${getSupportedImageTypesMessage()}\n\nUnsupported selection: ${unsupportedList}`
+        `${getSupportedImageTypesMessage()}\n\nUnsupported selection: ${unsupportedList}`,
+        'error'
       );
     }
 
@@ -839,12 +845,13 @@ export default function TreeDetailsDashboard({
         setPhotos([]);
       }
 
-      showAlert('Success', 'Photo(s) uploaded successfully.');
+      showStatusMessage('Success', 'Photo(s) uploaded successfully.', 'success');
       setActiveTab('photos');
     } catch (error) {
-      showAlert(
+      showStatusMessage(
         'Upload Failed',
-        error instanceof Error ? error.message : 'Unable to upload photos.'
+        error instanceof Error ? error.message : 'Unable to upload photos.',
+        'error'
       );
     } finally {
       setIsUploadingPhotos(false);
@@ -853,7 +860,7 @@ export default function TreeDetailsDashboard({
 
   const handleAddComment = () => {
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to add a comment.');
+      showStatusMessage('Login Required', 'You need to sign in to add a comment.', 'error');
       return;
     }
 
@@ -863,7 +870,7 @@ export default function TreeDetailsDashboard({
 
   const handleEditTreeData = () => {
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to edit tree data.');
+      showStatusMessage('Login Required', 'You need to sign in to edit tree data.', 'error');
       return;
     }
 
@@ -904,12 +911,12 @@ export default function TreeDetailsDashboard({
 
   const handleSubmitTreeData = async () => {
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to edit tree data.');
+      showStatusMessage('Login Required', 'You need to sign in to edit tree data.', 'error');
       return;
     }
 
     if (typeof displayTree.id !== 'number') {
-      showAlert('Edit Failed', 'This tree does not have a valid ID.');
+      showStatusMessage('Edit Failed', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
@@ -938,11 +945,12 @@ export default function TreeDetailsDashboard({
         circumference: nextCircumference ?? undefined,
       }));
       setIsEditModalVisible(false);
-      showAlert('Success', 'Tree data updated successfully.');
+      showStatusMessage('Success', 'Tree data updated successfully.', 'success');
     } catch (error) {
-      showAlert(
+      showStatusMessage(
         'Edit Failed',
-        error instanceof Error ? error.message : 'Unable to update tree data.'
+        error instanceof Error ? error.message : 'Unable to update tree data.',
+        'error'
       );
     } finally {
       setIsSavingTreeData(false);
@@ -971,19 +979,28 @@ export default function TreeDetailsDashboard({
 
   const confirmDeleteTree = async () => {
     if (typeof tree.id !== 'number') {
-      showAlert('Delete Failed', 'This tree does not have a valid ID.');
+      showStatusMessage('Delete Failed', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     try {
       await deleteTree(tree.id);
-      showAlert('Success', 'Tree deleted successfully.');
+      showStatusMessage('Success', 'Tree deleted successfully.', 'success');
 
-      router.replace('/mainPage');
+      if (deleteRedirectTimer.current) {
+        clearTimeout(deleteRedirectTimer.current);
+        deleteRedirectTimer.current = null;
+      }
+
+      deleteRedirectTimer.current = setTimeout(() => {
+        deleteRedirectTimer.current = null;
+        router.replace('/mainPage');
+      }, 1200);
     } catch (err) {
-      showAlert(
+      showStatusMessage(
         'Delete failed',
-        err instanceof Error ? err.message : 'Unknown error'
+        err instanceof Error ? err.message : 'Unknown error',
+        'error'
       );
     }
   };
@@ -997,9 +1014,10 @@ export default function TreeDetailsDashboard({
           await deleteTreeComment(item.commentId);
           await reloadActivity();
         } catch (error) {
-          showAlert(
+          showStatusMessage(
             'Delete Failed',
-            error instanceof Error ? error.message : 'Unable to delete comment.'
+            error instanceof Error ? error.message : 'Unable to delete comment.',
+            'error'
           );
         }
       }
@@ -1008,19 +1026,19 @@ export default function TreeDetailsDashboard({
 
   const handleSubmitComment = async () => {
     if (!isLoggedIn) {
-      showAlert('Login Required', 'You need to sign in to add a comment.');
+      showStatusMessage('Login Required', 'You need to sign in to add a comment.', 'error');
       return;
     }
 
     const trimmedComment = commentText.trim();
 
     if (!tree.id) {
-      showAlert('Comment Error', 'This tree does not have a valid ID.');
+      showStatusMessage('Comment Error', 'This tree does not have a valid ID.', 'error');
       return;
     }
 
     if (!trimmedComment) {
-      showAlert('Comment Required', 'Please enter a comment before submitting.');
+      showStatusMessage('Comment Required', 'Please enter a comment before submitting.', 'error');
       return;
     }
 
@@ -1032,9 +1050,10 @@ export default function TreeDetailsDashboard({
       setCommentText('');
       setActiveTab('activity');
     } catch (error) {
-      showAlert(
+      showStatusMessage(
         'Add Comment Failed',
         error instanceof Error ? error.message : 'Unable to add comment.',
+        'error'
       );
     } finally {
       setIsSubmittingComment(false);
@@ -1078,6 +1097,8 @@ export default function TreeDetailsDashboard({
 
   return (
     <View style={styles.wrapper} pointerEvents="box-none">
+      <StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
+
       <View style={[styles.card, { width: cardWidth, maxHeight: cardMaxHeight }]}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
@@ -1149,9 +1170,7 @@ export default function TreeDetailsDashboard({
               photos={photos}
               photoCount={photos.length}
               activityCount={activityItems.length}
-              healthLabel={healthLabel}
-              healthIcon={healthIcon}
-              healthTone={healthTone}
+              healthMeta={healthMeta}
               observationItems={observationItems}
             />
           ) : null}
@@ -1512,33 +1531,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 999,
+    borderRadius: 12,
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-  },
-
-  healthBadgeHealthy: {
-    borderWidth: 1,
-    borderColor: '#B5D9BF',
-  },
-
-  healthBadgeAttention: {
-    borderWidth: 1,
-    borderColor: '#F3C6B3',
   },
 
   healthBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  healthBadgeTextHealthy: {
-    color: '#165B2A',
-  },
-
-  healthBadgeTextAttention: {
-    color: '#8C2D04',
+    ...Theme.Typography.body,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    lineHeight: 18,
   },
 
   summaryChipRow: {

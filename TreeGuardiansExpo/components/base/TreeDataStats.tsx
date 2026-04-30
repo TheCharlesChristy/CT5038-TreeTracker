@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { AppText } from './AppText';
+import { getTreeHealthOption } from './TreeHealthSelect';
 
 type StatTone = 'measurement' | 'environment' | 'health';
 
@@ -67,6 +68,8 @@ function getToneStyles(tone: StatTone) {
 }
 
 export function TreeDataStats({ tree }: { tree: Tree }) {
+  const treeHealthMeta = getTreeHealthOption(tree.health);
+
   const items = useMemo<StatItem[]>(() => ([
     {
       key: 'species',
@@ -159,12 +162,12 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
     {
       key: 'health',
       label: 'Tree Health',
-      value: tree.health ? tree.health.replace(/^./, (letter) => letter.toUpperCase()) : undefined,
+      value: treeHealthMeta.label,
       tone: 'health',
-      icon: 'heart-pulse',
+      icon: treeHealthMeta.icon,
       featured: true,
     },
-  ]), [tree]);
+  ]), [tree, treeHealthMeta.icon, treeHealthMeta.label]);
 
   const featuredItems = items.filter((item) => item.featured);
   const gridItems = items.filter((item) => !item.featured);
@@ -178,20 +181,42 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
       <View style={styles.featuredStack}>
         {featuredItems.map((item) => {
           const tone = getToneStyles(item.tone);
+          const healthStyles = item.tone === 'health'
+            ? {
+                card: {
+                  backgroundColor: treeHealthMeta.backgroundColor,
+                  borderColor: treeHealthMeta.borderColor,
+                },
+                iconWrap: {
+                  backgroundColor: treeHealthMeta.backgroundColor,
+                },
+                badge: {
+                  backgroundColor: treeHealthMeta.backgroundColor,
+                  borderColor: treeHealthMeta.borderColor,
+                },
+                text: {
+                  color: treeHealthMeta.textColor,
+                },
+              }
+            : null;
 
           return (
-            <View key={item.key} style={[styles.featuredCard, tone.card]}>
+            <View key={item.key} style={[styles.featuredCard, tone.card, healthStyles?.card]}>
               <View style={styles.cardHeader}>
-                <View style={[styles.iconWrap, tone.iconWrap]}>
-                  <MaterialCommunityIcons name={item.icon} size={16} color={tone.iconColor} />
+                <View style={[styles.iconWrap, tone.iconWrap, healthStyles?.iconWrap]}>
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={16}
+                    color={healthStyles ? treeHealthMeta.textColor : tone.iconColor}
+                  />
                 </View>
-                <View style={[styles.badge, tone.badge]}>
-                  <AppText style={[styles.badgeText, tone.badgeText]}>{tone.badgeLabel}</AppText>
+                <View style={[styles.badge, tone.badge, healthStyles?.badge]}>
+                  <AppText style={[styles.badgeText, tone.badgeText, healthStyles?.text]}>{tone.badgeLabel}</AppText>
                 </View>
               </View>
 
               <AppText style={styles.label}>{item.label}</AppText>
-              <AppText style={[styles.value, tone.value]}>{formatStatValue(item.value, item.unit)}</AppText>
+              <AppText style={[styles.value, tone.value, healthStyles?.text]}>{formatStatValue(item.value, item.unit)}</AppText>
             </View>
           );
         })}
@@ -200,20 +225,42 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
       <View style={styles.grid}>
         {gridItems.map((item) => {
           const tone = getToneStyles(item.tone);
+          const healthStyles = item.tone === 'health'
+            ? {
+                card: {
+                  backgroundColor: treeHealthMeta.backgroundColor,
+                  borderColor: treeHealthMeta.borderColor,
+                },
+                iconWrap: {
+                  backgroundColor: treeHealthMeta.backgroundColor,
+                },
+                badge: {
+                  backgroundColor: treeHealthMeta.backgroundColor,
+                  borderColor: treeHealthMeta.borderColor,
+                },
+                text: {
+                  color: treeHealthMeta.textColor,
+                },
+              }
+            : null;
 
           return (
-            <View key={item.key} style={[styles.card, tone.card]}>
+            <View key={item.key} style={[styles.card, tone.card, healthStyles?.card]}>
               <View style={styles.cardHeader}>
-                <View style={[styles.iconWrap, tone.iconWrap]}>
-                  <MaterialCommunityIcons name={item.icon} size={16} color={tone.iconColor} />
+                <View style={[styles.iconWrap, tone.iconWrap, healthStyles?.iconWrap]}>
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={16}
+                    color={healthStyles ? treeHealthMeta.textColor : tone.iconColor}
+                  />
                 </View>
-                <View style={[styles.badge, tone.badge]}>
-                  <AppText style={[styles.badgeText, tone.badgeText]}>{tone.badgeLabel}</AppText>
+                <View style={[styles.badge, tone.badge, healthStyles?.badge]}>
+                  <AppText style={[styles.badgeText, tone.badgeText, healthStyles?.text]}>{tone.badgeLabel}</AppText>
                 </View>
               </View>
 
               <AppText style={styles.label}>{item.label}</AppText>
-              <AppText style={[styles.value, tone.value]}>{formatStatValue(item.value, item.unit)}</AppText>
+              <AppText style={[styles.value, tone.value, healthStyles?.text]}>{formatStatValue(item.value, item.unit)}</AppText>
             </View>
           );
         })}
@@ -321,6 +368,8 @@ const styles = StyleSheet.create({
 
   badge: {
     borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'transparent',
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
