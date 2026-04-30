@@ -628,12 +628,13 @@ const styles = StyleSheet.create({
   buttonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 10,
     marginBottom: 10,
   },
 
   gridButton: {
-    width: '47.5%',
+    width: '48%',
     aspectRatio: 1,
     borderRadius: 18,
     overflow: 'hidden',
