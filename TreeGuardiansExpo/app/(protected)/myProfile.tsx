@@ -16,6 +16,7 @@ import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
 import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
+import Head from 'expo-router/head';
 
 const ROLE_LABEL: Record<UserRole, string> = {
 	registered_user: 'Member',
@@ -242,7 +243,10 @@ export default function MyProfilePage() {
 
 	return (
 		<>
-			<Stack.Screen options={{ title: 'My Profile | TreeHuggers' }} />
+			<Stack.Screen options={{ title: 'My Profile | TreeGuardians' }} />
+			<Head>
+				<link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+			</Head>
 			<AppContainer noPadding backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 			<ScrollView
 				style={styles.scroll}

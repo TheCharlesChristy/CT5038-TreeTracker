@@ -18,6 +18,7 @@ import { API_BASE, ENDPOINTS } from '@/config/api';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { fetchRecentTreeActivity, LocalTreeActivityItem } from '@/lib/activityApi';
 import { useStableViewportDimensions } from '@/hooks/useStableViewportDimensions';
+import Head from 'expo-router/head';
 
 export default function Login() {
   const successRedirectDuration = 1;
@@ -146,7 +147,10 @@ export default function Login() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Sign In | TreeHuggers' }} />
+      <Stack.Screen options={{ title: 'Sign In | TreeGuardians' }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
       <AppContainer
         scrollable
         noPadding

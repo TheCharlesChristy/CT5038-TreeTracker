@@ -26,6 +26,7 @@ import { useTreeMapState } from '../hooks/useTreeMapState';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Head from 'expo-router/head';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
@@ -165,7 +166,10 @@ export default function MainPage() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Map | TreeHuggers' }} />
+      <Stack.Screen options={{ title: 'Map | TreeGuardians' }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
       <ActionSheetProvider>
         <AppContainer noPadding overlayNavBar>
         <View style={styles.page}>

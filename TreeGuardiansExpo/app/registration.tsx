@@ -17,6 +17,7 @@ import { API_BASE, ENDPOINTS } from '@/config/api';
 import { PasswordStrengthIndicator } from '@/components/base/PasswordStrengthIndicator';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { useStableViewportDimensions } from '@/hooks/useStableViewportDimensions';
+import Head from 'expo-router/head';
 
 export default function CreateAccount() {
   const successRedirectDuration = 3;
@@ -132,7 +133,10 @@ export default function CreateAccount() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Create Account | TreeHuggers' }} />
+      <Stack.Screen options={{ title: 'Create Account | TreeGuardians' }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
       <AppContainer
         scrollable
         noPadding

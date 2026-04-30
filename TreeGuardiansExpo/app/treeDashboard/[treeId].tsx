@@ -8,6 +8,7 @@ import { Theme } from '@/styles/theme';
 import { Tree } from '@/objects/TreeDetails';
 import { fetchTrees } from '@/lib/treeApi';
 import { useSessionUser } from '@/lib/session';
+import Head from 'expo-router/head';
 
 export default function TreeDashboardPage() {
   const { treeId } = useLocalSearchParams<{ treeId: string }>();
@@ -97,6 +98,9 @@ export default function TreeDashboardPage() {
   return (
     <>
       <Stack.Screen options={{ title: pageTitle }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
       <AppContainer>
         <TreeDashboard
           tree={tree}

@@ -1,5 +1,6 @@
 import { View, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import Head from 'expo-router/head';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
@@ -14,7 +15,12 @@ type SectionProps = {
 
 export default function ThemePreview() {
   return (
-    <AppContainer style={styles.container} scrollable>
+    <>
+      <Stack.Screen options={{ title: 'Theme Preview | TreeGuardians' }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
+      <AppContainer style={styles.container} scrollable>
       {/* Top Left Back */}
       <NavigationButton onPress={() => router.back()} />
       
@@ -86,6 +92,7 @@ export default function ThemePreview() {
         <AppInput placeholder="Example Input" />
       </Section>
       </AppContainer>
+    </>
   );
 }
 

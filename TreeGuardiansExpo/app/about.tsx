@@ -6,6 +6,7 @@ import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
+import Head from 'expo-router/head';
 
 const ABOUT_SECTIONS = [
   {
@@ -33,7 +34,10 @@ const ABOUT_SECTIONS = [
 export default function AboutPage() {
   return (
     <>
-      <Stack.Screen options={{ title: 'About | TreeHuggers' }} />
+      <Stack.Screen options={{ title: 'About | TreeGuardians' }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
       <AppContainer scrollable backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <View style={styles.content}>
         <AppText variant="title" style={styles.title}>

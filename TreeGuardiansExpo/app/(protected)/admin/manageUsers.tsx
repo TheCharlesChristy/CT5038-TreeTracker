@@ -24,6 +24,7 @@ import {
 	removeGuardianFromTree,
 	updateUserRole,
 } from '@/lib/adminApi';
+import Head from 'expo-router/head';
 
 type TreeSummary = {
 	id: number;
@@ -240,7 +241,10 @@ export default function ManageUsersPage() {
 
 	return (
 		<>
-			<Stack.Screen options={{ title: 'Manage Users | TreeHuggers' }} />
+			<Stack.Screen options={{ title: 'Manage Users | TreeGuardians' }} />
+			<Head>
+				<link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+			</Head>
 			<AppContainer>
 				<StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
 

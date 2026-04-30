@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { Stack, useLocalSearchParams, router } from 'expo-router';
+import Head from 'expo-router/head';
 
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
@@ -93,11 +94,16 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <AppContainer
-      scrollable
-      noPadding
-      backgroundImage={require('@/assets/images/CharltonKings.jpg')}
-    >
+    <>
+      <Stack.Screen options={{ title: 'Reset Password | TreeGuardians' }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
+      <AppContainer
+        scrollable
+        noPadding
+        backgroundImage={require('@/assets/images/CharltonKings.jpg')}
+      >
       <View style={[styles.page, isMobileLayout && styles.pageMobile]}>
         <View style={[styles.formColumn, !isMobileLayout && styles.formColumnCentered]}>
           <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
@@ -197,6 +203,7 @@ export default function ResetPasswordScreen() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 

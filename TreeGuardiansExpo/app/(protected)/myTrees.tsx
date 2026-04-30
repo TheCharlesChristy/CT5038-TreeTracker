@@ -9,6 +9,7 @@ import { Theme } from '@/styles/theme';
 import { Tree } from '@/objects/TreeDetails';
 import { useSessionUser } from '@/lib/session';
 import { fetchTrees } from '@/lib/treeApi';
+import Head from 'expo-router/head';
 
 type TreeWithOwnership = Tree & {
 	created_by?: number | null;
@@ -309,7 +310,10 @@ export default function MyTreesPage() {
 	if (isLoadingUser) {
 		return (
 			<>
-				<Stack.Screen options={{ title: 'My Trees | TreeHuggers' }} />
+				<Stack.Screen options={{ title: 'My Trees | TreeGuardians' }} />
+				<Head>
+					<link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+				</Head>
 				<AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 					<View style={styles.loadingRow}>
 						<ActivityIndicator color={Theme.Colours.white} />
@@ -322,7 +326,10 @@ export default function MyTreesPage() {
 
 	return (
 		<>
-			<Stack.Screen options={{ title: 'My Trees | TreeHuggers' }} />
+			<Stack.Screen options={{ title: 'My Trees | TreeGuardians' }} />
+			<Head>
+				<link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+			</Head>
 			<AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 				<ScrollView
 				style={styles.scroll}

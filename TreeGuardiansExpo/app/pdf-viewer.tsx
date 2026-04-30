@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import Head from 'expo-router/head';
 import { WebView } from 'react-native-webview';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
@@ -31,7 +32,12 @@ export default function PdfViewerPage() {
   }
 
   return (
-    <AppContainer noPadding showNavBar={false}>
+    <>
+      <Stack.Screen options={{ title: 'Document Viewer | TreeGuardians' }} />
+      <Head>
+        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
+      </Head>
+      <AppContainer noPadding showNavBar={false}>
       <View style={styles.header}>
         <NavigationButton onPress={() => router.back()}>Back</NavigationButton>
         <AppText variant="subtitle" style={styles.title}>
@@ -41,6 +47,7 @@ export default function PdfViewerPage() {
 
       <WebView source={{ uri }} style={styles.webView} startInLoadingState />
     </AppContainer>
+    </>
   );
 }
 
