@@ -256,7 +256,7 @@ function TreeOverview({
 
       <View style={styles.sectionStack}>
         <View style={styles.sectionHeaderRow}>
-          <AppText style={styles.sectionTitle}>Observations</AppText>
+          <AppText style={styles.sectionTitle}>Activity</AppText>
           <AppText style={styles.sectionMeta}>{observationItems.length} recorded</AppText>
         </View>
 
@@ -339,8 +339,6 @@ function TreePhotos({
               <Image source={{ uri: photo.image_url }} style={styles.galleryPhoto} />
 
               <View style={styles.photoCaption}>
-                <AppText style={styles.photoCaptionText}>Photo {index + 1}</AppText>
-
                 {canManagePhotos ? (
                   <TouchableOpacity
                     onPress={() => onDeletePhoto(photo)}
@@ -386,13 +384,6 @@ function TreePhotos({
         </View>
       )}
 
-      <View style={styles.infoSection}>
-        <AppText style={styles.sectionTitle}>Photo Notes</AppText>
-        <AppText style={styles.infoText}>
-          Scroll horizontally to view more than two Photos!
-        </AppText>
-      </View>
-
       {canAddPhoto ? (
         <AppButton
           title={
@@ -415,21 +406,15 @@ function TreePhotos({
 
 function TreeActivity({
   items,
-  onAddComment,
   onDeleteComment,
   isLoadingActivity,
-  currentUserId,
   isAdmin,
 }: {
   items: ActivityItem[];
-  onAddComment: () => void;
   onDeleteComment: (item: ActivityItem) => void;
   isLoadingActivity: boolean;
-  currentUserId: number | null;
   isAdmin: boolean;
 }) {
-  const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
-
   const commentItems = items.filter(
     (item) => item.type === 'tree_comment' || item.type === 'reply'
   );
@@ -440,23 +425,6 @@ function TreeActivity({
         <AppText style={styles.sectionTitle}>Activity Feed</AppText>
         <AppText style={styles.sectionMeta}>{commentItems.length} comments</AppText>
       </View>
-
-      <View style={styles.infoSection}>
-        <AppText style={styles.sectionTitle}>Community</AppText>
-        <AppText style={styles.infoText}>
-          When commenting on a tree, make sure it is relevant to the tree.
-        </AppText>
-      </View>
-
-      {isLoggedIn ? (
-        <AppButton
-          title="Add Comment"
-          variant="secondary"
-          onPress={onAddComment}
-          style={styles.sectionActionWrap}
-          buttonStyle={styles.sectionActionButton}
-        />
-      ) : null}
 
       {isLoadingActivity ? (
         <View style={styles.emptyStateCard}>
@@ -513,12 +481,16 @@ function TreeActivity({
 function TreeFooter({
   activeTab,
   onChangeTab,
+  onAddComment,
+  canAddComment,
   onClose,
   photoCount,
   activityCount,
 }: {
   activeTab: PopupTab;
   onChangeTab: (tab: PopupTab) => void;
+  onAddComment: () => void;
+  canAddComment: boolean;
   onClose: () => void;
   photoCount: number;
   activityCount: number;
@@ -547,6 +519,8 @@ function TreeFooter({
     shortcutLabel = 'Overview';
   }
 
+  const showAddComment = activeTab === 'activity' && canAddComment;
+
   return (
     <View style={styles.footer}>
       <AppButton
@@ -557,6 +531,17 @@ function TreeFooter({
         buttonStyle={styles.footerSecondaryButton}
         textStyle={styles.footerSecondaryText}
       />
+
+      {showAddComment ? (
+        <AppButton
+          title="Add Comment"
+          variant="accent"
+          onPress={onAddComment}
+          style={styles.footerCommentWrap}
+          buttonStyle={styles.footerCommentButton}
+          textStyle={styles.footerCommentText}
+        />
+      ) : null}
 
       <AppButton
         title="Done"
@@ -1243,10 +1228,8 @@ export default function TreeDetailsDashboard({
           {activeTab === 'activity' ? (
             <TreeActivity
               items={commentItems}
-              onAddComment={handleAddComment}
               onDeleteComment={handleDeleteComment}
               isLoadingActivity={isLoadingActivity}
-              currentUserId={currentUserId}
               isAdmin={isAdmin}
             />
           ) : null}
@@ -1255,6 +1238,8 @@ export default function TreeDetailsDashboard({
         <TreeFooter
           activeTab={activeTab}
           onChangeTab={setActiveTab}
+          onAddComment={handleAddComment}
+          canAddComment={isLoggedIn}
           onClose={onClose}
           photoCount={photos.length}
           activityCount={activityItems.length}
@@ -1957,6 +1942,31 @@ const styles = StyleSheet.create({
   footerPrimaryWrap: {
     flex: 1,
     marginBottom: 0,
+  },
+
+  footerCommentWrap: {
+    flex: 1,
+    marginBottom: 0,
+  },
+
+  footerCommentButton: {
+    minHeight: 50,
+    marginBottom: 0,
+    borderRadius: 14,
+    backgroundColor: '#2D7F36',
+    borderWidth: 1,
+    borderColor: '#1E5A26',
+    shadowColor: '#143A1A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.26,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+
+  footerCommentText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
   footerPrimaryButton: {
