@@ -12,7 +12,6 @@ import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
-import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
 import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';

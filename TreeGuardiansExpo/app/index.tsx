@@ -1,11 +1,10 @@
 import { View, StyleSheet, Image } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
-import { router } from 'expo-router';
 import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function Index() {

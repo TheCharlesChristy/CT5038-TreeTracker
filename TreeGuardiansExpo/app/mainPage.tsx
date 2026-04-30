@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import MapComponent from '@/components/base/MapComponent';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
@@ -24,7 +24,6 @@ import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
-import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FaviconHead } from '@/components/base/FaviconHead';
 

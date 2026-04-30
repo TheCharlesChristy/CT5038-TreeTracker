@@ -1,11 +1,10 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles/theme';
 import { AppButton } from '@/components/base/AppButton';
-import { router } from 'expo-router';
 import { FaviconHead } from '@/components/base/FaviconHead';
 
 const FAQ_ITEMS = [
