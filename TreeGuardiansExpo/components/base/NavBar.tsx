@@ -66,11 +66,13 @@ export const NavBar = () => {
         <AppText style={styles.brandText}>TreeGuardians</AppText>
       </View>
 
-      <View style={styles.sessionStatus}>
-        <AppText style={styles.sessionStatusText} numberOfLines={1}>
-          {username ? `Logged in as ${username}` : 'Browsing as Guest'}
-        </AppText>
-      </View>
+      {username ? (
+        <View style={styles.sessionStatus}>
+          <AppText style={styles.sessionStatusText} numberOfLines={1}>
+            {`Logged in as ${username}`}
+          </AppText>
+        </View>
+      ) : null}
 
       <View style={styles.linksWrapper}>
         <ScrollView
