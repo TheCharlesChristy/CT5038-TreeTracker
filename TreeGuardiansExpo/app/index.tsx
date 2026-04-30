@@ -6,15 +6,13 @@ import { AppButton } from '@/components/base/AppButton';
 import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
 import { router } from 'expo-router';
-import Head from 'expo-router/head';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function Index() {
   return (
     <>
       <Stack.Screen options={{ title: 'TreeGuardians' }} />
-      <Head>
-        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
-      </Head>
+      <FaviconHead />
       <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <AuthenticatedRedirect />
       <View style={styles.screen}>

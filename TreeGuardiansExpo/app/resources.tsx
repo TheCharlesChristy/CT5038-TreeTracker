@@ -6,7 +6,7 @@ import { AppContainer } from '@/components/base/AppContainer';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles/theme';
-import Head from 'expo-router/head';
+import { FaviconHead } from '@/components/base/FaviconHead';
  
 const TREE_ID_GUIDE_ASSET = Asset.fromModule(
   require('@/assets/docs/Tree ID Guide.pdf'),
@@ -74,9 +74,7 @@ export default function ResourcesPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'Resources | TreeGuardians' }} />
-      <Head>
-        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
-      </Head>
+      <FaviconHead />
       <AppContainer scrollable backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <View style={styles.content}>
         <AppText variant="title" style={styles.title}>

@@ -1,6 +1,6 @@
 import { View, StyleSheet } from 'react-native';
 import { Stack, router } from 'expo-router';
-import Head from 'expo-router/head';
+import { FaviconHead } from '@/components/base/FaviconHead';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
@@ -17,9 +17,7 @@ export default function ThemePreview() {
   return (
     <>
       <Stack.Screen options={{ title: 'Theme Preview | TreeGuardians' }} />
-      <Head>
-        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
-      </Head>
+      <FaviconHead />
       <AppContainer style={styles.container} scrollable>
       {/* Top Left Back */}
       <NavigationButton onPress={() => router.back()} />

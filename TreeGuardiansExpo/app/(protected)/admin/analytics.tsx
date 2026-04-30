@@ -8,7 +8,7 @@ import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { canAccessManageUsers, useSessionUser } from '@/lib/session';
 import { fetchAnalytics, AnalyticsResponse } from '@/lib/adminApi';
-import Head from 'expo-router/head';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function AnalyticsPage() {
   const { user, isLoading } = useSessionUser();
@@ -80,9 +80,7 @@ export default function AnalyticsPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'Analytics | TreeGuardians' }} />
-      <Head>
-        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
-      </Head>
+      <FaviconHead />
       <AppContainer>
         <ScrollView showsVerticalScrollIndicator>
         <View style={styles.topBar}>

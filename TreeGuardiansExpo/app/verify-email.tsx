@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
-import Head from 'expo-router/head';
+import { FaviconHead } from '@/components/base/FaviconHead';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -56,9 +56,7 @@ export default function VerifyEmailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Verify Email | TreeGuardians' }} />
-      <Head>
-        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
-      </Head>
+      <FaviconHead />
       <AppContainer
         scrollable
         noPadding

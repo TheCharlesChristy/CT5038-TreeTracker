@@ -7,7 +7,7 @@ import { AppInput } from '@/components/base/AppInput';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { Theme } from '@/styles/theme';
 import { Stack, router } from 'expo-router';
-import Head from 'expo-router/head';
+import { FaviconHead } from '@/components/base/FaviconHead';
 import { API_BASE, ENDPOINTS } from '@/config/api';
 
 export default function ForgotPasswordScreen() {
@@ -72,9 +72,7 @@ export default function ForgotPasswordScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Forgot Password | TreeGuardians' }} />
-      <Head>
-        <link rel="icon" type="image/png" href={require('@/assets/images/logo.png')} />
-      </Head>
+      <FaviconHead />
       <AppContainer
         scrollable
         noPadding
