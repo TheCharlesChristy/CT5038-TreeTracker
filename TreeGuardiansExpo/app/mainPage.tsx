@@ -19,6 +19,7 @@ import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
 import { DashboardPanel } from '@/components/map/DashboardPanel';
 import { FloatingActionBar } from '@/components/map/FloatingActionBar';
 import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
+import { CircularCountdown } from '@/components/base/CircularCountdown';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
@@ -29,7 +30,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [refreshNowMs, setRefreshNowMs] = useState(() => Date.now());
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
   const [loggedInUserRole, setLoggedInUserRole] = useState<AppUserRole>('user');
@@ -97,16 +97,6 @@ export default function MainPage() {
     refreshIntervalMs,
   } = useTreeMapState();
 
-  useEffect(() => {
-    const timerId = setInterval(() => {
-      setRefreshNowMs(Date.now());
-    }, 200);
-
-    return () => {
-      clearInterval(timerId);
-    };
-  }, []);
-
   const renderTreeIcon = useCallback((tree: Tree, { zoom }: { zoom: number }) => {
     const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
     return <TreeMarkerIcon selected={selected} zoomLevel={zoom} />;
@@ -117,11 +107,7 @@ export default function MainPage() {
   const actionBarBottomInset = 24 + insets.bottom;
   const actionBarHeight = 56;
   const panelBottomInset = actionBarBottomInset + actionBarHeight + 14;
-  const refreshMsRemaining = nextRefreshAt === null ? 0 : Math.max(0, nextRefreshAt - refreshNowMs);
-  const refreshSecondsLeft = Math.ceil(refreshMsRemaining / 1000);
-  const refreshProgress = refreshIntervalMs > 0
-    ? Math.max(0, Math.min(1, refreshMsRemaining / refreshIntervalMs))
-    : 0;
+  const refreshDurationSeconds = Math.max(1, Math.round(refreshIntervalMs / 1000));
   const activeFilterLabels = [
     searchQuery.trim() ? `Query: ${searchQuery.trim()}` : null,
     distanceFilterKm !== null ? `Distance: ${distanceFilterKm.toFixed(1)} km` : null,
@@ -345,17 +331,23 @@ export default function MainPage() {
           ) : null}
 
           {nextRefreshAt !== null ? (
-            <View style={[styles.refreshTimer, { bottom: panelBottomInset }]}> 
-              <View style={styles.refreshTimerCircle}>
-                <View
-                  style={[
-                    styles.refreshTimerFill,
-                    { height: `${Math.max(0.06, refreshProgress) * 100}%` },
-                  ]}
-                />
-                <AppText style={styles.refreshTimerValue}>{refreshSecondsLeft}</AppText>
-              </View>
-              <AppText style={styles.refreshTimerLabel}>s</AppText>
+            <View
+              style={[
+                styles.refreshTimer,
+                {
+                  left: insets.left + 4,
+                  bottom: insets.bottom + 4,
+                },
+              ]}
+            >
+              <CircularCountdown
+                key={`refresh-${nextRefreshAt}`}
+                duration={refreshDurationSeconds}
+                size={28}
+                strokeWidth={2}
+                color="rgba(240, 251, 242, 0.96)"
+                trackColor="rgba(240, 251, 242, 0.28)"
+              />
             </View>
           ) : null}
         </View>
@@ -879,45 +871,12 @@ const styles = StyleSheet.create({
 
   refreshTimer: {
     position: 'absolute',
-    left: 16,
     zIndex: 230,
     alignItems: 'center',
-    gap: 4,
-  },
-
-  refreshTimerCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(229, 239, 229, 0.46)',
-    backgroundColor: 'rgba(7, 17, 10, 0.42)',
-  },
-
-  refreshTimerFill: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(130, 197, 144, 0.34)',
-  },
-
-  refreshTimerValue: {
-    ...Theme.Typography.caption,
-    color: '#F3F8F3',
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    lineHeight: 20,
-  },
-
-  refreshTimerLabel: {
-    ...Theme.Typography.caption,
-    color: 'rgba(233, 237, 233, 0.92)',
-    fontSize: 10,
-    lineHeight: 12,
-    fontFamily: 'Poppins_600SemiBold',
+    borderColor: 'rgba(232, 244, 233, 0.42)',
+    borderRadius: 16,
+    padding: 2,
+    backgroundColor: 'rgba(7, 17, 10, 0.34)',
   },
 });
