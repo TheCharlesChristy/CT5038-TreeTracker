@@ -55,6 +55,71 @@ export async function fetchAnalytics(): Promise<AnalyticsResponse> {
   };
 }
 
+export type ActivityTrendItem = {
+  day: string;
+  count: number;
+};
+
+export type ActivityTrendResponse = {
+  treesPerDay: ActivityTrendItem[];
+  commentsPerDay: ActivityTrendItem[];
+};
+
+export type ContributorItem = {
+  id: number;
+  username: string;
+  count: number;
+};
+
+export type UserAnalyticsResponse = {
+  totalUsers: number;
+  roleBreakdown: {
+    admin: number;
+    guardian: number;
+    registered_user: number;
+  };
+  topTreeSubmitters: ContributorItem[];
+  topCommenters: ContributorItem[];
+};
+
+export async function fetchActivityTrend(days = 30): Promise<ActivityTrendResponse> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(buildApiUrl(`analytics/activity?days=${days}`), { headers });
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody) as ActivityTrendResponse | undefined;
+
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to fetch activity trend.', response, rawBody));
+  }
+
+  return {
+    treesPerDay: Array.isArray(parsed?.treesPerDay) ? parsed.treesPerDay : [],
+    commentsPerDay: Array.isArray(parsed?.commentsPerDay) ? parsed.commentsPerDay : [],
+  };
+}
+
+export async function fetchUserAnalytics(): Promise<UserAnalyticsResponse> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(buildApiUrl('analytics/users'), { headers });
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody) as UserAnalyticsResponse | undefined;
+
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to fetch user analytics.', response, rawBody));
+  }
+
+  return {
+    totalUsers: Number(parsed?.totalUsers ?? 0),
+    roleBreakdown: {
+      admin: Number(parsed?.roleBreakdown?.admin ?? 0),
+      guardian: Number(parsed?.roleBreakdown?.guardian ?? 0),
+      registered_user: Number(parsed?.roleBreakdown?.registered_user ?? 0),
+    },
+    topTreeSubmitters: Array.isArray(parsed?.topTreeSubmitters) ? parsed.topTreeSubmitters : [],
+    topCommenters: Array.isArray(parsed?.topCommenters) ? parsed.topCommenters : [],
+  };
+}
+
 export type ManagedUser = {
   id: number;
   username: string;
