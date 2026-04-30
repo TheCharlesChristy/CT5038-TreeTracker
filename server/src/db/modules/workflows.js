@@ -291,24 +291,16 @@ function createWorkflows(ctx) {
             throw new NotFoundError(`Comment ${payload.commentId} not found`);
           }
 
-          // 🔥 Use helper
           const treeId = await resolveTreeIdForComment(payload.commentId, tx);
 
           if (!treeId) {
             throw new NotFoundError(`Could not determine tree for comment ${payload.commentId}`);
           }
 
-          const isOwner = Number(existing.user_id) === Number(payload.userId);
           const isAdmin = await admins.isAdmin(payload.userId, tx);
-          const isGuardian = await guardians.exists(
-            { userId: payload.userId, treeId },
-            tx
-          );
 
-          if (!isOwner && !isAdmin && !isGuardian) {
-            const error = new Error(
-              "You can only delete your own comments unless you are an admin or guardian of this tree"
-            );
+          if (!isAdmin) {
+            const error = new Error("Only admins can delete comments on trees");
             error.name = "ForbiddenError";
             throw error;
           }

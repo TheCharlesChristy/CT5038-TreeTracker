@@ -101,3 +101,36 @@ test("validateSession handles valid invalid and expired", async () => {
   });
   assert.deepEqual(valid, { valid: true, userId: 7 });
 });
+
+test("deleteTreeComment is admin-only", async () => {
+  const createCommentCtx = (isAdmin) => {
+    const deleted = [];
+    return {
+      deleted,
+      ctx: createCtx({
+        admins: { isAdmin: async () => isAdmin },
+        comments: { getById: async () => ({ id: 10, user_id: 2 }) },
+        commentsTree: { getByCommentId: async () => ({ tree_id: 7 }) },
+        commentReplies: { listParentsOfComment: async () => [] },
+        run: async (_executor, sql, params) => {
+          if (sql === "DELETE FROM comments WHERE id = ?") {
+            deleted.push(params[0]);
+          }
+          return { affectedRows: 1 };
+        }
+      })
+    };
+  };
+
+  const nonAdmin = createCommentCtx(false);
+  await assert.rejects(
+    () => createWorkflows(nonAdmin.ctx).comments.deleteTreeComment({ commentId: 10, userId: 2 }),
+    (error) => error && error.name === "ForbiddenError"
+  );
+  assert.deepEqual(nonAdmin.deleted, []);
+
+  const admin = createCommentCtx(true);
+  const result = await createWorkflows(admin.ctx).comments.deleteTreeComment({ commentId: 10, userId: 99 });
+  assert.deepEqual(result, { deleted: true });
+  assert.deepEqual(admin.deleted, [10]);
+});

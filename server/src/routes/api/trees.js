@@ -57,6 +57,81 @@ function normalizeTreeDataPayload(body) {
   };
 }
 
+function normalizeTreeDataUpdatePayload(body) {
+  const fields = {};
+
+  if (Object.prototype.hasOwnProperty.call(body, "species")) {
+    fields.treeSpecies =
+      typeof body.species === "string" && body.species.trim().length > 0
+        ? body.species.trim()
+        : null;
+  }
+
+  const numericFields = [
+    ["avoidedRunoff", "avoidedRunoff"],
+    ["carbonDioxideStored", "carbonDioxideStored"],
+    ["carbonDioxideRemoved", "carbonDioxideRemoved"],
+    ["waterIntercepted", "waterIntercepted"],
+    ["airQualityImprovement", "airQualityImprovement"],
+    ["leafArea", "leafArea"],
+    ["evapotranspiration", "evapotranspiration"],
+    ["circumference", "trunkCircumference"],
+    ["diameter", "trunkDiameter"],
+    ["height", "treeHeight"]
+  ];
+
+  for (const [bodyKey, fieldKey] of numericFields) {
+    if (Object.prototype.hasOwnProperty.call(body, bodyKey)) {
+      if (body[bodyKey] === undefined || body[bodyKey] === null || body[bodyKey] === "") {
+        fields[fieldKey] = null;
+      } else {
+        const value = Number(body[bodyKey]);
+        if (!Number.isFinite(value)) {
+          const error = new Error(`${bodyKey} must be a finite number`);
+          error.name = "ValidationError";
+          throw error;
+        }
+        fields[fieldKey] = value;
+      }
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "health")) {
+    if (
+      body.health === "excellent" ||
+      body.health === "good" ||
+      body.health === "ok" ||
+      body.health === "bad" ||
+      body.health === "terrible"
+    ) {
+      fields.health = body.health;
+    } else {
+      const error = new Error("health must be one of excellent, good, ok, bad, terrible");
+      error.name = "ValidationError";
+      throw error;
+    }
+  }
+
+  return fields;
+}
+
+function mapTreeDataResponse(row) {
+  return {
+    tree_species: row ? row.tree_species : null,
+    trunk_diameter: row ? row.trunk_diameter : null,
+    tree_height: row ? row.tree_height : null,
+    circumference: row ? row.trunk_circumference : null,
+    avoided_runoff: row ? row.avoided_runoff : null,
+    carbon_dioxide_stored: row ? row.carbon_dioxide_stored : null,
+    carbon_dioxide_removed: row ? row.carbon_dioxide_removed : null,
+    water_intercepted: row ? row.water_intercepted : null,
+    air_quality_improvement: row ? row.air_quality_improvement : null,
+    leaf_area: row ? row.leaf_area : null,
+    evapotranspiration: row ? row.evapotranspiration : null,
+    health: row ? row.health : null
+  };
+}
+
 function normalizeStringList(value) {
   const values = Array.isArray(value) ? value : value === undefined || value === null ? [] : [value];
 
@@ -345,18 +420,7 @@ function createTreesRoute({ db }) {
       id: tree.id,
       latitude: tree.latitude,
       longitude: tree.longitude,
-      tree_species: dataRow ? dataRow.tree_species : null,
-      trunk_diameter: dataRow ? dataRow.trunk_diameter : null,
-      tree_height: dataRow ? dataRow.tree_height : null,
-      circumference: dataRow ? dataRow.trunk_circumference : null,
-      avoided_runoff: dataRow ? dataRow.avoided_runoff : null,
-      carbon_dioxide_stored: dataRow ? dataRow.carbon_dioxide_stored : null,
-      carbon_dioxide_removed: dataRow ? dataRow.carbon_dioxide_removed : null,
-      water_intercepted: dataRow ? dataRow.water_intercepted : null,
-      air_quality_improvement: dataRow ? dataRow.air_quality_improvement : null,
-      leaf_area: dataRow ? dataRow.leaf_area : null,
-      evapotranspiration: dataRow ? dataRow.evapotranspiration : null,
-      health: dataRow ? dataRow.health : null
+      ...mapTreeDataResponse(dataRow)
     });
   };
 
@@ -382,6 +446,70 @@ function createTreesRoute({ db }) {
     "/get-tree-details",
     asyncHandler(async (req, res) => {
       await getTreeDetailsHandler(req, res, req.query.tree_id);
+    })
+  );
+
+  router.patch(
+    "/trees/:treeId",
+    asyncHandler(async (req, res) => {
+      requireJson(req);
+      const routeLog = getRouteLogger(req, { route: "update-tree-data" });
+      const treeId = parsePositiveInt(req.params.treeId, "treeId");
+      const auth = await requireAuthenticatedUser({ req, db, routeLog });
+
+      const tree = await db.trees.getById(treeId);
+      if (!tree) {
+        const error = new Error("Tree not found");
+        error.name = "NotFoundError";
+        throw error;
+      }
+
+      const treeDataFields = normalizeTreeDataUpdatePayload(req.body || {});
+      const notesProvided =
+        Object.prototype.hasOwnProperty.call(req.body || {}, "notes") ||
+        Object.prototype.hasOwnProperty.call(req.body || {}, "description");
+      const notesValue = Object.prototype.hasOwnProperty.call(req.body || {}, "notes")
+        ? req.body.notes
+        : req.body.description;
+
+      if (Object.keys(treeDataFields).length === 0 && !notesProvided) {
+        const error = new Error("At least one tree data field is required");
+        error.name = "ValidationError";
+        throw error;
+      }
+
+      await db.transaction(async (tx) => {
+        if (Object.keys(treeDataFields).length > 0) {
+          const existingTreeData = await db.treeData.getByTreeId(treeId, tx);
+          if (existingTreeData) {
+            await db.treeData.updateByTreeId(treeId, treeDataFields, tx);
+          } else {
+            await db.treeData.create({ treeId, ...treeDataFields }, tx);
+          }
+        }
+
+        if (notesProvided) {
+          const comment = await db.comments.create({ userId: Number(auth.user.id) }, tx);
+          await db.seenObservations.create(
+            {
+              commentId: comment.id,
+              treeId,
+              observationNotes: typeof notesValue === "string" ? notesValue.trim() : null
+            },
+            tx
+          );
+        }
+      });
+
+      const dataRow = await db.treeData.getByTreeId(treeId);
+      res.json({
+        success: true,
+        id: tree.id,
+        latitude: tree.latitude,
+        longitude: tree.longitude,
+        notes: notesProvided && typeof notesValue === "string" ? notesValue.trim() : undefined,
+        ...mapTreeDataResponse(dataRow)
+      });
     })
   );
 
@@ -463,13 +591,10 @@ function createTreesRoute({ db }) {
           throw error;
         }
 
-        const [isAdmin, isGuardian] = await Promise.all([
-          db.admins.isAdmin(userId, tx),
-          db.guardians.exists({ userId, treeId }, tx)
-        ]);
+        const isAdmin = await db.admins.isAdmin(userId, tx);
 
-        if (!isAdmin && !isGuardian) {
-          const error = new Error("Only admins or guardians of this tree can delete its photos.");
+        if (!isAdmin) {
+          const error = new Error("Only admins can delete tree photos.");
           error.name = "ForbiddenError";
           throw error;
         }

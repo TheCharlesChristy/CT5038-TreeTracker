@@ -24,6 +24,7 @@ import {
   fetchTreeFeed,
   fetchTrees,
   TreeFeedItem,
+  updateTreeData,
   uploadTreePhotos,
 } from '@/lib/treeApi';
 import { showAlert } from '@/utilities/showAlert';
@@ -31,6 +32,7 @@ import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import { TreePhoto } from '@/objects/TreeDetails';
 import { router } from 'expo-router';
+import { TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
 
 type PopupTab = 'overview' | 'photos' | 'activity';
 type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
@@ -446,7 +448,6 @@ function TreeActivity({
   isLoadingActivity,
   currentUserId,
   isAdmin,
-  isGuardian,
 }: {
   items: ActivityItem[];
   onAddComment: () => void;
@@ -454,7 +455,6 @@ function TreeActivity({
   isLoadingActivity: boolean;
   currentUserId: number | null;
   isAdmin: boolean;
-  isGuardian: boolean;
 }) {
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
 
@@ -513,7 +513,7 @@ function TreeActivity({
               <View style={styles.feedTopRow}>
                 <ActivityTag item={item} />
 
-                {isLoggedIn && (item.userId === currentUserId || isAdmin || isGuardian) ? (
+                {isAdmin ? (
                   <TouchableOpacity
                     onPress={() => onDeleteComment(item)}
                     activeOpacity={0.8}
@@ -612,11 +612,28 @@ export default function TreeDetailsDashboard({
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [photos, setPhotos] = useState<TreePhoto[]>(tree.photos ?? []);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
-  const isGuardian = Array.isArray(tree.guardian_user_ids)
-    && tree.guardian_user_ids.includes(Number(currentUserId));
+  const [displayTree, setDisplayTree] = useState<Tree>(tree);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isSavingTreeData, setIsSavingTreeData] = useState(false);
+  const [editSpecies, setEditSpecies] = useState(tree.species ?? '');
+  const [editNotes, setEditNotes] = useState(tree.notes ?? '');
+  const [editHealth, setEditHealth] = useState<TreeHealth>(tree.health ?? 'ok');
+  const [editDiameter, setEditDiameter] = useState(
+    tree.diameter === undefined || tree.diameter === null ? '' : String(tree.diameter)
+  );
+  const [editHeight, setEditHeight] = useState(
+    tree.height === undefined || tree.height === null ? '' : String(tree.height)
+  );
+  const [editCircumference, setEditCircumference] = useState(
+    tree.circumference === undefined || tree.circumference === null ? '' : String(tree.circumference)
+  );
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
-  const canManagePhotos = isGuardian || isAdmin;
+  const canManagePhotos = isAdmin;
   const canDeleteTree = isAdmin;
+
+  useEffect(() => {
+    setDisplayTree(tree);
+  }, [tree]);
 
   useEffect(() => {
     setActiveTab('overview');
@@ -630,9 +647,9 @@ export default function TreeDetailsDashboard({
     setPhotos(tree.photos ?? []);
   }, [tree.id, tree.photos]);
 
-  const needsAttention = cleanText(tree.disease).length > 0;
-  const healthLabel = tree.health
-    ? tree.health.replace(/^./, (letter) => letter.toUpperCase())
+  const needsAttention = cleanText(displayTree.disease).length > 0;
+  const healthLabel = displayTree.health
+    ? displayTree.health.replace(/^./, (letter) => letter.toUpperCase())
     : needsAttention
       ? 'Needs attention'
       : 'Healthy';
@@ -844,6 +861,94 @@ export default function TreeDetailsDashboard({
     setIsCommentModalVisible(true);
   };
 
+  const handleEditTreeData = () => {
+    if (!isLoggedIn) {
+      showAlert('Login Required', 'You need to sign in to edit tree data.');
+      return;
+    }
+
+    setEditSpecies(displayTree.species ?? '');
+    setEditNotes(displayTree.notes ?? '');
+    setEditHealth(displayTree.health ?? 'ok');
+    setEditDiameter(
+      displayTree.diameter === undefined || displayTree.diameter === null
+        ? ''
+        : String(displayTree.diameter)
+    );
+    setEditHeight(
+      displayTree.height === undefined || displayTree.height === null
+        ? ''
+        : String(displayTree.height)
+    );
+    setEditCircumference(
+      displayTree.circumference === undefined || displayTree.circumference === null
+        ? ''
+        : String(displayTree.circumference)
+    );
+    setIsEditModalVisible(true);
+  };
+
+  const parseOptionalEditNumber = (value: string, label: string): number | null => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      throw new Error(`${label} must be a valid number.`);
+    }
+
+    return parsed;
+  };
+
+  const handleSubmitTreeData = async () => {
+    if (!isLoggedIn) {
+      showAlert('Login Required', 'You need to sign in to edit tree data.');
+      return;
+    }
+
+    if (typeof displayTree.id !== 'number') {
+      showAlert('Edit Failed', 'This tree does not have a valid ID.');
+      return;
+    }
+
+    try {
+      setIsSavingTreeData(true);
+      const nextDiameter = parseOptionalEditNumber(editDiameter, 'Diameter');
+      const nextHeight = parseOptionalEditNumber(editHeight, 'Height');
+      const nextCircumference = parseOptionalEditNumber(editCircumference, 'Circumference');
+
+      await updateTreeData(displayTree.id, {
+        species: editSpecies.trim() || null,
+        notes: editNotes.trim() || null,
+        health: editHealth,
+        diameter: nextDiameter,
+        height: nextHeight,
+        circumference: nextCircumference,
+      });
+
+      setDisplayTree((current) => ({
+        ...current,
+        species: editSpecies.trim() || undefined,
+        notes: editNotes.trim() || undefined,
+        health: editHealth,
+        diameter: nextDiameter ?? undefined,
+        height: nextHeight ?? undefined,
+        circumference: nextCircumference ?? undefined,
+      }));
+      setIsEditModalVisible(false);
+      showAlert('Success', 'Tree data updated successfully.');
+    } catch (error) {
+      showAlert(
+        'Edit Failed',
+        error instanceof Error ? error.message : 'Unable to update tree data.'
+      );
+    } finally {
+      setIsSavingTreeData(false);
+    }
+  };
+
   const reloadActivity = async () => {
     if (!tree.id) {
       setActivityItems([]);
@@ -978,15 +1083,24 @@ export default function TreeDetailsDashboard({
           <View style={styles.headerCopy}>
             <AppText style={styles.eyebrow}>Tree Marker</AppText>
             <AppText style={styles.title}>
-              {tree.id !== undefined ? `Tree #${tree.id}` : 'Observed Tree'}
+              {displayTree.id !== undefined ? `Tree #${displayTree.id}` : 'Observed Tree'}
             </AppText>
             <AppText style={styles.subtitle}>
-              {tree.species ? `${tree.species} • ` : ''}
+              {displayTree.species ? `${displayTree.species} • ` : ''}
               {photos.length} photos • {activityItems.length} updates
             </AppText>
           </View>
 
-            {canDeleteTree && (
+          {isLoggedIn && (
+            <Pressable
+              onPress={handleEditTreeData}
+              style={styles.iconButton}
+            >
+              <MaterialCommunityIcons name="pencil-outline" size={22} color="#2F6A3E" />
+            </Pressable>
+          )}
+
+          {canDeleteTree && (
             <Pressable
               onPress={handleDeleteTree}
               style={styles.iconButton}
@@ -1031,7 +1145,7 @@ export default function TreeDetailsDashboard({
         >
           {activeTab === 'overview' ? (
             <TreeOverview
-              tree={tree}
+              tree={displayTree}
               photos={photos}
               photoCount={photos.length}
               activityCount={activityItems.length}
@@ -1062,7 +1176,6 @@ export default function TreeDetailsDashboard({
               isLoadingActivity={isLoadingActivity}
               currentUserId={currentUserId}
               isAdmin={isAdmin}
-              isGuardian={isGuardian}
             />
           ) : null}
         </ScrollView>
@@ -1114,6 +1227,98 @@ export default function TreeDetailsDashboard({
                 title="Cancel"
                 variant="outline"
                 onPress={() => setIsCommentModalVisible(false)}
+                style={styles.modalButtonWrap}
+                buttonStyle={styles.modalButton}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isEditModalVisible && isLoggedIn}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isSavingTreeData) {
+            setIsEditModalVisible(false);
+          }
+        }}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <AppText style={styles.modalTitle}>Edit Tree Data</AppText>
+            <AppText style={styles.modalSubtitle}>Update the shared registry details for this tree.</AppText>
+
+            <TextInput
+              style={styles.editInput}
+              value={editSpecies}
+              onChangeText={setEditSpecies}
+              placeholder="Species"
+              placeholderTextColor="#6B7280"
+              editable={!isSavingTreeData}
+            />
+
+            <TextInput
+              style={styles.editNotesInput}
+              value={editNotes}
+              onChangeText={setEditNotes}
+              placeholder="Description or notes"
+              placeholderTextColor="#6B7280"
+              multiline
+              textAlignVertical="top"
+              editable={!isSavingTreeData}
+            />
+
+            <TreeHealthSelect
+              value={editHealth}
+              onChange={setEditHealth}
+              compact
+            />
+
+            <View style={styles.editFieldRow}>
+              <TextInput
+                style={[styles.editInput, styles.editNumberInput]}
+                value={editDiameter}
+                onChangeText={setEditDiameter}
+                placeholder="Diameter"
+                placeholderTextColor="#6B7280"
+                keyboardType="decimal-pad"
+                editable={!isSavingTreeData}
+              />
+              <TextInput
+                style={[styles.editInput, styles.editNumberInput]}
+                value={editHeight}
+                onChangeText={setEditHeight}
+                placeholder="Height"
+                placeholderTextColor="#6B7280"
+                keyboardType="decimal-pad"
+                editable={!isSavingTreeData}
+              />
+            </View>
+
+            <TextInput
+              style={styles.editInput}
+              value={editCircumference}
+              onChangeText={setEditCircumference}
+              placeholder="Circumference"
+              placeholderTextColor="#6B7280"
+              keyboardType="decimal-pad"
+              editable={!isSavingTreeData}
+            />
+
+            <View style={styles.modalButtonRow}>
+              <AppButton
+                title={isSavingTreeData ? 'Saving...' : 'Save Changes'}
+                variant="primary"
+                onPress={handleSubmitTreeData}
+                style={styles.modalButtonWrap}
+                buttonStyle={styles.modalButton}
+              />
+              <AppButton
+                title="Cancel"
+                variant="outline"
+                onPress={() => setIsEditModalVisible(false)}
                 style={styles.modalButtonWrap}
                 buttonStyle={styles.modalButton}
               />
@@ -1634,6 +1839,41 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#183221',
     backgroundColor: '#F8FBF7',
+  },
+
+  editInput: {
+    minHeight: 48,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#CAD7C5',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#183221',
+    backgroundColor: '#F8FBF7',
+  },
+
+  editFieldRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  editNotesInput: {
+    minHeight: 92,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#CAD7C5',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#183221',
+    backgroundColor: '#F8FBF7',
+  },
+
+  editNumberInput: {
+    flex: 1,
   },
 
   modalButtonRow: {
