@@ -242,18 +242,18 @@ export default function MyProfilePage() {
 
 	return (
 		<AppContainer noPadding>
+			<View style={styles.topBar}>
+				<NavigationButton onPress={() => router.push('/mainPage')}>
+					Back to Map
+				</NavigationButton>
+			</View>
+
 			<ScrollView
 				style={styles.scroll}
 				contentContainerStyle={styles.scrollContent}
 				showsVerticalScrollIndicator={false}
 			>
 				<View style={styles.inner}>
-					<View style={styles.topBar}>
-						<NavigationButton onPress={() => router.push('/mainPage')}>
-							Back to Map
-						</NavigationButton>
-					</View>
-
 					{/* Hero overview card */}
 					<View style={styles.heroCard}>
 						<View style={styles.avatarCircle}>
@@ -513,7 +513,9 @@ const styles = StyleSheet.create({
 		color: Theme.Colours.textMuted,
 	},
 	topBar: {
-		marginBottom: 16,
+		paddingHorizontal: Theme.Spacing.medium,
+		paddingTop: Theme.Spacing.medium,
+		paddingBottom: Theme.Spacing.small,
 	},
 
 	/* Hero card */
