@@ -345,7 +345,8 @@ export default function MainPage() {
                 duration={refreshDurationSeconds}
                 size={28}
                 strokeWidth={2}
-                color="rgba(240, 251, 242, 0.28)"
+                color="rgba(240, 251, 242, 0.0)"
+                trackColor="rgba(240, 251, 242, 0.28)"
               />
             </View>
           ) : null}
