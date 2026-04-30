@@ -102,11 +102,13 @@ function FilterDropdown<T extends string>({
 	onChange: (value: T) => void;
 }) {
 	const [isOpen, setIsOpen] = useState(false);
+	const { height, width } = useWindowDimensions();
 	const selected = options.find((option) => option.key === value) ?? options[0];
 	const accent = selected.accent ?? Theme.Colours.primary;
+	const menuMaxHeight = Math.max(180, Math.min(width >= 700 ? 340 : 260, height * 0.42));
 
 	return (
-		<View style={styles.dropdownShell}>
+		<View style={[styles.dropdownShell, isOpen && styles.dropdownShellOpen]}>
 			<Pressable
 				style={[styles.dropdownTrigger, { borderColor: `${accent}66` }]}
 				onPress={() => setIsOpen((current) => !current)}
@@ -126,7 +128,12 @@ function FilterDropdown<T extends string>({
 			</Pressable>
 
 			{isOpen ? (
-				<View style={styles.dropdownMenu}>
+				<ScrollView
+					style={[styles.dropdownMenu, { maxHeight: menuMaxHeight }]}
+					contentContainerStyle={styles.dropdownMenuContent}
+					nestedScrollEnabled
+					showsVerticalScrollIndicator={options.length > 6}
+				>
 					{options.map((option) => {
 						const selectedOption = option.key === value;
 						const optionAccent = option.accent ?? Theme.Colours.primary;
@@ -157,7 +164,7 @@ function FilterDropdown<T extends string>({
 							</Pressable>
 						);
 					})}
-				</View>
+				</ScrollView>
 			) : null}
 		</View>
 	);
@@ -597,11 +604,17 @@ const styles = StyleSheet.create({
 		flexWrap: 'wrap',
 		gap: Theme.Spacing.small,
 		paddingVertical: 6,
+		zIndex: 30,
 	},
 	dropdownShell: {
 		flexGrow: 1,
 		flexBasis: 220,
 		minWidth: 190,
+		position: 'relative',
+		zIndex: 1,
+	},
+	dropdownShellOpen: {
+		zIndex: 40,
 	},
 	dropdownTrigger: {
 		minHeight: 54,
@@ -639,7 +652,10 @@ const styles = StyleSheet.create({
 		fontFamily: 'Poppins_600SemiBold',
 	},
 	dropdownMenu: {
-		marginTop: 8,
+		position: 'absolute',
+		top: 62,
+		left: 0,
+		right: 0,
 		padding: 6,
 		borderRadius: Theme.Radius.medium,
 		backgroundColor: 'rgba(255, 255, 255, 0.98)',
@@ -650,6 +666,9 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.18,
 		shadowRadius: 16,
 		elevation: 8,
+		zIndex: 50,
+	},
+	dropdownMenuContent: {
 		gap: 4,
 	},
 	dropdownOption: {
