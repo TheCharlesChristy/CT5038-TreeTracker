@@ -1188,27 +1188,30 @@ export default function TreeDetailsDashboard({
             </AppText>
           </View>
 
-          {isLoggedIn && (
-            <Pressable
-              onPress={handleEditTreeData}
-              style={styles.iconButton}
-            >
-              <MaterialCommunityIcons name="pencil-outline" size={22} color="#2F6A3E" />
-            </Pressable>
-          )}
+          <View style={styles.topRightActions}>
+            {isLoggedIn && (
+              <Pressable
+                onPress={handleEditTreeData}
+                style={styles.editTreeButton}
+              >
+                <MaterialCommunityIcons name="pencil-outline" size={17} color="#FFFFFF" />
+                <AppText style={styles.editTreeButtonText}>Edit</AppText>
+              </Pressable>
+            )}
 
-          {canDeleteTree && (
-            <Pressable
-              onPress={handleDeleteTree}
-              style={styles.iconButton}
-            >
-              <MaterialCommunityIcons name="trash-can-outline" size={22} color="#B3261E" />
-            </Pressable>
-          )}
+            {canDeleteTree && (
+              <Pressable
+                onPress={handleDeleteTree}
+                style={styles.iconButton}
+              >
+                <MaterialCommunityIcons name="trash-can-outline" size={22} color="#B3261E" />
+              </Pressable>
+            )}
 
-          <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.82}>
-            <MaterialCommunityIcons name="close" size={20} color="#234229" />
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.82}>
+              <MaterialCommunityIcons name="close" size={20} color="#234229" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.tabBar}>
@@ -2385,6 +2388,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
+  },
+
+  editTreeButton: {
+    minHeight: 38,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#2F6A3E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#102C18',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  editTreeButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 
   iconButton: {
