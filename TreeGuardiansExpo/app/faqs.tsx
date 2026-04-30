@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { Stack } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles/theme';
@@ -41,8 +42,10 @@ const FAQ_ITEMS = [
 
 export default function FaqsPage() {
   return (
-    <AppContainer scrollable>
-      <View style={styles.content}>
+    <>
+      <Stack.Screen options={{ title: 'FAQ | TreeHuggers' }} />
+      <AppContainer scrollable>
+        <View style={styles.content}>
         <AppText variant="title" style={styles.title}>
           FAQs
         </AppText>
@@ -85,6 +88,7 @@ export default function FaqsPage() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 

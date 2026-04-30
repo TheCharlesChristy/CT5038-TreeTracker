@@ -8,7 +8,7 @@ import {
 	type TextStyle,
 	type ViewStyle,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -241,7 +241,9 @@ export default function MyProfilePage() {
 	const avatarLetter = currentUser.username.charAt(0).toUpperCase();
 
 	return (
-		<AppContainer noPadding>
+		<>
+			<Stack.Screen options={{ title: 'My Profile | TreeHuggers' }} />
+			<AppContainer noPadding backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 			<ScrollView
 				style={styles.scroll}
 				contentContainerStyle={styles.scrollContent}
@@ -472,26 +474,26 @@ export default function MyProfilePage() {
 				</View>
 			</ScrollView>
 		</AppContainer>
+		</>
 	);
 }
 
 const GLASS_CARD = {
-	backgroundColor: 'rgba(250, 253, 250, 0.96)',
+	backgroundColor: 'rgba(255, 255, 255, 0.88)',
 	borderRadius: 18,
 	borderWidth: 1,
-	borderColor: 'rgba(183, 210, 185, 0.7)',
-	borderTopColor: 'rgba(255, 255, 255, 0.88)',
+	borderColor: 'rgba(255, 255, 255, 0.6)',
+	borderTopColor: 'rgba(255, 255, 255, 0.96)',
 	shadowColor: '#0D1F10',
 	shadowOffset: { width: 0, height: 10 },
-	shadowOpacity: 0.14,
-	shadowRadius: 18,
-	elevation: 12,
+	shadowOpacity: 0.18,
+	shadowRadius: 20,
+	elevation: 14,
 } as const;
 
 const styles = StyleSheet.create({
 	scroll: {
 		flex: 1,
-		backgroundColor: '#E8F0E9',
 	},
 	scrollContent: {
 		paddingBottom: 40,

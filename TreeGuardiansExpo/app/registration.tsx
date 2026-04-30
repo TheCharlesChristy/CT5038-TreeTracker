@@ -11,7 +11,7 @@ import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
 import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { getUsernameError, getEmailError, getPasswordError } from '@/lib/authValidation';
 import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
@@ -134,11 +134,13 @@ export default function CreateAccount() {
   };
 
   return (
-    <AppContainer
-      scrollable
-      noPadding
-      backgroundImage={require('../assets/images/CharltonKings.jpg')}
-    >
+    <>
+      <Stack.Screen options={{ title: 'Create Account | TreeHuggers' }} />
+      <AppContainer
+        scrollable
+        noPadding
+        backgroundImage={require('../assets/images/CharltonKings.jpg')}
+      >
       <AuthenticatedRedirect />
       <View
         style={[
@@ -436,6 +438,7 @@ export default function CreateAccount() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 

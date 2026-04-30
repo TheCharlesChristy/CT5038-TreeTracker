@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './AppText';
@@ -13,6 +13,11 @@ const BASE_NAV_ITEMS = [
   { label: 'Resources', route: '/resources' },
   { label: 'FAQs', route: '/faqs' },
 ] as const;
+
+const navScrollWebStyle = Platform.select({
+  web: { overflowX: 'hidden' } as object,
+  default: {},
+});
 
 export const NavBar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -63,6 +68,7 @@ export const NavBar = () => {
           horizontal
           contentContainerStyle={styles.linksRow}
           showsHorizontalScrollIndicator={false}
+          style={navScrollWebStyle}
         >
           {navItems.map((item) => (
             <TouchableOpacity
@@ -102,11 +108,20 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderBottomLeftRadius: Theme.Radius.card,
+    borderBottomRightRadius: Theme.Radius.card,
     paddingVertical: Theme.Spacing.small,
     paddingHorizontal: Theme.Spacing.medium,
+    shadowColor: '#1B3A1E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: 'rgba(165, 214, 167, 0.35)',
+    zIndex: 50,
   },
   brand: {
     flexDirection: 'row',

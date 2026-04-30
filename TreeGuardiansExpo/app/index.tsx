@@ -1,4 +1,5 @@
 import { View, StyleSheet, Image } from 'react-native';
+import { Stack } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -8,7 +9,9 @@ import { router } from 'expo-router';
 
 export default function Index() {
   return (
-    <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
+    <>
+      <Stack.Screen options={{ title: 'TreeHuggers' }} />
+      <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <AuthenticatedRedirect />
       <View style={styles.screen}>
         <View style={styles.card}>
@@ -71,6 +74,7 @@ export default function Index() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 

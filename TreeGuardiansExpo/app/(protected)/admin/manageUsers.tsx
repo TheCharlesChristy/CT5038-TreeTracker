@@ -6,7 +6,7 @@ import {
 	ScrollView,
 	TextInput,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -239,8 +239,10 @@ export default function ManageUsersPage() {
 	}
 
 	return (
-		<AppContainer>
-			<StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
+		<>
+			<Stack.Screen options={{ title: 'Manage Users | TreeHuggers' }} />
+			<AppContainer>
+				<StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
 
 			<View style={styles.topBar}>
 				<NavigationButton onPress={() => router.push('/mainPage')}>
@@ -377,6 +379,7 @@ export default function ManageUsersPage() {
 				</ScrollView>
 			)}
 		</AppContainer>
+		</>
 	);
 }
 

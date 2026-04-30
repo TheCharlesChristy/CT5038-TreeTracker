@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -77,8 +77,10 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <AppContainer>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <>
+      <Stack.Screen options={{ title: 'Analytics | TreeHuggers' }} />
+      <AppContainer>
+        <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
           <NavigationButton onPress={() => router.push('/mainPage')}>
             Back to Map
@@ -199,6 +201,7 @@ export default function AnalyticsPage() {
         />
       </ScrollView>
     </AppContainer>
+    </>
   );
 }
 

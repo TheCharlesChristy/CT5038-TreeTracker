@@ -23,6 +23,7 @@ import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
+import { Stack } from 'expo-router';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
@@ -153,8 +154,10 @@ export default function MainPage() {
   }, [clearLogoutTimer, closeAllOverlays, executeLogout, isLoggingOut]);
 
   return (
-    <ActionSheetProvider>
-      <AppContainer noPadding>
+    <>
+      <Stack.Screen options={{ title: 'Map | TreeHuggers' }} />
+      <ActionSheetProvider>
+        <AppContainer noPadding>
         <View style={styles.page}>
           <MapComponent
             style={StyleSheet.absoluteFillObject}
@@ -316,8 +319,9 @@ export default function MainPage() {
             </View>
           ) : null}
         </View>
-      </AppContainer>
-    </ActionSheetProvider>
+        </AppContainer>
+      </ActionSheetProvider>
+    </>
   );
 }
 
