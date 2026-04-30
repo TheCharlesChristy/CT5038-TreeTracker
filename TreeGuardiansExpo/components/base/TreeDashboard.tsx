@@ -252,32 +252,6 @@ function TreeOverview({
         </View>
       </View>
 
-      <View style={styles.summaryChipRow}>
-        {tree.species ? (
-          <View style={styles.summaryChip}>
-            <MaterialCommunityIcons name="pine-tree" size={14} color="#1B5E20" />
-            <AppText style={styles.summaryChipText}>{tree.species}</AppText>
-          </View>
-        ) : null}
-
-        <View style={styles.summaryChip}>
-          <MaterialCommunityIcons name="image-outline" size={14} color="#1B5E20" />
-          <AppText style={styles.summaryChipText}>{photoCount} photos</AppText>
-        </View>
-
-        <View style={styles.summaryChip}>
-          <MaterialCommunityIcons name="timeline-outline" size={14} color="#1B5E20" />
-          <AppText style={styles.summaryChipText}>{activityCount} updates</AppText>
-        </View>
-
-        <View style={styles.summaryChip}>
-          <MaterialCommunityIcons name="map-marker-outline" size={14} color="#1B5E20" />
-          <AppText style={styles.summaryChipText}>
-            {tree.latitude.toFixed(4)}, {tree.longitude.toFixed(4)}
-          </AppText>
-        </View>
-      </View>
-
       <TreeDataStats tree={tree} />
 
       <View style={styles.sectionStack}>
