@@ -347,7 +347,8 @@ export default function MainPage() {
                 strokeWidth={2}
                 color="rgba(150, 150, 150, 0.55)"
                 trackColor="rgba(150, 150, 150, 0.38)"
-                trackOnly={true}
+                showLabel={false}
+                trackOnly={false}
               />
             </View>
           ) : null}

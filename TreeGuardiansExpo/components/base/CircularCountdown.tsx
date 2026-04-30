@@ -13,6 +13,8 @@ interface CircularCountdownProps {
   color?: string;
   /** Colour of the background track */
   trackColor?: string;
+  /** When false, hides the numeric label in the center */
+  showLabel?: boolean;
   /** When true, only the background track is shown */
   trackOnly?: boolean;
   /** Called when the countdown reaches zero */
@@ -27,6 +29,7 @@ export function CircularCountdown({
   strokeWidth = 3,
   color = '#194C22',
   trackColor = '#D2E4D4',
+  showLabel = true,
   trackOnly = false,
   onComplete,
 }: CircularCountdownProps) {
@@ -95,7 +98,7 @@ export function CircularCountdown({
           />
         ) : null}
       </Svg>
-      {!trackOnly ? (
+      {!trackOnly && showLabel ? (
         <View style={styles.label}>
           <Text style={[styles.number, { color }]}>{secondsLeft}</Text>
         </View>
