@@ -461,24 +461,26 @@ function createWorkflows(ctx) {
 
     analytics: {
       async getActivityTrend(days = 30) {
+        const dayWindow = Math.max(1, Number(days) || 30);
+        const dayOffset = dayWindow - 1;
         const [treesPerDay, commentsPerDay] = await Promise.all([
           run(
             runtimeExecutor(),
-            `SELECT DATE(created_at) AS day, COUNT(*) AS count
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count
              FROM tree_creation_data
-             WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             GROUP BY DATE(created_at)
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
              ORDER BY day ASC`,
-            [days]
+            [dayOffset]
           ),
           run(
             runtimeExecutor(),
-            `SELECT DATE(created_at) AS day, COUNT(*) AS count
-             FROM comments_tree
-             WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             GROUP BY DATE(created_at)
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count
+             FROM comments
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
              ORDER BY day ASC`,
-            [days]
+            [dayOffset]
           )
         ]);
 

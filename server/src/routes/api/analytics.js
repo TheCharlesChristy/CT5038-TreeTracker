@@ -57,7 +57,8 @@ function createAnalyticsRoute({ db }) {
       throw error;
     }
 
-    const days = Math.min(Number(req.query.days) || 30, 90);
+    const requestedDays = Number.parseInt(String(req.query.days || ""), 10);
+    const days = Math.min(Math.max(Number.isInteger(requestedDays) ? requestedDays : 30, 1), 90);
     const trend = await db.workflows.analytics.getActivityTrend(days);
     res.json(trend);
   }));

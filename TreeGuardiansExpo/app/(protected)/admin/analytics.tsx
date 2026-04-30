@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -16,50 +17,149 @@ import {
 	UserAnalyticsResponse,
 } from '@/lib/adminApi';
 
-// ─── Inline bar chart ───────────────────────────────────────────────────────
+// ─── Shared activity line chart ─────────────────────────────────────────────
 
-type BarChartItem = { label: string; value: number };
+type ActivityChartPoint = { day: string; label: string; value: number };
 
-function MiniBarChart({
-	data,
-	colour,
-	unit = '',
+function ActivityLineChart({
+	trees,
+	comments,
 }: {
-	data: BarChartItem[];
-	colour: string;
-	unit?: string;
+	trees: ActivityChartPoint[];
+	comments: ActivityChartPoint[];
 }) {
-	if (data.length === 0) {
+	const labels = trees.length > 0 ? trees : comments;
+
+	if (labels.length === 0) {
 		return <AppText style={styles.chartEmpty}>No data for this period.</AppText>;
 	}
 
-	const maxValue = Math.max(...data.map((d) => d.value), 1);
+	const width = 320;
+	const height = 190;
+	const padding = { top: 18, right: 14, bottom: 38, left: 34 };
+	const plotWidth = width - padding.left - padding.right;
+	const plotHeight = height - padding.top - padding.bottom;
+	const maxValue = Math.max(1, ...trees.map((d) => d.value), ...comments.map((d) => d.value));
+	const yTicks = Array.from(new Set([maxValue, Math.floor(maxValue / 2), 0]));
+	const labelIndexes = Array.from(new Set([0, Math.floor((labels.length - 1) / 2), labels.length - 1]));
+	const treeColour = Theme.Colours.primary;
+	const commentColour = '#2563EB';
+	const pointX = (index: number, total: number) =>
+		padding.left + (total <= 1 ? plotWidth / 2 : (index / (total - 1)) * plotWidth);
+	const pointY = (value: number) => padding.top + plotHeight - (value / maxValue) * plotHeight;
+	const buildPath = (data: ActivityChartPoint[]) =>
+		data
+			.map((point, index) => `${index === 0 ? 'M' : 'L'} ${pointX(index, data.length).toFixed(2)} ${pointY(point.value).toFixed(2)}`)
+			.join(' ');
+	const accessibilitySummary = labels
+		.map((label, index) => {
+			const treeValue = trees[index]?.value ?? 0;
+			const commentValue = comments[index]?.value ?? 0;
+			return `${label.label}: ${treeValue} trees, ${commentValue} comments`;
+		})
+		.join('. ');
 
 	return (
-		<View>
-			{/* Accessible data table (screen readers + non-visual) */}
-			<View style={styles.chartAccessTable} accessible accessibilityRole="table">
-				{data.map((item, idx) => (
-					<View key={idx} style={styles.chartAccessRow}>
-						<AppText style={styles.chartBarLabel}>{item.label}</AppText>
-						<View style={styles.chartBarTrack}>
-							<View
-								style={[
-									styles.chartBarFill,
-									{
-										width: `${Math.round((item.value / maxValue) * 100)}%` as `${number}%`,
-										backgroundColor: colour,
-									},
-								]}
-							/>
-						</View>
-						<AppText style={styles.chartBarValue}>
-							{item.value}
-							{unit}
-						</AppText>
-					</View>
-				))}
+		<View
+			accessible
+			accessibilityRole="image"
+			accessibilityLabel={`Daily activity line chart. ${accessibilitySummary}`}
+		>
+			<View style={styles.chartLegend}>
+				<View style={styles.chartLegendItem}>
+					<View style={[styles.chartLegendDot, { backgroundColor: treeColour }]} />
+					<AppText style={styles.chartLegendText}>Trees Added</AppText>
+				</View>
+				<View style={styles.chartLegendItem}>
+					<View style={[styles.chartLegendDot, { backgroundColor: commentColour }]} />
+					<AppText style={styles.chartLegendText}>Comments Posted</AppText>
+				</View>
 			</View>
+
+			<Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+				<G>
+					{yTicks.map((tick) => {
+						const y = pointY(tick);
+						return (
+							<G key={tick}>
+								<Line
+									x1={padding.left}
+									y1={y}
+									x2={width - padding.right}
+									y2={y}
+									stroke="#E2E8E2"
+									strokeWidth={1}
+								/>
+								<SvgText
+									x={padding.left - 8}
+									y={y + 4}
+									fill={Theme.Colours.textMuted}
+									fontSize={10}
+									textAnchor="end"
+								>
+									{tick}
+								</SvgText>
+							</G>
+						);
+					})}
+
+					<Line
+						x1={padding.left}
+						y1={padding.top}
+						x2={padding.left}
+						y2={padding.top + plotHeight}
+						stroke="#CBD8CB"
+						strokeWidth={1}
+					/>
+					<Line
+						x1={padding.left}
+						y1={padding.top + plotHeight}
+						x2={width - padding.right}
+						y2={padding.top + plotHeight}
+						stroke="#CBD8CB"
+						strokeWidth={1}
+					/>
+
+					{labelIndexes.map((index) => (
+						<SvgText
+							key={labels[index].day}
+							x={pointX(index, labels.length)}
+							y={height - 14}
+							fill={Theme.Colours.textMuted}
+							fontSize={10}
+							textAnchor="middle"
+						>
+							{labels[index].label}
+						</SvgText>
+					))}
+
+					<Path d={buildPath(trees)} fill="none" stroke={treeColour} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+					<Path d={buildPath(comments)} fill="none" stroke={commentColour} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+
+					{trees.map((point, index) => (
+						<Circle
+							key={`tree-${point.day}`}
+							cx={pointX(index, trees.length)}
+							cy={pointY(point.value)}
+							r={3.25}
+							fill="#FFFFFF"
+							stroke={treeColour}
+							strokeWidth={2}
+						/>
+					))}
+					{comments.map((point, index) => (
+						<Circle
+							key={`comment-${point.day}`}
+							cx={pointX(index, comments.length)}
+							cy={pointY(point.value)}
+							r={3.25}
+							fill="#FFFFFF"
+							stroke={commentColour}
+							strokeWidth={2}
+						/>
+					))}
+				</G>
+			</Svg>
 		</View>
 	);
 }
@@ -156,17 +256,37 @@ function formatImpactValue(value: number, unit: string): string {
 	return `${value.toFixed(1)} ${unit}`;
 }
 
-function lastNDaysLabels(data: { day: string; count: number }[], n: number): { label: string; value: number }[] {
+function formatDateKey(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, '0');
+	const day = String(date.getDate()).padStart(2, '0');
+	return `${year}-${month}-${day}`;
+}
+
+function normalizeDayKey(day: string): string {
+	const trimmed = String(day || '').trim();
+	const isoDate = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+	if (isoDate) return isoDate[1];
+
+	const parsed = new Date(trimmed);
+	if (!Number.isNaN(parsed.getTime())) {
+		return formatDateKey(parsed);
+	}
+
+	return trimmed.slice(0, 10);
+}
+
+function lastNDaysLabels(data: { day: string; count: number }[], n: number): ActivityChartPoint[] {
 	const today = new Date();
-	const result: { label: string; value: number }[] = [];
-	const byDay = new Map(data.map((d) => [d.day.slice(0, 10), d.count]));
+	const result: ActivityChartPoint[] = [];
+	const byDay = new Map(data.map((d) => [normalizeDayKey(d.day), Number(d.count) || 0]));
 
 	for (let i = n - 1; i >= 0; i--) {
 		const d = new Date(today);
 		d.setDate(d.getDate() - i);
-		const key = d.toISOString().slice(0, 10);
+		const key = formatDateKey(d);
 		const label = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-		result.push({ label, value: byDay.get(key) ?? 0 });
+		result.push({ day: key, label, value: byDay.get(key) ?? 0 });
 	}
 
 	return result;
@@ -286,18 +406,10 @@ export default function AnalyticsPage() {
 							<AppText style={styles.sectionTitle}>Activity — last 14 days</AppText>
 
 							<View style={styles.glassCard}>
-								<AppText style={styles.cardHeading}>Trees Added</AppText>
-								<MiniBarChart
-									data={treeTrend}
-									colour={Theme.Colours.primary}
-								/>
-							</View>
-
-							<View style={styles.glassCard}>
-								<AppText style={styles.cardHeading}>Comments Posted</AppText>
-								<MiniBarChart
-									data={commentTrend}
-									colour={Theme.Colours.secondary}
+								<AppText style={styles.cardHeading}>Trees Added & Comments Posted</AppText>
+								<ActivityLineChart
+									trees={treeTrend}
+									comments={commentTrend}
 								/>
 							</View>
 						</View>
@@ -489,40 +601,27 @@ const styles = StyleSheet.create({
 		marginBottom: Theme.Spacing.small,
 	},
 
-	// Bar chart
-	chartAccessTable: {
-		gap: 6,
+	// Activity line chart
+	chartLegend: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: Theme.Spacing.small,
+		marginTop: 6,
+		marginBottom: 4,
 	},
-	chartAccessRow: {
+	chartLegendItem: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		gap: Theme.Spacing.small,
+		gap: 6,
 	},
-	chartBarLabel: {
+	chartLegendDot: {
+		width: 10,
+		height: 10,
+		borderRadius: 5,
+	},
+	chartLegendText: {
 		color: Theme.Colours.textMuted,
-		fontSize: 11,
-		width: 50,
-		flexShrink: 0,
-	},
-	chartBarTrack: {
-		flex: 1,
-		height: 16,
-		backgroundColor: '#F0F5F0',
-		borderRadius: 4,
-		overflow: 'hidden',
-	},
-	chartBarFill: {
-		height: '100%',
-		borderRadius: 4,
-		minWidth: 2,
-	},
-	chartBarValue: {
-		color: Theme.Colours.textPrimary,
 		fontSize: 12,
-		fontFamily: 'Poppins_600SemiBold',
-		width: 28,
-		textAlign: 'right',
-		flexShrink: 0,
 	},
 	chartEmpty: {
 		color: Theme.Colours.textMuted,
