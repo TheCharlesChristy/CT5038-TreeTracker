@@ -1,6 +1,5 @@
-import { buildApiUrl } from '@/config/api';
+import { API_BASE, buildApiUrl } from '@/config/api';
 import { getAccessToken } from '@/utilities/authHelper';
-import { API_BASE } from "@/config/api";
 import { getItem } from "@/utilities/authStorage";
 
 export type AnalyticsResponse = {
