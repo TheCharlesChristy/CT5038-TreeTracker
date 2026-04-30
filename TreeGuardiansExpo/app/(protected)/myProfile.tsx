@@ -250,11 +250,6 @@ export default function MyProfilePage() {
 				showsVerticalScrollIndicator={false}
 			>
 				<View style={styles.inner}>
-					<View style={styles.topBar}>
-						<NavigationButton onPress={() => router.push('/mainPage')}>
-							Back to Map
-						</NavigationButton>
-					</View>
 
 					{/* Hero overview card */}
 					<View style={styles.heroCard}>

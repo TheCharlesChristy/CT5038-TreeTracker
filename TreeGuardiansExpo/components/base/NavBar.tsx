@@ -105,22 +105,23 @@ export const NavBar = () => {
 
 const styles = StyleSheet.create({
   wrapper: {
-    width: '100%',
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    borderBottomLeftRadius: Theme.Radius.card,
-    borderBottomRightRadius: Theme.Radius.card,
+    borderRadius: Theme.Radius.card,
+    marginTop: Theme.Spacing.small,
+    marginHorizontal: Theme.Spacing.medium,
+    marginBottom: Theme.Spacing.small,
     paddingVertical: Theme.Spacing.small,
     paddingHorizontal: Theme.Spacing.medium,
     shadowColor: '#1B3A1E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 10,
     borderWidth: 1,
-    borderTopWidth: 0,
-    borderColor: 'rgba(165, 214, 167, 0.35)',
+    borderColor: 'rgba(255, 255, 255, 0.72)',
     zIndex: 50,
   },
   brand: {
@@ -177,4 +178,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-

@@ -9,6 +9,7 @@ import {
   View,
   useWindowDimensions,
   Pressable,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
@@ -628,6 +629,46 @@ export default function TreeDetailsDashboard({
     }
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    const styleId = 'tree-dashboard-scrollbar-style';
+
+    if (document.getElementById(styleId)) {
+      return;
+    }
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      [data-tree-dashboard-scroll="true"] {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(47, 106, 62, 0.42) transparent;
+      }
+
+      [data-tree-dashboard-scroll="true"]::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      [data-tree-dashboard-scroll="true"]::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      [data-tree-dashboard-scroll="true"]::-webkit-scrollbar-thumb {
+        background-color: rgba(47, 106, 62, 0.34);
+        border-radius: 999px;
+        border: 2px solid rgba(252, 254, 251, 0.92);
+      }
+
+      [data-tree-dashboard-scroll="true"]::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(47, 106, 62, 0.52);
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
   const maxPhotos = 5;
   const remainingPhotoSlots = Math.max(0, maxPhotos - photos.length);
   const isPhotoLimitReached = photos.length >= maxPhotos;
@@ -1047,7 +1088,9 @@ export default function TreeDetailsDashboard({
         <ScrollView
           style={styles.contentScroll}
           contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
+          dataSet={{ treeDashboardScroll: 'true' }}
+          showsVerticalScrollIndicator
+          indicatorStyle="black"
         >
           {activeTab === 'overview' ? (
             <TreeOverview
