@@ -63,6 +63,8 @@ export type ActivityTrendItem = {
 export type ActivityTrendResponse = {
   treesPerDay: ActivityTrendItem[];
   commentsPerDay: ActivityTrendItem[];
+  registeredUsersPerDay: ActivityTrendItem[];
+  loginsPerDay: ActivityTrendItem[];
 };
 
 export type ContributorItem = {
@@ -95,6 +97,8 @@ export async function fetchActivityTrend(days = 30): Promise<ActivityTrendRespon
   return {
     treesPerDay: Array.isArray(parsed?.treesPerDay) ? parsed.treesPerDay : [],
     commentsPerDay: Array.isArray(parsed?.commentsPerDay) ? parsed.commentsPerDay : [],
+    registeredUsersPerDay: Array.isArray(parsed?.registeredUsersPerDay) ? parsed.registeredUsersPerDay : [],
+    loginsPerDay: Array.isArray(parsed?.loginsPerDay) ? parsed.loginsPerDay : [],
   };
 }
 

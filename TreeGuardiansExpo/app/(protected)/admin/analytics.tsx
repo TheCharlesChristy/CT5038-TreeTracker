@@ -20,15 +20,14 @@ import {
 // ─── Shared activity line chart ─────────────────────────────────────────────
 
 type ActivityChartPoint = { day: string; label: string; value: number };
+type TimeSeries = { label: string; colour: string; data: ActivityChartPoint[] };
 
-function ActivityLineChart({
-	trees,
-	comments,
+function TimeSeriesLineChart({
+	series,
 }: {
-	trees: ActivityChartPoint[];
-	comments: ActivityChartPoint[];
+	series: TimeSeries[];
 }) {
-	const labels = trees.length > 0 ? trees : comments;
+	const labels = series.find((item) => item.data.length > 0)?.data ?? [];
 
 	if (labels.length === 0) {
 		return <AppText style={styles.chartEmpty}>No data for this period.</AppText>;
@@ -39,11 +38,9 @@ function ActivityLineChart({
 	const padding = { top: 18, right: 14, bottom: 38, left: 34 };
 	const plotWidth = width - padding.left - padding.right;
 	const plotHeight = height - padding.top - padding.bottom;
-	const maxValue = Math.max(1, ...trees.map((d) => d.value), ...comments.map((d) => d.value));
+	const maxValue = Math.max(1, ...series.flatMap((item) => item.data.map((d) => d.value)));
 	const yTicks = Array.from(new Set([maxValue, Math.floor(maxValue / 2), 0]));
 	const labelIndexes = Array.from(new Set([0, Math.floor((labels.length - 1) / 2), labels.length - 1]));
-	const treeColour = Theme.Colours.primary;
-	const commentColour = '#2563EB';
 	const pointX = (index: number, total: number) =>
 		padding.left + (total <= 1 ? plotWidth / 2 : (index / (total - 1)) * plotWidth);
 	const pointY = (value: number) => padding.top + plotHeight - (value / maxValue) * plotHeight;
@@ -53,9 +50,8 @@ function ActivityLineChart({
 			.join(' ');
 	const accessibilitySummary = labels
 		.map((label, index) => {
-			const treeValue = trees[index]?.value ?? 0;
-			const commentValue = comments[index]?.value ?? 0;
-			return `${label.label}: ${treeValue} trees, ${commentValue} comments`;
+			const values = series.map((item) => `${item.data[index]?.value ?? 0} ${item.label}`).join(', ');
+			return `${label.label}: ${values}`;
 		})
 		.join('. ');
 
@@ -66,14 +62,12 @@ function ActivityLineChart({
 			accessibilityLabel={`Daily activity line chart. ${accessibilitySummary}`}
 		>
 			<View style={styles.chartLegend}>
-				<View style={styles.chartLegendItem}>
-					<View style={[styles.chartLegendDot, { backgroundColor: treeColour }]} />
-					<AppText style={styles.chartLegendText}>Trees Added</AppText>
-				</View>
-				<View style={styles.chartLegendItem}>
-					<View style={[styles.chartLegendDot, { backgroundColor: commentColour }]} />
-					<AppText style={styles.chartLegendText}>Comments Posted</AppText>
-				</View>
+				{series.map((item) => (
+					<View key={item.label} style={styles.chartLegendItem}>
+						<View style={[styles.chartLegendDot, { backgroundColor: item.colour }]} />
+						<AppText style={styles.chartLegendText}>{item.label}</AppText>
+					</View>
+				))}
 			</View>
 
 			<Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
@@ -133,77 +127,31 @@ function ActivityLineChart({
 						</SvgText>
 					))}
 
-					<Path d={buildPath(trees)} fill="none" stroke={treeColour} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-					<Path d={buildPath(comments)} fill="none" stroke={commentColour} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-
-					{trees.map((point, index) => (
-						<Circle
-							key={`tree-${point.day}`}
-							cx={pointX(index, trees.length)}
-							cy={pointY(point.value)}
-							r={3.25}
-							fill="#FFFFFF"
-							stroke={treeColour}
-							strokeWidth={2}
-						/>
-					))}
-					{comments.map((point, index) => (
-						<Circle
-							key={`comment-${point.day}`}
-							cx={pointX(index, comments.length)}
-							cy={pointY(point.value)}
-							r={3.25}
-							fill="#FFFFFF"
-							stroke={commentColour}
-							strokeWidth={2}
-						/>
+					{series.filter((item) => item.data.length > 0).map((item) => (
+						<G key={item.label}>
+							<Path
+								d={buildPath(item.data)}
+								fill="none"
+								stroke={item.colour}
+								strokeWidth={3}
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+							{item.data.map((point, index) => (
+								<Circle
+									key={`${item.label}-${point.day}`}
+									cx={pointX(index, item.data.length)}
+									cy={pointY(point.value)}
+									r={3.25}
+									fill="#FFFFFF"
+									stroke={item.colour}
+									strokeWidth={2}
+								/>
+							))}
+						</G>
 					))}
 				</G>
 			</Svg>
-		</View>
-	);
-}
-
-// ─── Role breakdown bar ──────────────────────────────────────────────────────
-
-function RoleBreakdownBar({ breakdown }: { breakdown: UserAnalyticsResponse['roleBreakdown'] }) {
-	const total = breakdown.admin + breakdown.guardian + breakdown.registered_user || 1;
-	const segments = [
-		{ label: 'Admin', count: breakdown.admin, colour: '#3730A3', bg: '#C7D2FE' },
-		{ label: 'Guardian', count: breakdown.guardian, colour: '#065F46', bg: '#A7F3D0' },
-		{ label: 'User', count: breakdown.registered_user, colour: '#374151', bg: '#D1D5DB' },
-	];
-
-	return (
-		<View style={styles.roleBreakdown}>
-			<View style={styles.roleBar} accessible accessibilityRole="progressbar">
-				{segments
-					.filter((s) => s.count > 0)
-					.map((s) => (
-						<View
-							key={s.label}
-							style={[
-								styles.roleBarSegment,
-								{
-									flex: s.count,
-									backgroundColor: s.bg,
-									borderColor: s.colour + '60',
-								},
-							]}
-						/>
-					))}
-			</View>
-
-			<View style={styles.roleLegend}>
-				{segments.map((s) => (
-					<View key={s.label} style={styles.roleLegendItem}>
-						<View style={[styles.roleLegendDot, { backgroundColor: s.bg, borderColor: s.colour }]} />
-						<AppText style={styles.roleLegendText}>
-							{s.label}: {s.count} ({Math.round((s.count / total) * 100)}%)
-						</AppText>
-					</View>
-				))}
-			</View>
 		</View>
 	);
 }
@@ -356,6 +304,8 @@ export default function AnalyticsPage() {
 
 	const treeTrend = activityTrend ? lastNDaysLabels(activityTrend.treesPerDay, 14) : [];
 	const commentTrend = activityTrend ? lastNDaysLabels(activityTrend.commentsPerDay, 14) : [];
+	const registeredUserTrend = activityTrend ? lastNDaysLabels(activityTrend.registeredUsersPerDay, 14) : [];
+	const loginTrend = activityTrend ? lastNDaysLabels(activityTrend.loginsPerDay, 14) : [];
 
 	return (
 		<AppContainer>
@@ -407,9 +357,21 @@ export default function AnalyticsPage() {
 
 							<View style={styles.glassCard}>
 								<AppText style={styles.cardHeading}>Trees Added & Comments Posted</AppText>
-								<ActivityLineChart
-									trees={treeTrend}
-									comments={commentTrend}
+								<TimeSeriesLineChart
+									series={[
+										{ label: 'Trees Added', colour: Theme.Colours.primary, data: treeTrend },
+										{ label: 'Comments Posted', colour: '#2563EB', data: commentTrend },
+									]}
+								/>
+							</View>
+
+							<View style={styles.glassCard}>
+								<AppText style={styles.cardHeading}>Users Registered & Logged In</AppText>
+								<TimeSeriesLineChart
+									series={[
+										{ label: 'Users Registered', colour: '#7C3AED', data: registeredUserTrend },
+										{ label: 'People Logged In', colour: '#EA580C', data: loginTrend },
+									]}
 								/>
 							</View>
 						</View>
@@ -418,14 +380,6 @@ export default function AnalyticsPage() {
 						{userAnalytics ? (
 							<View style={styles.section}>
 								<AppText style={styles.sectionTitle}>User Analytics</AppText>
-
-								<View style={styles.glassCard}>
-									<AppText style={styles.cardHeading}>Role Breakdown</AppText>
-									<AppText style={styles.cardSubheading}>
-										{userAnalytics.totalUsers} total registered users
-									</AppText>
-									<RoleBreakdownBar breakdown={userAnalytics.roleBreakdown} />
-								</View>
 
 								<View style={styles.glassCard}>
 									<AppText style={styles.cardHeading}>Top Tree Submitters</AppText>
@@ -595,11 +549,6 @@ const styles = StyleSheet.create({
 		color: Theme.Colours.textPrimary,
 		marginBottom: 4,
 	},
-	cardSubheading: {
-		color: Theme.Colours.textMuted,
-		fontSize: 12,
-		marginBottom: Theme.Spacing.small,
-	},
 
 	// Activity line chart
 	chartLegend: {
@@ -626,43 +575,6 @@ const styles = StyleSheet.create({
 	chartEmpty: {
 		color: Theme.Colours.textMuted,
 		fontStyle: 'italic',
-	},
-
-	// Role breakdown
-	roleBreakdown: {
-		gap: Theme.Spacing.small,
-	},
-	roleBar: {
-		height: 20,
-		borderRadius: 10,
-		flexDirection: 'row',
-		overflow: 'hidden',
-		borderWidth: 1,
-		borderColor: '#D7E4D7',
-	},
-	roleBarSegment: {
-		height: '100%',
-		borderRightWidth: 1,
-	},
-	roleLegend: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		gap: Theme.Spacing.small,
-	},
-	roleLegendItem: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 4,
-	},
-	roleLegendDot: {
-		width: 10,
-		height: 10,
-		borderRadius: 5,
-		borderWidth: 1,
-	},
-	roleLegendText: {
-		color: Theme.Colours.textMuted,
-		fontSize: 12,
 	},
 
 	// Contributors
