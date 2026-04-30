@@ -487,25 +487,25 @@ export default function PlotDashboard({
             <View style={styles.estimateBox}>
               <AppText style={styles.estimateTitle}>Estimated Environmental Impact</AppText>
               <AppText style={styles.estimateItem}>
-                Avoided Runoff: {estimatedStats.avoidedRunoff ?? '—'} m3
+                Avoided Runoff: {estimatedStats.avoidedRunoff ?? '—'} m³
               </AppText>
               <AppText style={styles.estimateItem}>
-                CO2 Stored: {estimatedStats.carbonDioxideStored ?? '—'} kg
+                CO₂ Stored: {estimatedStats.carbonDioxideStored ?? '—'} kg
               </AppText>
               <AppText style={styles.estimateItem}>
-                CO2 Removed: {estimatedStats.carbonDioxideRemoved ?? '—'} kg
+                CO₂ Removed: {estimatedStats.carbonDioxideRemoved ?? '—'} kg
               </AppText>
               <AppText style={styles.estimateItem}>
-                Water Intercepted: {estimatedStats.waterIntercepted ?? '—'} m3
+                Water Intercepted: {estimatedStats.waterIntercepted ?? '—'} m³
               </AppText>
               <AppText style={styles.estimateItem}>
                 Air Quality Gain: {estimatedStats.airQualityImprovement ?? '—'} g/year
               </AppText>
               <AppText style={styles.estimateItem}>
-                Leaf Area: {estimatedStats.leafArea ?? '—'} m2
+                Leaf Area: {estimatedStats.leafArea ?? '—'} m²
               </AppText>
               <AppText style={styles.estimateItem}>
-                Evapotranspiration: {estimatedStats.evapotranspiration ?? '—'} m3
+                Evapotranspiration: {estimatedStats.evapotranspiration ?? '—'} m³
               </AppText>
             </View>
           </View>
