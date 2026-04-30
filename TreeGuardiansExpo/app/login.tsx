@@ -23,7 +23,6 @@ export default function Login() {
   const successRedirectDuration = 1;
   const { width, height } = useStableViewportDimensions();
   const isMobileLayout = width < 680;
-  const isWideLayout = width >= 920;
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,8 +40,6 @@ export default function Login() {
 
   const [credentialFocused, setCredentialFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [formCardHeight, setFormCardHeight] = useState<number | undefined>(undefined);
-
   const passwordRef = useRef<TextInput>(null);
 
   const trimmedCredential = useMemo(() => usernameOrEmail.trim(), [usernameOrEmail]);
@@ -188,7 +185,7 @@ export default function Login() {
               styles.formColumn,
             ]}
           >
-            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
+            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
               <View style={styles.topRow}>
                 <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                   <AppText variant="caption" style={styles.homeLinkText}>
@@ -363,10 +360,9 @@ export default function Login() {
           <View
             style={[
               styles.previewColumn,
-              isWideLayout && formCardHeight != null && { height: formCardHeight },
             ]}
           >
-            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile, isWideLayout && styles.previewCardWide]}>
+            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile]}>
               <View style={styles.previewEyebrow}>
                 <AppText variant="caption" style={styles.previewEyebrowText}>
                   Calm, local, community-first
@@ -516,7 +512,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     justifyContent: 'center',
   },
   shellMobile: {
@@ -525,11 +521,14 @@ const styles = StyleSheet.create({
   formColumn: {
     flexGrow: 1,
     flexShrink: 1,
-    flexBasis: 420,
+    flexBasis: 500,
     maxWidth: 520,
     minWidth: 300,
   },
   formCard: {
+    flex: 1,
+    minHeight: 720,
+    maxHeight: 720,
     backgroundColor: 'rgba(248, 252, 248, 0.76)',
     borderRadius: 24,
     padding: Theme.Spacing.extraLarge,
@@ -727,11 +726,14 @@ const styles = StyleSheet.create({
   previewColumn: {
     flexGrow: 1,
     flexShrink: 1,
-    flexBasis: 420,
-    maxWidth: 560,
+    flexBasis: 500,
+    maxWidth: 520,
     minWidth: 300,
   },
   previewCard: {
+    flex: 1,
+    minHeight: 720,
+    maxHeight: 720,
     borderRadius: 28,
     padding: Theme.Spacing.extraLarge,
     justifyContent: 'space-between',
@@ -745,13 +747,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   previewCardMobile: {
-    minHeight: 520,
     borderRadius: 20,
     padding: Theme.Spacing.large,
-  },
-  previewCardWide: {
-    flex: 1,
-    overflow: 'hidden',
   },
   previewEyebrow: {
     alignSelf: 'flex-start',
