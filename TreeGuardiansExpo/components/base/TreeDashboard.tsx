@@ -1386,32 +1386,40 @@ export default function TreeDetailsDashboard({
 
                 <View style={styles.editMetricsRow}>
                   <View style={styles.editMetricField}>
-                    <AppInput
-                      placeholder="Diameter (cm)"
-                      value={editDiameter}
-                      onChangeText={(value) =>
-                        handleEditNumericChange(value, 'diameter', setEditDiameter)
-                      }
-                      keyboardType="numeric"
-                      invalid={!!editErrors.diameter}
-                      style={styles.editFormInput}
-                    />
+                    <AppText style={styles.editMetricLabel}>Diameter</AppText>
+                    <View style={styles.editInputWithUnit}>
+                      <AppInput
+                        placeholder="0"
+                        value={editDiameter}
+                        onChangeText={(value) =>
+                          handleEditNumericChange(value, 'diameter', setEditDiameter)
+                        }
+                        keyboardType="numeric"
+                        invalid={!!editErrors.diameter}
+                        containerStyle={styles.editInputUnitContainer}
+                      />
+                      <AppText style={styles.editUnitLabel}>cm</AppText>
+                    </View>
                     {editErrors.diameter ? (
                       <AppText style={styles.editErrorText}>{editErrors.diameter}</AppText>
                     ) : null}
                   </View>
 
                   <View style={styles.editMetricField}>
-                    <AppInput
-                      placeholder="Height (m)"
-                      value={editHeight}
-                      onChangeText={(value) =>
-                        handleEditNumericChange(value, 'height', setEditHeight)
-                      }
-                      keyboardType="numeric"
-                      invalid={!!editErrors.height}
-                      style={styles.editFormInput}
-                    />
+                    <AppText style={styles.editMetricLabel}>Height</AppText>
+                    <View style={styles.editInputWithUnit}>
+                      <AppInput
+                        placeholder="0"
+                        value={editHeight}
+                        onChangeText={(value) =>
+                          handleEditNumericChange(value, 'height', setEditHeight)
+                        }
+                        keyboardType="numeric"
+                        invalid={!!editErrors.height}
+                        containerStyle={styles.editInputUnitContainer}
+                      />
+                      <AppText style={styles.editUnitLabel}>m</AppText>
+                    </View>
                     {editErrors.height ? (
                       <AppText style={styles.editErrorText}>{editErrors.height}</AppText>
                     ) : null}
@@ -1419,16 +1427,20 @@ export default function TreeDetailsDashboard({
                 </View>
 
                 <View style={styles.editMetricField}>
-                  <AppInput
-                    placeholder="Circumference (cm)"
-                    value={editCircumference}
-                    onChangeText={(value) =>
-                      handleEditNumericChange(value, 'circumference', setEditCircumference)
-                    }
-                    keyboardType="numeric"
-                    invalid={!!editErrors.circumference}
-                    style={styles.editFormInput}
-                  />
+                  <AppText style={styles.editMetricLabel}>Circumference</AppText>
+                  <View style={styles.editInputWithUnit}>
+                    <AppInput
+                      placeholder="0"
+                      value={editCircumference}
+                      onChangeText={(value) =>
+                        handleEditNumericChange(value, 'circumference', setEditCircumference)
+                      }
+                      keyboardType="numeric"
+                      invalid={!!editErrors.circumference}
+                      containerStyle={styles.editInputUnitContainer}
+                    />
+                    <AppText style={styles.editUnitLabel}>cm</AppText>
+                  </View>
                   {editErrors.circumference ? (
                     <AppText style={styles.editErrorText}>{editErrors.circumference}</AppText>
                   ) : null}
@@ -1437,25 +1449,25 @@ export default function TreeDetailsDashboard({
                 <View style={styles.editEstimateBox}>
                   <AppText style={styles.editEstimateTitle}>Estimated Environmental Impact</AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Avoided Runoff: {editEstimatedStats.avoidedRunoff ?? '-'} m3
+                    Avoided Runoff: {editEstimatedStats.avoidedRunoff ?? '—'} m³
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    CO2 Stored: {editEstimatedStats.carbonDioxideStored ?? '-'} kg
+                    CO₂ Stored: {editEstimatedStats.carbonDioxideStored ?? '—'} kg
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    CO2 Removed: {editEstimatedStats.carbonDioxideRemoved ?? '-'} kg
+                    CO₂ Removed: {editEstimatedStats.carbonDioxideRemoved ?? '—'} kg
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Water Intercepted: {editEstimatedStats.waterIntercepted ?? '-'} m3
+                    Water Intercepted: {editEstimatedStats.waterIntercepted ?? '—'} m³
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Air Quality Gain: {editEstimatedStats.airQualityImprovement ?? '-'} g/year
+                    Air Quality Gain: {editEstimatedStats.airQualityImprovement ?? '—'} g/year
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Leaf Area: {editEstimatedStats.leafArea ?? '-'} m2
+                    Leaf Area: {editEstimatedStats.leafArea ?? '—'} m²
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Evapotranspiration: {editEstimatedStats.evapotranspiration ?? '-'} m3
+                    Evapotranspiration: {editEstimatedStats.evapotranspiration ?? '—'} m³
                   </AppText>
                 </View>
               </View>
@@ -2097,6 +2109,33 @@ const styles = StyleSheet.create({
 
   editMetricField: {
     flex: 1,
+  },
+
+  editMetricLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 4,
+  },
+
+  editInputWithUnit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  editInputUnitContainer: {
+    flex: 1,
+    marginBottom: 0,
+  },
+
+  editUnitLabel: {
+    ...Theme.Typography.body,
+    color: Theme.Colours.textMuted,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    paddingRight: 4,
   },
 
   editErrorText: {
