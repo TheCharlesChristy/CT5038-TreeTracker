@@ -1,0 +1,11 @@
+# Generated build artifacts (auto-detected)
+
+# Expo web export output — produced by `expo export --platform web`
+TreeGuardiansExpo/dist/** linguist-generated=true
+
+# Leaflet bundle — produced automatically by the postinstall script (scripts/bundleLeaflet.js)
+TreeGuardiansExpo/components/base/leafletBundle.json linguist-generated=true
+
+# npm lock files — auto-managed by npm, not hand-edited
+TreeGuardiansExpo/package-lock.json linguist-generated=true
+server/package-lock.json linguist-generated=true
