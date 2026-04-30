@@ -1261,7 +1261,7 @@ export default function TreeDetailsDashboard({
         return;
       }
 
-      const cacheDir = FileSystem.cacheDirectory;
+      const cacheDir = FileSystem.documentDirectory;
       if (!cacheDir) {
         throw new Error('Unable to access local storage.');
       }
