@@ -345,8 +345,8 @@ export default function MainPage() {
                 duration={refreshDurationSeconds}
                 size={28}
                 strokeWidth={2}
-                color="rgba(240, 251, 242, 0.80)"
-                trackColor="rgba(240, 251, 242, 0.28)"
+                color="rgba(150, 150, 150, 0.55)"
+                trackColor="rgba(150, 150, 150, 0.38)"
                 trackOnly={true}
               />
             </View>
@@ -874,10 +874,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 230,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(232, 244, 233, 0.42)',
-    borderRadius: 16,
-    padding: 2,
-    backgroundColor: 'rgba(7, 17, 10, 0.34)',
+    backgroundColor: 'transparent',
   },
 });
