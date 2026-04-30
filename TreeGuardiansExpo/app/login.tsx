@@ -181,13 +181,11 @@ export default function Login() {
           style={[
             styles.shell,
             isMobileLayout && styles.shellMobile,
-            isWideLayout ? styles.shellWide : styles.shellStacked,
           ]}
         >
           <View
             style={[
               styles.formColumn,
-              isWideLayout ? styles.formColumnWide : styles.formColumnStacked,
             ]}
           >
             <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
@@ -365,7 +363,6 @@ export default function Login() {
           <View
             style={[
               styles.previewColumn,
-              isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked,
               isWideLayout && formCardHeight != null && { height: formCardHeight },
             ]}
           >
@@ -517,28 +514,20 @@ const styles = StyleSheet.create({
     maxWidth: 1160,
     gap: Theme.Spacing.large,
     zIndex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   shellMobile: {
     gap: Theme.Spacing.medium,
   },
-  shellWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  shellStacked: {
-    flexDirection: 'column',
-  },
   formColumn: {
-    width: '100%',
-  },
-  formColumnWide: {
-    flex: 5,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 420,
     maxWidth: 520,
-  },
-  formColumnStacked: {
-    maxWidth: 520,
-    alignSelf: 'center',
+    minWidth: 300,
   },
   formCard: {
     backgroundColor: 'rgba(248, 252, 248, 0.76)',
@@ -736,15 +725,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   previewColumn: {
-    width: '100%',
-  },
-  previewColumnWide: {
-    flex: 5,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 420,
     maxWidth: 560,
-  },
-  previewColumnStacked: {
-    maxWidth: 560,
-    alignSelf: 'center',
+    minWidth: 300,
   },
   previewCard: {
     borderRadius: 28,
