@@ -11,6 +11,7 @@ interface AppContainerProps {
   style?: StyleProp<ViewStyle>;
   noPadding?: boolean;
   showNavBar?: boolean;
+  overlayNavBar?: boolean;
 }
 
 const webScrollStyle = Platform.select({
@@ -30,6 +31,7 @@ export const AppContainer = ({
   style,
   noPadding,
   showNavBar = true,
+  overlayNavBar = false,
 }: AppContainerProps) => {
   const containerPaddingStyle = noPadding ? null : styles.padding;
   const content = scrollable ? (
@@ -55,8 +57,13 @@ export const AppContainer = ({
       >
         <View style={styles.overlay}>
           <SafeAreaView style={[styles.containerTransparent, style]}>
-            {showNavBar && <NavBar />}
+            {showNavBar && !overlayNavBar && <NavBar />}
             {content}
+            {showNavBar && overlayNavBar ? (
+              <View style={styles.navOverlay} pointerEvents="box-none">
+                <NavBar />
+              </View>
+            ) : null}
           </SafeAreaView>
         </View>
       </ImageBackground>
@@ -65,8 +72,13 @@ export const AppContainer = ({
 
   return (
     <SafeAreaView style={[styles.container, style]}>
-      {showNavBar && <NavBar />}
+      {showNavBar && !overlayNavBar && <NavBar />}
       {content}
+      {showNavBar && overlayNavBar ? (
+        <View style={styles.navOverlay} pointerEvents="box-none">
+          <NavBar />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -102,5 +114,13 @@ const styles = StyleSheet.create({
 
   inner: {
     flex: 1,
+  },
+
+  navOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 300,
   },
 });

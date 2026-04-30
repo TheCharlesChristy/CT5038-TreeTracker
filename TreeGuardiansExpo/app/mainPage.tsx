@@ -157,7 +157,7 @@ export default function MainPage() {
     <>
       <Stack.Screen options={{ title: 'Map | TreeHuggers' }} />
       <ActionSheetProvider>
-        <AppContainer noPadding>
+        <AppContainer noPadding overlayNavBar>
         <View style={styles.page}>
           <MapComponent
             style={StyleSheet.absoluteFillObject}
