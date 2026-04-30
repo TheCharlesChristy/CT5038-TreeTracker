@@ -24,9 +24,11 @@ import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
 import { Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
   const [loggedInUserRole, setLoggedInUserRole] = useState<AppUserRole>('user');
@@ -98,6 +100,10 @@ export default function MainPage() {
   }, [selectedTree?.id]);
 
   const visibleTrees = hasSearchFilters ? searchResults : plottedTrees;
+  const navOverlayInset = insets.top + (windowWidth < 760 ? 84 : 92);
+  const actionBarBottomInset = 24 + insets.bottom;
+  const actionBarHeight = 56;
+  const panelBottomInset = actionBarBottomInset + actionBarHeight + 14;
   const activeFilterLabels = [
     searchQuery.trim() ? `Query: ${searchQuery.trim()}` : null,
     distanceFilterKm !== null ? `Distance: ${distanceFilterKm.toFixed(1)} km` : null,
@@ -241,6 +247,8 @@ export default function MainPage() {
               isSelectingOnMap={isSelectingManualLocation}
               locationError={addValidationError}
               isSubmitting={isSubmittingTree}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -267,6 +275,8 @@ export default function MainPage() {
               onClearFilters={clearSearchFilters}
               onSelectTree={handleSelectSearchResultTree}
               getDistanceKm={getDistanceFromCenterKm}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -279,6 +289,8 @@ export default function MainPage() {
               onClose={closeAllOverlays}
               onLogout={handleLogout}
               isLoggingOut={isLoggingOut}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -288,6 +300,7 @@ export default function MainPage() {
               addActive={mode === 'add'}
               dashboardActive={mode === 'dashboard'}
               isGuest={loggedInUsername === null}
+              bottomOffset={actionBarBottomInset}
               onSearchPress={() => {
                 if (mode === 'search') {
                   closeAllOverlays();

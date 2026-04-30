@@ -19,6 +19,8 @@ type DashboardPanelProps = {
   onClose: () => void;
   onLogout: () => Promise<void> | void;
   isLoggingOut?: boolean;
+  topInset?: number;
+  bottomInset?: number;
 };
 
 function wmoEmoji(code: number): string {
@@ -67,6 +69,8 @@ export function DashboardPanel({
   onClose,
   onLogout,
   isLoggingOut = false,
+  topInset = 12,
+  bottomInset = 104,
 }: DashboardPanelProps) {
   const [activePopup, setActivePopup] = useState<PopupType>(null);
 
@@ -121,7 +125,7 @@ export function DashboardPanel({
   };
 
   return (
-    <View style={styles.dashboardWrap}>
+    <View style={[styles.dashboardWrap, { top: topInset, bottom: bottomInset }]}>
       <View style={styles.dashboardPanel}>
         <View style={styles.panelHeaderRow}>
           <AppText style={styles.panelTitle}>Tree Dashboard</AppText>
@@ -568,10 +572,8 @@ const styles = StyleSheet.create({
   /* Dashboard layout */
   dashboardWrap: {
     position: 'absolute',
-    top: 12,
     left: 0,
     right: 0,
-    bottom: 104,
     zIndex: 220,
     alignItems: 'center',
     justifyContent: 'center',
