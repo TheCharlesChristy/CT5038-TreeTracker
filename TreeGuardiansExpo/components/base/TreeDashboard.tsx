@@ -35,6 +35,7 @@ import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
+import { EncodingType } from 'expo-file-system';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
@@ -1268,7 +1269,7 @@ export default function TreeDetailsDashboard({
       const base64 = dataUrl.replace('data:image/png;base64,', '');
       const fileUri = `${cacheDir}tree-${tree.id}-qr.png`;
       await FileSystem.writeAsStringAsync(fileUri, base64, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: EncodingType.Base64,
       });
 
       if (await Sharing.isAvailableAsync()) {
