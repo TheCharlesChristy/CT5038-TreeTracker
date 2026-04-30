@@ -31,9 +31,15 @@ type GridButtonProps = {
 
 function GridButton({ icon, label, onPress }: GridButtonProps) {
   return (
-    <TouchableOpacity style={styles.gridButton} onPress={onPress} activeOpacity={0.78}>
+    <TouchableOpacity style={styles.gridButton} onPress={onPress} activeOpacity={0.72}>
+      {/* Bottom depth layer */}
+      <View style={styles.gridButtonDepth} pointerEvents="none" />
+      {/* Top gloss streak */}
       <View style={styles.gridButtonGloss} pointerEvents="none" />
-      <MaterialCommunityIcons name={icon} size={30} color="#FFFFFF" style={styles.gridButtonIcon} />
+      {/* Icon glow circle */}
+      <View style={styles.gridButtonIconCircle}>
+        <MaterialCommunityIcons name={icon} size={26} color="#FFFFFF" />
+      </View>
       <AppText style={styles.gridButtonLabel}>{label}</AppText>
     </TouchableOpacity>
   );
@@ -577,16 +583,22 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     maxHeight: '100%',
-    borderRadius: 18,
-    backgroundColor: '#F9FCF9',
-    borderWidth: 1,
-    borderColor: '#D5E1D5',
+    borderRadius: 26,
+    backgroundColor: 'rgba(238, 248, 239, 0.98)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,255,255,0.95)',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.70)',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(0,0,0,0.06)',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(0,0,0,0.12)',
     padding: 18,
-    shadowColor: '#0F1711',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.24,
-    shadowRadius: 22,
-    elevation: 18,
+    shadowColor: '#030e04',
+    shadowOffset: { width: 0, height: 28 },
+    shadowOpacity: 0.48,
+    shadowRadius: 40,
+    elevation: 30,
   },
   panelHeaderRow: {
     flexDirection: 'row',
@@ -621,71 +633,122 @@ const styles = StyleSheet.create({
   buttonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
   },
+
+  /* ── Glassy grid tile ── */
   gridButton: {
     width: '47.5%',
     aspectRatio: 1,
-    borderRadius: 14,
-    backgroundColor: '#2E7D32',
+    borderRadius: 20,
+    backgroundColor: '#1A6128',
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.30)',
+    padding: 14,
+    /* glass edges */
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,255,255,0.55)',
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255,255,255,0.12)',
+    borderLeftColor: 'rgba(255,255,255,0.28)',
     borderRightWidth: 1,
-    borderRightColor: 'rgba(0,0,0,0.10)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.18)',
-    shadowColor: '#0a2e0a',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.28,
-    shadowRadius: 5,
-    elevation: 4,
+    borderRightColor: 'rgba(0,0,0,0.18)',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(0,0,0,0.32)',
+    /* floating shadow */
+    shadowColor: '#040f05',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    elevation: 12,
   },
+
+  /* bright specular streak across top ~42% */
   gridButtonGloss: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: '48%',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    height: '42%',
+    backgroundColor: 'rgba(255,255,255,0.26)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
-  gridButtonIcon: {
-    marginBottom: 8,
+
+  /* depth darkening at bottom */
+  gridButtonDepth: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '35%',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
+
+  /* icon backdrop glow */
+  gridButtonIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+  },
+
   gridButtonLabel: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
     lineHeight: 17,
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
+
+  /* ── Glassy logout row ── */
   logoutRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#FFF2F2',
-    borderWidth: 1,
-    borderColor: '#E6B8B8',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    backgroundColor: 'rgba(165, 51, 51, 0.07)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,200,200,0.55)',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,200,200,0.28)',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(100,0,0,0.10)',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(100,0,0,0.22)',
     marginBottom: 8,
+    shadowColor: '#5c0000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 3,
   },
   logoutRowDisabled: {
-    opacity: 0.55,
+    opacity: 0.50,
   },
   logoutRowText: {
     color: '#A53333',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
+    letterSpacing: 0.2,
   },
   dashboardStatsRow: {
     marginTop: 8,
