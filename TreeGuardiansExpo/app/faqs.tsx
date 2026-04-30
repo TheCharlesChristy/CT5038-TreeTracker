@@ -44,7 +44,7 @@ export default function FaqsPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'FAQ | TreeHuggers' }} />
-      <AppContainer scrollable>
+      <AppContainer scrollable backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
         <View style={styles.content}>
         <AppText variant="title" style={styles.title}>
           FAQs
@@ -98,18 +98,30 @@ const styles = StyleSheet.create({
     paddingBottom: Theme.Spacing.extraLarge,
   },
   title: {
-    color: Theme.Colours.textPrimary,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   intro: {
-    color: Theme.Colours.textMuted,
+    color: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderRadius: Theme.Radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(165, 214, 167, 0.38)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopColor: 'rgba(255, 255, 255, 0.95)',
     padding: Theme.Spacing.medium,
     gap: Theme.Spacing.small,
+    shadowColor: '#0D1F10',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 8,
   },
   question: {
     color: Theme.Colours.textPrimary,
@@ -118,12 +130,18 @@ const styles = StyleSheet.create({
     color: Theme.Colours.textMuted,
   },
   helpPanel: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderRadius: Theme.Radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(165, 214, 167, 0.38)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopColor: 'rgba(255, 255, 255, 0.95)',
     padding: Theme.Spacing.medium,
     gap: Theme.Spacing.small,
+    shadowColor: '#0D1F10',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 8,
   },
   helpTitle: {
     color: Theme.Colours.textPrimary,
@@ -138,4 +156,3 @@ const styles = StyleSheet.create({
     marginBottom: Theme.Spacing.small,
   },
 });
-
