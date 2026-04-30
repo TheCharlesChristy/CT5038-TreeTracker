@@ -111,6 +111,24 @@ async function tableExists(executor, tableName) {
   return Boolean(row);
 }
 
+async function columnExists(executor, tableName, columnName) {
+  const row = await selectOne(
+    executor,
+    "SELECT 1 AS ok FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?",
+    [config.database, tableName, columnName]
+  );
+  return Boolean(row);
+}
+
+async function addColumnIfMissing(executor, tableName, columnName, definition) {
+  if (await columnExists(executor, tableName, columnName)) {
+    return;
+  }
+
+  logger.info("migration.add-missing-column", { table: tableName, column: columnName });
+  await run(executor, `ALTER TABLE ${escapeIdent(tableName)} ADD COLUMN ${escapeIdent(columnName)} ${definition}`);
+}
+
 async function renameTableIfNeeded(executor, fromName, toName) {
   const [fromExists, toExists] = await Promise.all([tableExists(executor, fromName), tableExists(executor, toName)]);
   if (!fromExists || toExists) {
@@ -159,6 +177,9 @@ async function applyMigrations(executor, schemaPath) {
     await run(executor, migration.statement);
     await run(executor, "INSERT INTO schema_migrations (version) VALUES (?)", [migration.version]);
   }
+
+  await addColumnIfMissing(executor, "users", "created_at", "TIMESTAMP NULL DEFAULT NULL");
+  await addColumnIfMissing(executor, "user_sessions", "created_at", "TIMESTAMP NULL DEFAULT NULL");
 }
 
 async function run(executor, sql, params = []) {

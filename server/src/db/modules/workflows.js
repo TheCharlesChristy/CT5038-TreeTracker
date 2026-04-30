@@ -463,7 +463,7 @@ function createWorkflows(ctx) {
       async getActivityTrend(days = 30) {
         const dayWindow = Math.max(1, Number(days) || 30);
         const dayOffset = dayWindow - 1;
-        const [treesPerDay, commentsPerDay] = await Promise.all([
+        const [treesPerDay, commentsPerDay, registeredUsersPerDay, loginsPerDay] = await Promise.all([
           run(
             runtimeExecutor(),
             `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count
@@ -481,6 +481,24 @@ function createWorkflows(ctx) {
              GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
              ORDER BY day ASC`,
             [dayOffset]
+          ),
+          run(
+            runtimeExecutor(),
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count
+             FROM users
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+             ORDER BY day ASC`,
+            [dayOffset]
+          ),
+          run(
+            runtimeExecutor(),
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(DISTINCT user_id) AS count
+             FROM user_sessions
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+             ORDER BY day ASC`,
+            [dayOffset]
           )
         ]);
 
@@ -490,6 +508,12 @@ function createWorkflows(ctx) {
             : [],
           commentsPerDay: Array.isArray(commentsPerDay)
             ? commentsPerDay.map((r) => ({ day: String(r.day), count: Number(r.count) }))
+            : [],
+          registeredUsersPerDay: Array.isArray(registeredUsersPerDay)
+            ? registeredUsersPerDay.map((r) => ({ day: String(r.day), count: Number(r.count) }))
+            : [],
+          loginsPerDay: Array.isArray(loginsPerDay)
+            ? loginsPerDay.map((r) => ({ day: String(r.day), count: Number(r.count) }))
             : []
         };
       },

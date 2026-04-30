@@ -8,10 +8,11 @@ function createAccountEndpoints(ctx) {
       ensureStringMax("email", payload.email, 255);
       ensureStringMax("phone", payload.phone, 50);
       const executor = runtimeExecutor(tx);
+      const createdAt = toDateInput("createdAt", payload.createdAt);
       const result = await run(
         executor,
-        "INSERT INTO users (username, email, phone) VALUES (?, ?, ?)",
-        [payload.username, payload.email || null, payload.phone || null]
+        "INSERT INTO users (username, email, phone, created_at) VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
+        [payload.username, payload.email || null, payload.phone || null, createdAt || null]
       );
       return this.getById(Number(result.insertId), tx);
     },
@@ -199,12 +200,13 @@ function createAccountEndpoints(ctx) {
       ensurePositiveInt("userId", payload.userId);
       ensureHex64("sessionToken", payload.sessionToken);
       const expiresAt = toDateInput("expiresAt", payload.expiresAt);
+      const createdAt = toDateInput("createdAt", payload.createdAt);
       assert(expiresAt, "expiresAt is required");
 
       const result = await run(
         runtimeExecutor(tx),
-        "INSERT INTO user_sessions (user_id, session_token, expires_at) VALUES (?, ?, ?)",
-        [payload.userId, payload.sessionToken, expiresAt]
+        "INSERT INTO user_sessions (user_id, session_token, expires_at, created_at) VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
+        [payload.userId, payload.sessionToken, expiresAt, createdAt || null]
       );
       return this.getById(Number(result.insertId), tx);
     },

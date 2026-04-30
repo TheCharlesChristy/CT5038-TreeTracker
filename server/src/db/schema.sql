@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     username varchar(100) NOT NULL UNIQUE,
     email varchar(255),
-    phone varchar(50)
+    phone varchar(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) engine = InnoDB;
 
 CREATE TABLE IF NOT EXISTS user_passwords (
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     user_id bigint unsigned NOT NULL,
     session_token char(64) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_sessions_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
