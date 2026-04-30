@@ -167,7 +167,7 @@ export default function MainPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'Map | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Map | TreeGuardians" />
       <ActionSheetProvider>
         <AppContainer noPadding overlayNavBar>
         <View style={styles.page}>

@@ -242,7 +242,7 @@ export default function ManageUsersPage() {
 	return (
 		<>
 			<Stack.Screen options={{ title: 'Manage Users | TreeGuardians' }} />
-			<FaviconHead />
+			<FaviconHead title="Manage Users | TreeGuardians" />
 			<AppContainer>
 				<StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
 

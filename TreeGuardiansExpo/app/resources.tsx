@@ -74,7 +74,7 @@ export default function ResourcesPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'Resources | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Resources | TreeGuardians" />
       <AppContainer scrollable backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <View style={styles.content}>
         <AppText variant="title" style={styles.title}>

@@ -134,7 +134,7 @@ export default function CreateAccount() {
   return (
     <>
       <Stack.Screen options={{ title: 'Create Account | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Create Account | TreeGuardians" />
       <AppContainer
         scrollable
         noPadding

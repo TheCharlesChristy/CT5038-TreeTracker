@@ -96,7 +96,7 @@ export default function ResetPasswordScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Reset Password | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Reset Password | TreeGuardians" />
       <AppContainer
         scrollable
         noPadding

@@ -1,12 +1,13 @@
 import Head from 'expo-router/head';
-import { Asset } from 'expo-asset';
 
-const logoUri = Asset.fromModule(require('@/assets/images/logo.png')).uri;
+type Props = {
+  title: string;
+};
 
-export function FaviconHead() {
+export function FaviconHead({ title }: Props) {
   return (
     <Head>
-      <link rel="icon" type="image/png" href={logoUri} />
+      <title>{title}</title>
     </Head>
   );
 }

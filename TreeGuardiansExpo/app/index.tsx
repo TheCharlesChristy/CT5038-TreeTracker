@@ -12,7 +12,7 @@ export default function Index() {
   return (
     <>
       <Stack.Screen options={{ title: 'TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="TreeGuardians" />
       <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <AuthenticatedRedirect />
       <View style={styles.screen}>

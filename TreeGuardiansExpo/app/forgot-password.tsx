@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Forgot Password | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Forgot Password | TreeGuardians" />
       <AppContainer
         scrollable
         noPadding

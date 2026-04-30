@@ -148,7 +148,7 @@ export default function Login() {
   return (
     <>
       <Stack.Screen options={{ title: 'Sign In | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Sign In | TreeGuardians" />
       <AppContainer
         scrollable
         noPadding

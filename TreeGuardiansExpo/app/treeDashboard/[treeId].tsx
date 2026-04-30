@@ -98,7 +98,7 @@ export default function TreeDashboardPage() {
   return (
     <>
       <Stack.Screen options={{ title: pageTitle }} />
-      <FaviconHead />
+      <FaviconHead title={pageTitle} />
       <AppContainer>
         <TreeDashboard
           tree={tree}

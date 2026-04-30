@@ -56,7 +56,7 @@ export default function VerifyEmailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Verify Email | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Verify Email | TreeGuardians" />
       <AppContainer
         scrollable
         noPadding

@@ -970,7 +970,7 @@ export default function DbTestBenchPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'DB Test Bench | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="DB Test Bench | TreeGuardians" />
       <AppContainer scrollable>
         <View style={styles.topBar}>
         <NavigationButton onPress={() => router.push('/mainPage')}>Return to Map</NavigationButton>

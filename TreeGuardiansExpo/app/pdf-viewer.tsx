@@ -34,7 +34,7 @@ export default function PdfViewerPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'Document Viewer | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Document Viewer | TreeGuardians" />
       <AppContainer noPadding showNavBar={false}>
       <View style={styles.header}>
         <NavigationButton onPress={() => router.back()}>Back</NavigationButton>

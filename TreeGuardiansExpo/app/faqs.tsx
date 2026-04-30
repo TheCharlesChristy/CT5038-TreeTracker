@@ -45,7 +45,7 @@ export default function FaqsPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'FAQs | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="FAQs | TreeGuardians" />
       <AppContainer scrollable backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
         <View style={styles.content}>
         <AppText variant="title" style={styles.title}>

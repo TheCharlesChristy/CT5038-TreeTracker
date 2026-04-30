@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
   return (
     <>
       <Stack.Screen options={{ title: 'Analytics | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Analytics | TreeGuardians" />
       <AppContainer>
         <ScrollView showsVerticalScrollIndicator>
         <View style={styles.topBar}>

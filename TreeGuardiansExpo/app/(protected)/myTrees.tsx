@@ -311,7 +311,7 @@ export default function MyTreesPage() {
 		return (
 			<>
 				<Stack.Screen options={{ title: 'My Trees | TreeGuardians' }} />
-				<FaviconHead />
+				<FaviconHead title="My Trees | TreeGuardians" />
 				<AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 					<View style={styles.loadingRow}>
 						<ActivityIndicator color={Theme.Colours.white} />
@@ -325,7 +325,7 @@ export default function MyTreesPage() {
 	return (
 		<>
 			<Stack.Screen options={{ title: 'My Trees | TreeGuardians' }} />
-			<FaviconHead />
+			<FaviconHead title="My Trees | TreeGuardians" />
 			<AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 				<ScrollView
 				style={styles.scroll}

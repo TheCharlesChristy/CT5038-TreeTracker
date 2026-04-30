@@ -244,7 +244,7 @@ export default function MyProfilePage() {
 	return (
 		<>
 			<Stack.Screen options={{ title: 'My Profile | TreeGuardians' }} />
-			<FaviconHead />
+			<FaviconHead title="My Profile | TreeGuardians" />
 			<AppContainer noPadding backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 			<ScrollView
 				style={styles.scroll}

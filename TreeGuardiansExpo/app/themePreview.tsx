@@ -17,7 +17,7 @@ export default function ThemePreview() {
   return (
     <>
       <Stack.Screen options={{ title: 'Theme Preview | TreeGuardians' }} />
-      <FaviconHead />
+      <FaviconHead title="Theme Preview | TreeGuardians" />
       <AppContainer style={styles.container} scrollable>
       {/* Top Left Back */}
       <NavigationButton onPress={() => router.back()} />
