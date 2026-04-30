@@ -14,6 +14,7 @@ import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { PasswordStrengthIndicator } from '@/components/base/PasswordStrengthIndicator';
+import { StatusMessageBox, type StatusMessage } from '@/components/base/StatusMessageBox';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
 import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
@@ -81,8 +82,7 @@ export default function MyProfilePage() {
 	const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 	const [isSavingEmail, setIsSavingEmail] = useState(false);
 
-	const [passwordError, setPasswordError] = useState<string | null>(null);
-	const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+	const [passwordStatus, setPasswordStatus] = useState<StatusMessage | null>(null);
 	const [isSavingPassword, setIsSavingPassword] = useState(false);
 
 	if (isLoading || !user) {
@@ -203,50 +203,51 @@ export default function MyProfilePage() {
 		const newPassword = passwordForm.newPassword.trim();
 		const confirmNewPassword = passwordForm.confirmNewPassword.trim();
 
-		setPasswordError(null);
-		setPasswordSuccess(null);
+		setPasswordStatus(null);
 
 		if (!currentPassword) {
-			setPasswordError('Current password is required.');
+			setPasswordStatus({ title: 'Validation Error', message: 'Current password is required.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (!newPassword) {
-			setPasswordError('New password is required.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password is required.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (newPassword.length < 8) {
-			setPasswordError('New password must be at least 8 characters long.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password must be at least 8 characters long.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (newPassword !== confirmNewPassword) {
-			setPasswordError('New password and confirm password do not match.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password and confirm password do not match.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (currentPassword === newPassword) {
-			setPasswordError('New password must be different from your current password.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password must be different from your current password.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		try {
 			setIsSavingPassword(true);
 
-			await updatePassword({
-				currentPassword,
-				newPassword
-			});
+			await updatePassword({ currentPassword, newPassword });
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
-			setPasswordSuccess('Password changed successfully.');
+			setPasswordStatus({ title: 'Password Changed', message: 'Your password has been updated successfully.', variant: 'success', createdAt: Date.now() });
 			resetPasswordForm();
 			setIsChangingPassword(false);
 		} catch (error) {
-			console.error('Failed to change password:', error);
-			setPasswordError('Failed to change password.');
+			const message = error instanceof Error ? error.message : '';
+			setPasswordStatus({
+				title: 'Password Change Failed',
+				message: message || 'Failed to change password. Please try again.',
+				variant: 'error',
+				createdAt: Date.now(),
+			});
 		} finally {
 			setIsSavingPassword(false);
 		}
@@ -400,20 +401,16 @@ export default function MyProfilePage() {
 					<View style={styles.card}>
 						<AppText style={styles.cardTitle}>Password</AppText>
 						{!isChangingPassword ? (
-							<>
-								{passwordSuccess ? <AppText style={styles.successText}>{passwordSuccess}</AppText> : null}
-								<View style={styles.actions}>
-									<AppButton
-										title="Change Password"
-										variant="primary"
-										onPress={() => {
-											setPasswordError(null);
-											setPasswordSuccess(null);
-											setIsChangingPassword(true);
-										}}
-									/>
-								</View>
-							</>
+							<View style={styles.actions}>
+								<AppButton
+									title="Change Password"
+									variant="primary"
+									onPress={() => {
+										setPasswordStatus(null);
+										setIsChangingPassword(true);
+									}}
+								/>
+							</View>
 						) : (
 							<>
 								<View style={styles.fieldGroup}>
@@ -456,7 +453,6 @@ export default function MyProfilePage() {
 										autoCapitalize="none"
 									/>
 								</View>
-								{passwordError ? <AppText style={styles.errorText}>{passwordError}</AppText> : null}
 								<View style={styles.actions}>
 									<AppButton
 										title={isSavingPassword ? 'Saving...' : 'Save Password'}
@@ -468,8 +464,7 @@ export default function MyProfilePage() {
 										variant="secondary"
 										onPress={() => {
 											resetPasswordForm();
-											setPasswordError(null);
-											setPasswordSuccess(null);
+											setPasswordStatus(null);
 											setIsChangingPassword(false);
 										}}
 									/>
@@ -487,6 +482,7 @@ export default function MyProfilePage() {
 					</View>
 				</View>
 			</ScrollView>
+			<StatusMessageBox status={passwordStatus} onClose={() => setPasswordStatus(null)} />
 		</AppContainer>
 	);
 }
