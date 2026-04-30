@@ -34,12 +34,9 @@ import {
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
-<<<<<<< HEAD
 import * as FileSystem from 'expo-file-system';
 import { EncodingType } from 'expo-file-system';
-=======
 import * as FileSystem from 'expo-file-system/legacy';
->>>>>>> 4f58306 (Fix QR save lint error by using expo-file-system legacy API)
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
