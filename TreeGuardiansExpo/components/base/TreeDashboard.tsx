@@ -549,6 +549,7 @@ function TreeFooter({
         onPress={onClose}
         style={styles.footerPrimaryWrap}
         buttonStyle={styles.footerPrimaryButton}
+        textStyle={styles.footerPrimaryText}
       />
     </View>
   );
@@ -1937,6 +1938,7 @@ const styles = StyleSheet.create({
 
   footerSecondaryText: {
     fontSize: 14,
+    textAlign: 'center',
   },
 
   footerPrimaryWrap: {
@@ -1967,12 +1969,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
 
   footerPrimaryButton: {
     minHeight: 50,
     marginBottom: 0,
     borderRadius: 14,
+  },
+
+  footerPrimaryText: {
+    textAlign: 'center',
   },
 
   editOverlay: {
