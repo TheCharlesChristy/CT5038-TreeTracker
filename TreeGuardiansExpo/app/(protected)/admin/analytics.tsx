@@ -23,19 +23,22 @@ type ActivityChartPoint = { day: string; label: string; value: number };
 type TimeSeries = { label: string; colour: string; data: ActivityChartPoint[] };
 
 function TimeSeriesLineChart({
+	title,
 	series,
 }: {
+	title: string;
 	series: TimeSeries[];
 }) {
+	const [chartSize, setChartSize] = useState({ width: 320, height: 260 });
 	const labels = series.find((item) => item.data.length > 0)?.data ?? [];
 
 	if (labels.length === 0) {
 		return <AppText style={styles.chartEmpty}>No data for this period.</AppText>;
 	}
 
-	const width = 320;
-	const height = 190;
-	const padding = { top: 18, right: 14, bottom: 38, left: 34 };
+	const width = Math.max(1, chartSize.width);
+	const height = Math.max(1, chartSize.height);
+	const padding = { top: 18, right: 14, bottom: 32, left: 34 };
 	const plotWidth = width - padding.left - padding.right;
 	const plotHeight = height - padding.top - padding.bottom;
 	const maxValue = Math.max(1, ...series.flatMap((item) => item.data.map((d) => d.value)));
@@ -57,20 +60,18 @@ function TimeSeriesLineChart({
 
 	return (
 		<View
+			style={styles.chartFrame}
+			onLayout={(event) => {
+				const { width: nextWidth, height: nextHeight } = event.nativeEvent.layout;
+				if (nextWidth > 0 && nextHeight > 0 && (nextWidth !== chartSize.width || nextHeight !== chartSize.height)) {
+					setChartSize({ width: nextWidth, height: nextHeight });
+				}
+			}}
 			accessible
 			accessibilityRole="image"
 			accessibilityLabel={`Daily activity line chart. ${accessibilitySummary}`}
 		>
-			<View style={styles.chartLegend}>
-				{series.map((item) => (
-					<View key={item.label} style={styles.chartLegendItem}>
-						<View style={[styles.chartLegendDot, { backgroundColor: item.colour }]} />
-						<AppText style={styles.chartLegendText}>{item.label}</AppText>
-					</View>
-				))}
-			</View>
-
-			<Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+			<Svg style={StyleSheet.absoluteFillObject} width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
 				<G>
 					{yTicks.map((tick) => {
 						const y = pointY(tick);
@@ -152,6 +153,18 @@ function TimeSeriesLineChart({
 					))}
 				</G>
 			</Svg>
+
+			<View style={styles.chartOverlay} pointerEvents="none">
+				<AppText style={styles.chartTitle}>{title}</AppText>
+				<View style={styles.chartLegend}>
+					{series.map((item) => (
+						<View key={item.label} style={styles.chartLegendItem}>
+							<View style={[styles.chartLegendDot, { backgroundColor: item.colour }]} />
+							<AppText style={styles.chartLegendText}>{item.label}</AppText>
+						</View>
+					))}
+				</View>
+			</View>
 		</View>
 	);
 }
@@ -355,9 +368,9 @@ export default function AnalyticsPage() {
 						<View style={styles.section}>
 							<AppText style={styles.sectionTitle}>Activity — last 14 days</AppText>
 
-							<View style={styles.glassCard}>
-								<AppText style={styles.cardHeading}>Trees Added & Comments Posted</AppText>
+							<View style={[styles.glassCard, styles.chartCard]}>
 								<TimeSeriesLineChart
+									title="Trees Added & Comments Posted"
 									series={[
 										{ label: 'Trees Added', colour: Theme.Colours.primary, data: treeTrend },
 										{ label: 'Comments Posted', colour: '#2563EB', data: commentTrend },
@@ -365,9 +378,9 @@ export default function AnalyticsPage() {
 								/>
 							</View>
 
-							<View style={styles.glassCard}>
-								<AppText style={styles.cardHeading}>Users Registered & Logged In</AppText>
+							<View style={[styles.glassCard, styles.chartCard]}>
 								<TimeSeriesLineChart
+									title="Users Registered & Logged In"
 									series={[
 										{ label: 'Users Registered', colour: '#7C3AED', data: registeredUserTrend },
 										{ label: 'People Logged In', colour: '#EA580C', data: loginTrend },
@@ -551,17 +564,46 @@ const styles = StyleSheet.create({
 	},
 
 	// Activity line chart
+	chartCard: {
+		height: 260,
+		padding: 0,
+		overflow: 'hidden',
+	},
+	chartFrame: {
+		flex: 1,
+		width: '100%',
+		height: '100%',
+		position: 'relative',
+		backgroundColor: 'rgba(248, 252, 248, 0.74)',
+	},
+	chartOverlay: {
+		position: 'absolute',
+		top: 12,
+		left: 12,
+		right: 12,
+		zIndex: 2,
+	},
+	chartTitle: {
+		fontFamily: 'Poppins_600SemiBold',
+		color: Theme.Colours.textPrimary,
+		fontSize: 14,
+		marginBottom: 6,
+	},
 	chartLegend: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
-		gap: Theme.Spacing.small,
-		marginTop: 6,
-		marginBottom: 4,
+		gap: 8,
 	},
 	chartLegendItem: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: 6,
+		backgroundColor: 'rgba(255, 255, 255, 0.78)',
+		borderWidth: 1,
+		borderColor: 'rgba(215, 228, 215, 0.9)',
+		borderRadius: 999,
+		paddingHorizontal: 8,
+		paddingVertical: 4,
 	},
 	chartLegendDot: {
 		width: 10,
@@ -569,8 +611,9 @@ const styles = StyleSheet.create({
 		borderRadius: 5,
 	},
 	chartLegendText: {
-		color: Theme.Colours.textMuted,
+		color: Theme.Colours.textPrimary,
 		fontSize: 12,
+		fontFamily: 'Poppins_600SemiBold',
 	},
 	chartEmpty: {
 		color: Theme.Colours.textMuted,
