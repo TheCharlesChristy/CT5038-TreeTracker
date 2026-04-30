@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
@@ -17,10 +16,11 @@ import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
 import { PasswordStrengthIndicator } from '@/components/base/PasswordStrengthIndicator';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
+import { useStableViewportDimensions } from '@/hooks/useStableViewportDimensions';
 
 export default function CreateAccount() {
   const successRedirectDuration = 3;
-  const { width, height } = useWindowDimensions();
+  const { width, height } = useStableViewportDimensions();
   const isMobileLayout = width < 680;
   const isWideLayout = width >= 920;
 

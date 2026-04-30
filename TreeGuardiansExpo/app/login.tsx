@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
@@ -18,10 +17,11 @@ import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { fetchRecentTreeActivity, LocalTreeActivityItem } from '@/lib/activityApi';
+import { useStableViewportDimensions } from '@/hooks/useStableViewportDimensions';
 
 export default function Login() {
   const successRedirectDuration = 1;
-  const { width, height } = useWindowDimensions();
+  const { width, height } = useStableViewportDimensions();
   const isMobileLayout = width < 680;
   const isWideLayout = width >= 920;
 
