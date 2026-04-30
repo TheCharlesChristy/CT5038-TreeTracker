@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
-import { BOUNDS, CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds } from '@/components/base/MapComponent.types';
+import { CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds } from '@/components/base/MapComponent.types';
 import { haversineDistanceKm } from '@/utilities/geo';
 import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
@@ -24,7 +24,7 @@ export function useTreeMapState() {
   const [addValidationError, setAddValidationError] = useState<string | null>(null);
   const [isSubmittingTree, setIsSubmittingTree] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
-  const [searchCenter, setSearchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
+  const [searchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceFilterKm, setDistanceFilterKm] = useState<DistanceFilterKm>(null);

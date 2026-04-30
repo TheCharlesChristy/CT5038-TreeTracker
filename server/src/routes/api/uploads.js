@@ -5,7 +5,6 @@ const multer = require("multer");
 const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { parsePositiveInt, getUploadPublicBase, requireJson } = require("./utils/http");
-const { AuthError } = require("../../errors");
 const { requireAuthenticatedUser } = require("./utils/auth");
 
 const DEFAULT_UPLOADS_DIR = path.resolve(__dirname, "..", "..", "..", "uploads");
@@ -74,32 +73,14 @@ function isAllowedUploadUrl(url, uploadPublicBaseUrl) {
 async function authorizeTreeUpload({ req, db, treeId, routeLog }) {
   const auth = await requireAuthenticatedUser({ req, db, routeLog });
 
-  const creationData =
-    db.treeCreationData &&
-    typeof db.treeCreationData.getByTreeId === "function"
-      ? await db.treeCreationData.getByTreeId(treeId)
-      : null;
-
-  const isGuardian = await db.guardians.exists({
-    userId: Number(auth.user.id),
-    treeId
-  });
-
-  if (
-    auth.user.role === "admin" || isGuardian ||                                     
-    Number(creationData?.creator_user_id) === Number(auth.user.id) // creator
-  ) {
-    return auth;
+  const tree = await db.trees.getById(treeId);
+  if (!tree) {
+    const error = new Error("Tree not found");
+    error.name = "NotFoundError";
+    throw error;
   }
 
-  routeLog.warn("auth.denied", {
-    treeId,
-    userId: auth.user.id,
-    creatorUserId: creationData?.creator_user_id || null,
-    isGuardian
-  });
-
-  throw new AuthError("You do not have access to modify this tree");
+  return auth;
 }
 
 function runMulterMiddleware(middleware) {
