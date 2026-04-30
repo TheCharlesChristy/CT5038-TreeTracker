@@ -439,46 +439,52 @@ export default function PlotDashboard({
             <View style={styles.metricsRow}>
               <View style={styles.metricField}>
                 <AppText style={styles.metricLabel}>Diameter</AppText>
-                <AppInput
-                  placeholder="0"
-                  value={diameter}
-                  onChangeText={(value) => handleNumericChange(value, 'diameter', setDiameter)}
-                  keyboardType="numeric"
-                  invalid={!!errors.diameter}
-                  style={styles.input}
-                  rightAdornment={<AppText style={styles.unitLabel}>cm</AppText>}
-                />
+                <View style={styles.inputWithUnit}>
+                  <AppInput
+                    placeholder="0"
+                    value={diameter}
+                    onChangeText={(value) => handleNumericChange(value, 'diameter', setDiameter)}
+                    keyboardType="numeric"
+                    invalid={!!errors.diameter}
+                    containerStyle={styles.inputUnitContainer}
+                  />
+                  <AppText style={styles.unitLabel}>cm</AppText>
+                </View>
                 {errors.diameter ? <AppText style={styles.errorText}>{errors.diameter}</AppText> : null}
               </View>
 
               <View style={styles.metricField}>
                 <AppText style={styles.metricLabel}>Height</AppText>
-                <AppInput
-                  placeholder="0"
-                  value={height}
-                  onChangeText={(value) => handleNumericChange(value, 'height', setHeight)}
-                  keyboardType="numeric"
-                  invalid={!!errors.height}
-                  style={styles.input}
-                  rightAdornment={<AppText style={styles.unitLabel}>m</AppText>}
-                />
+                <View style={styles.inputWithUnit}>
+                  <AppInput
+                    placeholder="0"
+                    value={height}
+                    onChangeText={(value) => handleNumericChange(value, 'height', setHeight)}
+                    keyboardType="numeric"
+                    invalid={!!errors.height}
+                    containerStyle={styles.inputUnitContainer}
+                  />
+                  <AppText style={styles.unitLabel}>m</AppText>
+                </View>
                 {errors.height ? <AppText style={styles.errorText}>{errors.height}</AppText> : null}
               </View>
             </View>
 
             <View style={styles.metricField}>
               <AppText style={styles.metricLabel}>Circumference</AppText>
-              <AppInput
-                placeholder="0"
-                value={circumference}
-                onChangeText={(value) =>
-                  handleNumericChange(value, 'circumference', setCircumference)
-                }
-                keyboardType="numeric"
-                invalid={!!errors.circumference}
-                style={styles.input}
-                rightAdornment={<AppText style={styles.unitLabel}>cm</AppText>}
-              />
+              <View style={styles.inputWithUnit}>
+                <AppInput
+                  placeholder="0"
+                  value={circumference}
+                  onChangeText={(value) =>
+                    handleNumericChange(value, 'circumference', setCircumference)
+                  }
+                  keyboardType="numeric"
+                  invalid={!!errors.circumference}
+                  containerStyle={styles.inputUnitContainer}
+                />
+                <AppText style={styles.unitLabel}>cm</AppText>
+              </View>
               {errors.circumference ? (
                 <AppText style={styles.errorText}>{errors.circumference}</AppText>
               ) : null}
@@ -989,5 +995,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
     paddingRight: 4,
+  },
+
+  inputWithUnit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  inputUnitContainer: {
+    flex: 1,
+    marginBottom: 0,
   },
 });
