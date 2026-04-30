@@ -346,7 +346,6 @@ export default function MainPage() {
                 size={28}
                 strokeWidth={2}
                 color="rgba(240, 251, 242, 0.28)"
-                trackColor="rgba(240, 251, 242, 0.0)"
               />
             </View>
           ) : null}
