@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
     <>
       <Stack.Screen options={{ title: 'Analytics | TreeHuggers' }} />
       <AppContainer>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator>
         <View style={styles.topBar}>
           <NavigationButton onPress={() => router.push('/mainPage')}>
             Back to Map

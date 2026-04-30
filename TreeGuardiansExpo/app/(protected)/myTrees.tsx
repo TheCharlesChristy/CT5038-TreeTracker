@@ -327,7 +327,7 @@ export default function MyTreesPage() {
 				<ScrollView
 				style={styles.scroll}
 				contentContainerStyle={styles.scrollContent}
-				showsVerticalScrollIndicator={false}
+				showsVerticalScrollIndicator
 			>
 				{/* Top navigation */}
 				<View style={styles.topBar}>

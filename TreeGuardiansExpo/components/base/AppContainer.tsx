@@ -37,7 +37,7 @@ export const AppContainer = ({
   const content = scrollable ? (
     <ScrollView
       contentContainerStyle={[styles.scrollContent, containerPaddingStyle]}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator
       showsHorizontalScrollIndicator={false}
       style={webScrollStyle}
     >

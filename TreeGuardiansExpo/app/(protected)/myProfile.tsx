@@ -247,7 +247,7 @@ export default function MyProfilePage() {
 			<ScrollView
 				style={styles.scroll}
 				contentContainerStyle={styles.scrollContent}
-				showsVerticalScrollIndicator={false}
+				showsVerticalScrollIndicator
 			>
 				<View style={styles.inner}>
 

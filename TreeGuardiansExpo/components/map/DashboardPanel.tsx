@@ -240,7 +240,7 @@ export function DashboardPanel({
                   <AppText style={styles.closeText}>Close</AppText>
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator>
 
                 {activePopup === 'weather' && (
                   <>
