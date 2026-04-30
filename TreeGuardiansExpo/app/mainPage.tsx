@@ -185,12 +185,6 @@ export default function MainPage() {
             onClose={cancelLogout}
           />
 
-          <View style={styles.loggedInPill}>
-            <AppText style={styles.loggedInText}>
-              {loggedInUsername ? `Logged in as ${loggedInUsername}` : 'Browsing as Guest'}
-            </AppText>
-          </View>
-
           {hasSearchFilters ? (
             <View style={styles.activeFiltersCard}>
               <View style={styles.activeFiltersHeader}>
@@ -328,21 +322,6 @@ export default function MainPage() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-  },
-
-  loggedInPill: {
-    position: 'absolute',
-    top: 20,
-    alignSelf: 'center',
-    zIndex: 180,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-
-  loggedInText: {
-    ...Theme.Typography.caption,
-    color: '#000',
-    fontFamily: 'Poppins_600SemiBold',
   },
 
   activeFiltersCard: {

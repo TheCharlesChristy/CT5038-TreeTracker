@@ -21,6 +21,7 @@ const navScrollWebStyle = Platform.select({
 
 export const NavBar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -29,6 +30,7 @@ export const NavBar = () => {
       const user = await getCurrentUser();
       if (mounted) {
         setIsLoggedIn(Boolean(user));
+        setUsername(user?.username ?? null);
       }
     };
 
@@ -48,6 +50,7 @@ export const NavBar = () => {
       const didLogout = await logoutUser();
       if (didLogout) {
         setIsLoggedIn(false);
+        setUsername(null);
         router.replace('/');
       }
       return;
@@ -61,6 +64,12 @@ export const NavBar = () => {
       <View style={styles.brand}>
         <Image source={require('@/assets/images/tree_icon.png')} style={styles.logo} />
         <AppText style={styles.brandText}>TreeGuardians</AppText>
+      </View>
+
+      <View style={styles.sessionStatus}>
+        <AppText style={styles.sessionStatusText} numberOfLines={1}>
+          {username ? `Logged in as ${username}` : 'Browsing as Guest'}
+        </AppText>
       </View>
 
       <View style={styles.linksWrapper}>
@@ -137,6 +146,20 @@ const styles = StyleSheet.create({
   brandText: {
     color: Theme.Colours.textPrimary,
     fontSize: 16,
+  },
+  sessionStatus: {
+    position: 'absolute',
+    left: '35%',
+    right: '35%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  sessionStatusText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
   },
   linksWrapper: {
     flex: 1,
