@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { ComponentProps, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View, StyleSheet, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { Stack, router } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
-import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { Tree } from '@/objects/TreeDetails';
 import { useSessionUser } from '@/lib/session';
@@ -40,6 +40,19 @@ const HEALTH_OPTIONS: { key: HealthFilter; label: string }[] = [
 	{ key: 'unknown', label: 'Unknown' },
 ];
 
+const HEALTH_FILTER_META: Record<
+	HealthFilter,
+	{ icon: ComponentProps<typeof MaterialCommunityIcons>['name']; accent: string }
+> = {
+	all: { icon: 'heart-pulse', accent: '#2E7D32' },
+	excellent: { icon: 'leaf-circle', accent: '#1B6B2A' },
+	good: { icon: 'leaf', accent: '#2E7D32' },
+	ok: { icon: 'checkbox-marked-circle-outline', accent: '#B8860B' },
+	bad: { icon: 'alert-outline', accent: '#E65100' },
+	terrible: { icon: 'alert-octagon-outline', accent: '#C62828' },
+	unknown: { icon: 'help-circle-outline', accent: '#6E776F' },
+};
+
 const HEALTH_ORDER: Record<string, number> = {
 	excellent: 0,
 	good: 1,
@@ -68,6 +81,86 @@ function healthKey(tree: TreeWithOwnership): string {
 	if (tree.health) return tree.health;
 	if (tree.disease && tree.disease.trim().length > 0) return 'bad';
 	return 'unknown';
+}
+
+type DropdownOption<T extends string> = {
+	key: T;
+	label: string;
+	icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
+	accent?: string;
+};
+
+function FilterDropdown<T extends string>({
+	label,
+	value,
+	options,
+	onChange,
+}: {
+	label: string;
+	value: T;
+	options: DropdownOption<T>[];
+	onChange: (value: T) => void;
+}) {
+	const [isOpen, setIsOpen] = useState(false);
+	const selected = options.find((option) => option.key === value) ?? options[0];
+	const accent = selected.accent ?? Theme.Colours.primary;
+
+	return (
+		<View style={styles.dropdownShell}>
+			<Pressable
+				style={[styles.dropdownTrigger, { borderColor: `${accent}66` }]}
+				onPress={() => setIsOpen((current) => !current)}
+			>
+				<View style={styles.dropdownCopy}>
+					<MaterialCommunityIcons name={selected.icon} size={17} color={accent} />
+					<View style={styles.dropdownTextStack}>
+						<AppText style={styles.dropdownLabel}>{label}</AppText>
+						<AppText style={styles.dropdownValue}>{selected.label}</AppText>
+					</View>
+				</View>
+				<MaterialCommunityIcons
+					name={isOpen ? 'chevron-up' : 'chevron-down'}
+					size={20}
+					color={Theme.Colours.primary}
+				/>
+			</Pressable>
+
+			{isOpen ? (
+				<View style={styles.dropdownMenu}>
+					{options.map((option) => {
+						const selectedOption = option.key === value;
+						const optionAccent = option.accent ?? Theme.Colours.primary;
+
+						return (
+							<Pressable
+								key={option.key}
+								style={[styles.dropdownOption, selectedOption && styles.dropdownOptionActive]}
+								onPress={() => {
+									onChange(option.key);
+									setIsOpen(false);
+								}}
+							>
+								<View style={styles.dropdownCopy}>
+									<MaterialCommunityIcons name={option.icon} size={16} color={optionAccent} />
+									<AppText
+										style={[
+											styles.dropdownOptionText,
+											selectedOption && styles.dropdownOptionTextActive,
+										]}
+									>
+										{option.label}
+									</AppText>
+								</View>
+								{selectedOption ? (
+									<MaterialCommunityIcons name="check" size={17} color={Theme.Colours.primary} />
+								) : null}
+							</Pressable>
+						);
+					})}
+				</View>
+			) : null}
+		</View>
+	);
 }
 
 export default function MyTreesPage() {
@@ -121,6 +214,26 @@ export default function MyTreesPage() {
 		});
 		return Array.from(seen).sort();
 	}, [trees]);
+
+	const speciesOptions = useMemo<DropdownOption<string>[]>(() => [
+		{ key: 'all', label: 'All species', icon: 'forest', accent: Theme.Colours.primary },
+		...availableSpecies.map((species) => ({
+			key: species,
+			label: species,
+			icon: 'pine-tree' as const,
+			accent: '#2F6B3B',
+		})),
+	], [availableSpecies]);
+
+	const healthFilterOptions = useMemo<DropdownOption<HealthFilter>[]>(
+		() =>
+			HEALTH_OPTIONS.map((option) => ({
+				...option,
+				icon: HEALTH_FILTER_META[option.key].icon,
+				accent: HEALTH_FILTER_META[option.key].accent,
+			})),
+		[],
+	);
 
 	const treeSummary = useMemo(() => {
 		const needsAttention = trees.filter(
@@ -211,9 +324,10 @@ export default function MyTreesPage() {
 			>
 				{/* Top navigation */}
 				<View style={styles.topBar}>
-					<NavigationButton onPress={() => router.push('/mainPage')} color="#FFFFFF">
-						Back to Map
-					</NavigationButton>
+					<Pressable style={styles.mapNavButton} onPress={() => router.push('/mainPage')}>
+						<MaterialCommunityIcons name="map-marker-radius-outline" size={17} color="#FFFFFF" />
+						<AppText style={styles.mapNavButtonText}>Back to Map</AppText>
+					</Pressable>
 				</View>
 
 				{/* Page header */}
@@ -255,49 +369,24 @@ export default function MyTreesPage() {
 								</AppText>
 							</Pressable>
 						))}
+					</ScrollView>
 
-						<View style={styles.chipDivider} />
+					<View style={styles.dropdownRow}>
+						<FilterDropdown
+							label="Tree Health"
+							value={healthFilter}
+							options={healthFilterOptions}
+							onChange={setHealthFilter}
+						/>
+						<FilterDropdown
+							label="Tree Species"
+							value={speciesFilter}
+							options={speciesOptions}
+							onChange={setSpeciesFilter}
+						/>
+					</View>
 
-						{/* Health filter */}
-						{HEALTH_OPTIONS.map((opt) => (
-							<Pressable
-								key={opt.key}
-								style={[styles.chip, healthFilter === opt.key && styles.chipActive]}
-								onPress={() => setHealthFilter(opt.key)}
-							>
-								<AppText style={[styles.chipText, healthFilter === opt.key && styles.chipTextActive]}>
-									{opt.label}
-								</AppText>
-							</Pressable>
-						))}
-
-						{availableSpecies.length > 0 && (
-							<>
-								<View style={styles.chipDivider} />
-								<Pressable
-									style={[styles.chip, speciesFilter === 'all' && styles.chipActive]}
-									onPress={() => setSpeciesFilter('all')}
-								>
-									<AppText style={[styles.chipText, speciesFilter === 'all' && styles.chipTextActive]}>
-										All species
-									</AppText>
-								</Pressable>
-								{availableSpecies.map((sp) => (
-									<Pressable
-										key={sp}
-										style={[styles.chip, speciesFilter === sp && styles.chipActive]}
-										onPress={() => setSpeciesFilter(sp)}
-									>
-										<AppText style={[styles.chipText, speciesFilter === sp && styles.chipTextActive]}>
-											{sp}
-										</AppText>
-									</Pressable>
-								))}
-							</>
-						)}
-
-						<View style={styles.chipDivider} />
-
+					<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbarRow}>
 						{/* Sort */}
 						{SORT_OPTIONS.map((opt) => (
 							<Pressable
@@ -371,6 +460,8 @@ export default function MyTreesPage() {
 					<AppButton
 						title="Return to Map"
 						variant="secondary"
+						buttonStyle={styles.returnMapButton}
+						textStyle={styles.returnMapButtonText}
 						onPress={() => router.push('/mainPage')}
 					/>
 				</View>
@@ -381,16 +472,16 @@ export default function MyTreesPage() {
 }
 
 const CARD_GLASS = {
-	backgroundColor: 'rgba(255, 255, 255, 0.88)',
+	backgroundColor: 'rgba(255, 255, 255, 0.96)',
 	borderRadius: Theme.Radius.card,
 	borderWidth: 1,
-	borderColor: 'rgba(255, 255, 255, 0.6)',
+	borderColor: 'rgba(255, 255, 255, 0.82)',
 	borderTopColor: 'rgba(255, 255, 255, 0.95)',
 	shadowColor: '#0D1F10',
-	shadowOffset: { width: 0, height: 6 },
-	shadowOpacity: 0.14,
-	shadowRadius: 14,
-	elevation: 8,
+	shadowOffset: { width: 0, height: 10 },
+	shadowOpacity: 0.22,
+	shadowRadius: 18,
+	elevation: 11,
 } as const;
 
 const styles = StyleSheet.create({
@@ -402,6 +493,28 @@ const styles = StyleSheet.create({
 	},
 	topBar: {
 		marginBottom: Theme.Spacing.medium,
+		alignItems: 'flex-start',
+	},
+	mapNavButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		paddingVertical: 10,
+		paddingHorizontal: 14,
+		borderRadius: 18,
+		backgroundColor: 'rgba(46, 125, 50, 0.84)',
+		borderWidth: 1,
+		borderColor: 'rgba(255, 255, 255, 0.72)',
+		shadowColor: '#09210D',
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.24,
+		shadowRadius: 16,
+		elevation: 8,
+	},
+	mapNavButtonText: {
+		color: '#FFFFFF',
+		fontFamily: 'Poppins_600SemiBold',
+		fontSize: 13,
 	},
 	pageTitle: {
 		color: '#FFFFFF',
@@ -442,7 +555,10 @@ const styles = StyleSheet.create({
 
 	/* Toolbar */
 	toolbar: {
+		...CARD_GLASS,
+		padding: Theme.Spacing.small,
 		marginBottom: Theme.Spacing.medium,
+		zIndex: 5,
 	},
 	toolbarRow: {
 		flexDirection: 'row',
@@ -454,9 +570,9 @@ const styles = StyleSheet.create({
 		paddingVertical: 5,
 		paddingHorizontal: 12,
 		borderRadius: 20,
-		backgroundColor: 'rgba(255,255,255,0.22)',
+		backgroundColor: 'rgba(255,255,255,0.78)',
 		borderWidth: 1,
-		borderColor: 'rgba(255,255,255,0.4)',
+		borderColor: 'rgba(46,125,50,0.18)',
 	},
 	chipActive: {
 		backgroundColor: Theme.Colours.primary,
@@ -464,7 +580,7 @@ const styles = StyleSheet.create({
 	},
 	chipText: {
 		fontSize: 12,
-		color: 'rgba(255,255,255,0.9)',
+		color: Theme.Colours.primary,
 		fontFamily: 'Poppins_600SemiBold',
 	},
 	chipTextActive: {
@@ -475,6 +591,85 @@ const styles = StyleSheet.create({
 		height: 20,
 		backgroundColor: 'rgba(255,255,255,0.3)',
 		marginHorizontal: 4,
+	},
+	dropdownRow: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: Theme.Spacing.small,
+		paddingVertical: 6,
+	},
+	dropdownShell: {
+		flexGrow: 1,
+		flexBasis: 220,
+		minWidth: 190,
+	},
+	dropdownTrigger: {
+		minHeight: 54,
+		borderRadius: Theme.Radius.medium,
+		borderWidth: 1,
+		backgroundColor: 'rgba(255, 255, 255, 0.9)',
+		paddingHorizontal: Theme.Spacing.medium,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		shadowColor: '#0D1F10',
+		shadowOffset: { width: 0, height: 5 },
+		shadowOpacity: 0.12,
+		shadowRadius: 10,
+		elevation: 4,
+	},
+	dropdownCopy: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 9,
+		flexShrink: 1,
+	},
+	dropdownTextStack: {
+		flexShrink: 1,
+	},
+	dropdownLabel: {
+		color: Theme.Colours.textMuted,
+		fontSize: 10,
+		fontFamily: 'Poppins_600SemiBold',
+		textTransform: 'uppercase',
+	},
+	dropdownValue: {
+		color: Theme.Colours.textPrimary,
+		fontSize: 14,
+		fontFamily: 'Poppins_600SemiBold',
+	},
+	dropdownMenu: {
+		marginTop: 8,
+		padding: 6,
+		borderRadius: Theme.Radius.medium,
+		backgroundColor: 'rgba(255, 255, 255, 0.98)',
+		borderWidth: 1,
+		borderColor: 'rgba(255, 255, 255, 0.86)',
+		shadowColor: '#0D1F10',
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.18,
+		shadowRadius: 16,
+		elevation: 8,
+		gap: 4,
+	},
+	dropdownOption: {
+		minHeight: 40,
+		borderRadius: 10,
+		paddingHorizontal: 10,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	dropdownOptionActive: {
+		backgroundColor: 'rgba(46, 125, 50, 0.1)',
+	},
+	dropdownOptionText: {
+		color: Theme.Colours.textPrimary,
+		fontSize: 13,
+	},
+	dropdownOptionTextActive: {
+		color: Theme.Colours.primary,
+		fontFamily: 'Poppins_600SemiBold',
 	},
 
 	/* Loading / error */
@@ -514,6 +709,7 @@ const styles = StyleSheet.create({
 		padding: Theme.Spacing.medium,
 		marginBottom: Theme.Spacing.small,
 		flexGrow: 1,
+		borderColor: 'rgba(255, 255, 255, 0.9)',
 	},
 	cardHeader: {
 		flexDirection: 'row',
@@ -561,5 +757,18 @@ const styles = StyleSheet.create({
 	/* Footer */
 	footer: {
 		marginTop: Theme.Spacing.small,
+	},
+	returnMapButton: {
+		backgroundColor: 'rgba(255, 255, 255, 0.94)',
+		borderColor: 'rgba(255, 255, 255, 0.86)',
+		borderWidth: 1,
+		shadowColor: '#0D1F10',
+		shadowOffset: { width: 0, height: 8 },
+		shadowOpacity: 0.22,
+		shadowRadius: 16,
+		elevation: 9,
+	},
+	returnMapButtonText: {
+		color: Theme.Colours.primary,
 	},
 });
