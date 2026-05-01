@@ -366,11 +366,17 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     wildlifeCreate: 0,
     diseaseCreate: 0
   };
-  const accessToken = signJwt({ userId: 2, username: "user" }, process.env.JWT_SECRET, 15 * 60);
+  const accessToken = signJwt({ userId: 2, username: "user", verified_at: new Date().toISOString() }, process.env.JWT_SECRET, 15 * 60);
 
   const db = {
     health: async () => ({ ready: true }),
     transaction: async (fn) => fn({ __tx: true }),
+    emailVerificationTokens: {
+      create: async () => "mock-token-hex",
+      deleteByUserId: async () => ({ count: 0 }),
+      deleteByToken: async () => ({ deleted: true }),
+      getByToken: async () => null
+    },
     trees: {
       create: async () => {
         callLog.treesCreate += 1;
