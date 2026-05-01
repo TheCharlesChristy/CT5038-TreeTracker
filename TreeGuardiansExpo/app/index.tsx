@@ -1,14 +1,18 @@
 import { View, StyleSheet, Image } from 'react-native';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
-import { router } from 'expo-router';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function Index() {
   return (
-    <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
+    <>
+      <Stack.Screen options={{ title: 'TreeGuardians' }} />
+      <FaviconHead title="TreeGuardians" />
+      <AppContainer backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <AuthenticatedRedirect />
       <View style={styles.screen}>
         <View style={styles.card}>
@@ -71,6 +75,7 @@ export default function Index() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 

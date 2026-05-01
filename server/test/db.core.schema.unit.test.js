@@ -37,3 +37,9 @@ test("buildSchemaMigrations yields stable ordered versions", () => {
     { version: "schema-0002", statement: "CREATE TABLE b (id int)", tableName: "b" }
   ]);
 });
+
+test("isSchemaSnapshotVersion recognizes legacy schema migration markers", () => {
+  assert.equal(__private.isSchemaSnapshotVersion("schema-0020"), true);
+  assert.equal(__private.isSchemaSnapshotVersion("schema-20"), false);
+  assert.equal(__private.isSchemaSnapshotVersion("manual-0020"), false);
+});

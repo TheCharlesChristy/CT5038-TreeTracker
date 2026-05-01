@@ -81,6 +81,10 @@ function buildSchemaMigrations(statements) {
   }));
 }
 
+function isSchemaSnapshotVersion(version) {
+  return /^schema-\d{4}$/.test(String(version || ""));
+}
+
 async function ensureMigrationsTable(executor) {
   await run(
     executor,
@@ -129,7 +133,9 @@ async function applyMigrations(executor, schemaPath) {
   const appliedVersions = new Set(await listAppliedMigrationVersions(executor));
   const definedVersions = new Set(migrations.map((migration) => migration.version));
 
-  const unknownApplied = [...appliedVersions].filter((version) => !definedVersions.has(version));
+  const unknownApplied = [...appliedVersions].filter(
+    (version) => !definedVersions.has(version) && !isSchemaSnapshotVersion(version)
+  );
   if (unknownApplied.length > 0) {
     throw new DbError(`Inconsistent migration history. Unknown versions: ${unknownApplied.join(", ")}`);
   }
@@ -429,6 +435,7 @@ module.exports = {
   __private: {
     splitSqlStatements,
     tableNameFromCreateStatement,
-    buildSchemaMigrations
+    buildSchemaMigrations,
+    isSchemaSnapshotVersion
   }
 };

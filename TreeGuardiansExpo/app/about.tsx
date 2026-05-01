@@ -1,10 +1,11 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { Theme } from '@/styles/theme';
-import { router } from 'expo-router';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 const ABOUT_SECTIONS = [
   {
@@ -31,7 +32,10 @@ const ABOUT_SECTIONS = [
 
 export default function AboutPage() {
   return (
-    <AppContainer scrollable>
+    <>
+      <Stack.Screen options={{ title: 'About | TreeGuardians' }} />
+      <FaviconHead title="About | TreeGuardians" />
+      <AppContainer scrollable backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <View style={styles.content}>
         <AppText variant="title" style={styles.title}>
           About TreeGuardians
@@ -77,6 +81,7 @@ export default function AboutPage() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 
@@ -86,18 +91,30 @@ const styles = StyleSheet.create({
     paddingBottom: Theme.Spacing.extraLarge,
   },
   title: {
-    color: Theme.Colours.textPrimary,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   intro: {
-    color: Theme.Colours.textMuted,
+    color: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderRadius: Theme.Radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(165, 214, 167, 0.38)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopColor: 'rgba(255, 255, 255, 0.95)',
     padding: Theme.Spacing.medium,
     gap: Theme.Spacing.small,
+    shadowColor: '#0D1F10',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 8,
   },
   cardTitle: {
     color: Theme.Colours.textPrimary,
@@ -106,12 +123,18 @@ const styles = StyleSheet.create({
     color: Theme.Colours.textMuted,
   },
   panel: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderRadius: Theme.Radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(165, 214, 167, 0.38)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopColor: 'rgba(255, 255, 255, 0.95)',
     padding: Theme.Spacing.medium,
     gap: Theme.Spacing.small,
+    shadowColor: '#0D1F10',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 8,
   },
   panelTitle: {
     color: Theme.Colours.textPrimary,

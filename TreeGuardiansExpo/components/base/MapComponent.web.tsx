@@ -219,8 +219,6 @@ export default function MapComponentWeb({
         tilePane.style.filter = 'saturate(0.74) contrast(0.92) brightness(0.98)';
       }
 
-      Leaflet.control.zoom({ position: 'topright' }).addTo(map);
-
       Leaflet.polygon([MASK_OUTER_RING_LEAFLET, REGION_RING_LEAFLET], {
         stroke: false,
         fillColor: '#9ca3af',

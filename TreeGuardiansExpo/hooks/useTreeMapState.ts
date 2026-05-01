@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
-import { BOUNDS, CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds, REGION_RING_LEAFLET } from '@/components/base/MapComponent.types';
+import { CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds, REGION_RING_LEAFLET } from '@/components/base/MapComponent.types';
 import { haversineDistanceKm } from '@/utilities/geo';
 import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
@@ -10,6 +10,7 @@ export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
 
 export type HealthFilter = 'all' | 'healthy' | 'attention';
 export type DistanceFilterKm = number | null;
+export const TREE_REFRESH_INTERVAL_MS = 10000;
 
 // Add this function at the top of the file, outside the hook
 function isWithinRegion(lat: number, lng: number): boolean {
@@ -42,7 +43,7 @@ export function useTreeMapState() {
   const [addValidationError, setAddValidationError] = useState<string | null>(null);
   const [isSubmittingTree, setIsSubmittingTree] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
-  const [searchCenter, setSearchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
+  const [searchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceFilterKm, setDistanceFilterKm] = useState<DistanceFilterKm>(null);
@@ -50,6 +51,7 @@ export function useTreeMapState() {
 
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
   const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
+  const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(null);
 
   const showDimOverlay = mode !== 'explore' && mode !== 'add' ;
 
@@ -146,13 +148,15 @@ export function useTreeMapState() {
   }, []);
 
   useEffect(() => {
+    setNextRefreshAt(Date.now() + TREE_REFRESH_INTERVAL_MS);
     fetchTreesFromServer();
   }, [fetchTreesFromServer]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
+      setNextRefreshAt(Date.now() + TREE_REFRESH_INTERVAL_MS);
       void fetchTreesFromServer();
-    }, 10000);
+    }, TREE_REFRESH_INTERVAL_MS);
 
     return () => {
       clearInterval(intervalId);
@@ -376,5 +380,7 @@ export function useTreeMapState() {
     clearAddValidationError,
     clearStatusMessage,
     getDistanceFromCenterKm,
+    nextRefreshAt,
+    refreshIntervalMs: TREE_REFRESH_INTERVAL_MS,
   };
 }

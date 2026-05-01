@@ -13,6 +13,10 @@ interface CircularCountdownProps {
   color?: string;
   /** Colour of the background track */
   trackColor?: string;
+  /** When false, hides the numeric label in the center */
+  showLabel?: boolean;
+  /** When true, only the background track is shown */
+  trackOnly?: boolean;
   /** Called when the countdown reaches zero */
   onComplete?: () => void;
 }
@@ -25,6 +29,8 @@ export function CircularCountdown({
   strokeWidth = 3,
   color = '#194C22',
   trackColor = '#D2E4D4',
+  showLabel = true,
+  trackOnly = false,
   onComplete,
 }: CircularCountdownProps) {
   const radius = (size - strokeWidth) / 2;
@@ -38,6 +44,10 @@ export function CircularCountdown({
   const dashOffset = (1 - progress) * circumference;
 
   useEffect(() => {
+    if (trackOnly) {
+      return;
+    }
+
     startTime.current = Date.now();
     completed.current = false;
 
@@ -57,7 +67,7 @@ export function CircularCountdown({
 
     let timer = setTimeout(tick, FRAME_MS);
     return () => clearTimeout(timer);
-  }, [duration, onComplete]);
+  }, [duration, onComplete, trackOnly]);
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -74,21 +84,25 @@ export function CircularCountdown({
           strokeWidth={strokeWidth}
           fill="none"
         />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-        />
+        {!trackOnly ? (
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+          />
+        ) : null}
       </Svg>
-      <View style={styles.label}>
-        <Text style={[styles.number, { color }]}>{secondsLeft}</Text>
-      </View>
+      {!trackOnly && showLabel ? (
+        <View style={styles.label}>
+          <Text style={[styles.number, { color }]}>{secondsLeft}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }

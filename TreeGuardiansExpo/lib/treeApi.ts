@@ -56,6 +56,32 @@ type UploadTreePhotosResponse = {
   photos?: ServerPhoto[];
 };
 
+type UpdateTreeDataResponse = {
+  success?: boolean;
+  error?: string;
+  tree_species?: string | null;
+  trunk_diameter?: number | null;
+  tree_height?: number | null;
+  circumference?: number | null;
+  health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible' | null;
+};
+
+export type UpdateTreeDataPayload = {
+  species?: string | null;
+  notes?: string | null;
+  diameter?: number | null;
+  height?: number | null;
+  circumference?: number | null;
+  avoidedRunoff?: number | null;
+  carbonDioxideStored?: number | null;
+  carbonDioxideRemoved?: number | null;
+  waterIntercepted?: number | null;
+  airQualityImprovement?: number | null;
+  leafArea?: number | null;
+  evapotranspiration?: number | null;
+  health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
+};
+
 export type TreePhotoUploadAsset = {
   uri: string;
   fileName?: string | null;
@@ -271,6 +297,35 @@ export async function deleteTree(treeId: number): Promise<void> {
       formatApiError('Failed to delete tree.', response, rawBody, parsed?.error)
     );
   }
+}
+
+export async function updateTreeData(
+  treeId: number,
+  payload: UpdateTreeDataPayload
+): Promise<UpdateTreeDataResponse> {
+  const response = await fetch(buildApiUrl(`trees/${treeId}`), {
+    method: 'PATCH',
+    headers: {
+      ...(await getAuthHeaders()),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody);
+  const data =
+    parsed && typeof parsed === 'object'
+      ? (parsed as UpdateTreeDataResponse)
+      : {};
+
+  if (!response.ok) {
+    throw new Error(
+      formatApiError('Failed to update tree data.', response, rawBody, data.error)
+    );
+  }
+
+  return data;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {

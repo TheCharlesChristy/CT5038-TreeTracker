@@ -19,7 +19,26 @@ type DashboardPanelProps = {
   onClose: () => void;
   onLogout: () => Promise<void> | void;
   isLoggingOut?: boolean;
+  topInset?: number;
+  bottomInset?: number;
 };
+
+type GridButtonProps = {
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+  label: string;
+  onPress: () => void;
+};
+
+function GridButton({ icon, label, onPress }: GridButtonProps) {
+  return (
+    <TouchableOpacity style={styles.gridButton} onPress={onPress} activeOpacity={0.75}>
+      <View style={styles.gridButtonIconCircle}>
+        <MaterialCommunityIcons name={icon} size={26} color="#FFFFFF" />
+      </View>
+      <AppText style={styles.gridButtonLabel}>{label}</AppText>
+    </TouchableOpacity>
+  );
+}
 
 function wmoEmoji(code: number): string {
   if (code === 0) return '☀️';
@@ -67,6 +86,8 @@ export function DashboardPanel({
   onClose,
   onLogout,
   isLoggingOut = false,
+  topInset = 12,
+  bottomInset = 104,
 }: DashboardPanelProps) {
   const [activePopup, setActivePopup] = useState<PopupType>(null);
 
@@ -121,10 +142,10 @@ export function DashboardPanel({
   };
 
   return (
-    <View style={styles.dashboardWrap}>
+    <View style={[styles.dashboardWrap, { top: topInset, bottom: bottomInset }]}>
       <View style={styles.dashboardPanel}>
         <View style={styles.panelHeaderRow}>
-          <AppText style={styles.panelTitle}>Tree Dashboard</AppText>
+          <AppText style={styles.panelTitle}>Your Dashboard</AppText>
           <AppButton
             title="Close"
             variant="tertiary"
@@ -134,77 +155,55 @@ export function DashboardPanel({
           />
         </View>
 
-        <AppText style={styles.dashboardSubtitle}>Select an action to continue.</AppText>
-
         <ScrollView style={styles.dashboardList} contentContainerStyle={styles.dashboardListContent}>
-          <AppButton
-            title="Manage Profile"
-            variant="primary"
-            onPress={() => {
-              onClose();
-              router.push('/(protected)/myProfile' as never);
-            }}
-          />
+          <View style={styles.buttonGrid}>
+            <GridButton
+              icon="account-outline"
+              label="My Profile"
+              onPress={() => { onClose(); router.push('/(protected)/myProfile' as never); }}
+            />
+            <GridButton
+              icon="timeline-text-outline"
+              label="Local Activity"
+              onPress={openActivityPopup}
+            />
+            <GridButton
+              icon="weather-partly-cloudy"
+              label="Weather"
+              onPress={openWeatherPopup}
+            />
+            <GridButton
+              icon="tree-outline"
+              label="My Trees"
+              onPress={() => { onClose(); router.push('/(protected)/myTrees' as never); }}
+            />
+            {userRole === 'admin' ? (
+              <>
+                <GridButton
+                  icon="chart-bar"
+                  label="Analytics"
+                  onPress={() => { onClose(); router.push('/(protected)/admin/analytics' as never); }}
+                />
+                <GridButton
+                  icon="account-group-outline"
+                  label="Manage Users"
+                  onPress={() => { onClose(); router.push('/(protected)/admin/manageUsers' as never); }}
+                />
+              </>
+            ) : null}
+          </View>
 
-          <AppButton
-            title="Local Activity"
-            variant="secondary"
-            onPress={openActivityPopup}
-            style={styles.dashboardActionButton}
-          />
-
-          <AppButton
-            title="View Weather Data"
-            variant="secondary"
-            onPress={openWeatherPopup}
-            style={styles.dashboardActionButton}
-          />
-
-          <AppButton
-            title="My Trees"
-            variant="secondary"
-            onPress={() => {
-              onClose();
-              router.push('/(protected)/myTrees' as never);
-            }}
-            style={styles.dashboardActionButton}
-          />
-
-          {userRole === 'admin' ? (
-            <>
-              <AppButton
-                title="Analytics"
-                variant="secondary"
-                onPress={() => {
-                  onClose();
-                  router.push('/(protected)/admin/analytics' as never);
-                }}
-                style={styles.dashboardActionButton}
-              />
-
-              <AppButton
-                title="Manage Users"
-                variant="secondary"
-                onPress={() => {
-                  onClose();
-                  router.push('/(protected)/admin/manageUsers' as never);
-                }}
-                style={styles.dashboardActionButton}
-              />
-            </>
-          ) : null}
-
-          <AppButton
-            title={isLoggingOut ? 'Logout Pending...' : 'Log Out'}
-            variant="outline"
-            onPress={() => {
-              void onLogout();
-            }}
+          <TouchableOpacity
+            style={[styles.logoutRow, isLoggingOut && styles.logoutRowDisabled]}
+            onPress={() => { void onLogout(); }}
             disabled={isLoggingOut}
-            style={styles.dashboardActionButton}
-            buttonStyle={styles.logoutButton}
-            textStyle={styles.logoutButtonText}
-          />
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="logout" size={18} color="#A53333" style={{ marginRight: 8 }} />
+            <AppText style={styles.logoutRowText}>
+              {isLoggingOut ? 'Logout Pending…' : 'Log Out'}
+            </AppText>
+          </TouchableOpacity>
 
           <View style={styles.dashboardStatsRow}>
             <View style={styles.statCardCompact}>
@@ -240,7 +239,7 @@ export function DashboardPanel({
                   <AppText style={styles.closeText}>Close</AppText>
                 </TouchableOpacity>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator>
 
                 {activePopup === 'weather' && (
                   <>
@@ -568,10 +567,8 @@ const styles = StyleSheet.create({
   /* Dashboard layout */
   dashboardWrap: {
     position: 'absolute',
-    top: 12,
     left: 0,
     right: 0,
-    bottom: 104,
     zIndex: 220,
     alignItems: 'center',
     justifyContent: 'center',
@@ -581,16 +578,22 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     maxHeight: '100%',
-    borderRadius: 18,
-    backgroundColor: '#F9FCF9',
-    borderWidth: 1,
-    borderColor: '#D5E1D5',
+    borderRadius: 26,
+    backgroundColor: 'rgba(238, 248, 239, 0.98)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255,255,255,0.95)',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.70)',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(0,0,0,0.06)',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(0,0,0,0.12)',
     padding: 18,
-    shadowColor: '#0F1711',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.24,
-    shadowRadius: 22,
-    elevation: 18,
+    shadowColor: '#030e04',
+    shadowOffset: { width: 0, height: 28 },
+    shadowOpacity: 0.48,
+    shadowRadius: 40,
+    elevation: 30,
   },
   panelHeaderRow: {
     flexDirection: 'row',
@@ -622,15 +625,85 @@ const styles = StyleSheet.create({
   dashboardListContent: {
     paddingBottom: 10,
   },
-  dashboardActionButton: {
+  buttonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 10,
+  },
+
+  gridButton: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 18,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(30, 100, 50, 0.82)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(180, 230, 190, 0.30)',
+    borderTopColor: 'rgba(220, 255, 230, 0.65)',
+    shadowColor: '#030e05',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+
+  gridButtonIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+
+  gridButtonLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 16,
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.40)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+
+  logoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(160, 28, 28, 0.10)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(200, 100, 100, 0.28)',
+    borderTopColor: 'rgba(255, 210, 210, 0.65)',
     marginBottom: 8,
+    shadowColor: '#3c0000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  logoutButton: {
-    backgroundColor: '#FFF2F2',
-    borderColor: '#E6B8B8',
+  logoutRowDisabled: {
+    opacity: 0.50,
   },
-  logoutButtonText: {
+  logoutRowText: {
     color: '#A53333',
+    fontWeight: '700',
+    fontSize: 14,
+    letterSpacing: 0.2,
   },
   dashboardStatsRow: {
     marginTop: 8,
