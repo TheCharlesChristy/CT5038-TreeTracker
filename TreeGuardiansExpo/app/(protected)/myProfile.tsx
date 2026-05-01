@@ -116,7 +116,7 @@ export default function MyProfilePage() {
 		try {
 			await resendVerificationEmail();
 			setResendSuccess('Verification email sent! Check your inbox and spam folder.');
-		} catch (error) {
+		} catch {
 			setResendError('Failed to send verification email. Please try again.');
 		} finally {
 			setIsResendingVerification(false);

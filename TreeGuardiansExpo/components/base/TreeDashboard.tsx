@@ -36,6 +36,7 @@ import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
+import { documentDirectory, cacheDirectory } from 'expo-file-system/legacy';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
@@ -1200,7 +1201,7 @@ export default function TreeDetailsDashboard({
         return;
       }
 
-      const cacheDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+      const cacheDir = documentDirectory || cacheDirectory;
       if (!cacheDir) {
         showStatusMessage('Error', 'Unable to access local storage', 'error');
       }
