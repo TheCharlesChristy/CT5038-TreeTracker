@@ -4,6 +4,7 @@ const { createLogger } = require("../../logging");
 const { requireJson } = require("./utils/http");
 const { requireAuthenticatedUser, resolveUserRole } = require("./utils/auth");
 const { hashPassword, verifyPassword } = require("./utils/security");
+const { sendEmail } = require("./utils/email");
 
 const logger = createLogger("routes.api.account");
 
@@ -11,8 +12,13 @@ function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.account", extra) : logger.child(extra);
 }
 
-function createAccountRoute({ db }) {
+function createAccountRoute({ db, frontendUrl }) {
   const router = express.Router();
+
+  function getFrontendUrl() {
+    if (!frontendUrl) throw new Error("FRONTEND_URL not configured");
+    return frontendUrl.replace(/\/+$/, "");
+  }
 
   async function buildSafeUserResponse(userId, tx) {
     const user = await db.users.getById(userId, tx);
@@ -23,6 +29,7 @@ function createAccountRoute({ db }) {
       username: user.username,
       email: user.email,
       role,
+      verified: !!user.verified_at,
     };
   }
 
@@ -86,33 +93,60 @@ function createAccountRoute({ db }) {
 
     if (!email) {
       routeLog.warn("validation.failed", { reason: "missing-email" });
-      res.status(400).json({ error: "Email is required" });
-      return;
+      return res.status(400).json({ error: "Email is required" });
     }
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(email)) {
       routeLog.warn("validation.failed", { reason: "invalid-email-format" });
-      res.status(400).json({ error: "Valid email is required" });
-      return;
+      return res.status(400).json({ error: "Valid email is required" });
     }
 
     const existingUser = await db.users.getByEmail(email);
     if (existingUser && existingUser.id !== userId) {
       routeLog.warn("update.conflict", { reason: "email-exists", userId });
-      res.status(409).json({ error: "Email already exists" });
-      return;
+      return res.status(409).json({ error: "Email already exists" });
     }
+
+    let verificationToken = null;
 
     const updatedUser = await db.transaction(async (tx) => {
       await db.users.updateById(userId, { email }, tx);
+
+      await db.users.clearVerifiedAt(userId, tx);
+
+      await db.emailVerificationTokens.deleteByUserId(userId, tx);
+      verificationToken = await db.emailVerificationTokens.create(userId, tx);
+
       return buildSafeUserResponse(userId, tx);
     });
+
+    // Send verification email to the new address
+    if (verificationToken) {
+      const verifyUrl = `${getFrontendUrl()}/verify-email?token=${verificationToken}`;
+
+      try {
+        await sendEmail({
+          to: email,
+          subject: "Verify your new email – TreeGuardians",
+          html: `<h2>Email Address Changed</h2>
+                <p>Your email address has been updated. Please verify your new address:</p>
+                <a href="${verifyUrl}">Verify Email</a>
+                <p>This link expires in 1 hour.</p>
+                <p>If you did not make this change, please contact support immediately.</p>`
+        });
+      } catch (emailError) {
+        routeLog.warn("email.send_failed", {
+          userId,
+          error: emailError.message
+        });
+      }
+    }
 
     routeLog.info("request.success", { userId });
 
     res.json({
-      message: "Email updated successfully",
+      message: "Email updated successfully. Please check your inbox to verify your new address.",
       user: updatedUser,
     });
   };

@@ -158,6 +158,24 @@ export default function ManageUsersPage() {
 		} finally {
 			setBusyKey(null);
 		}
+		  try {
+			setBusyKey(`assign-${targetUser.id}-${treeId}`);
+			await assignGuardianToTree(targetUser.id, treeId);
+			setUserTreeInput(targetUser.id, '');
+			await loadData();
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Unknown error.';
+			// Surface a clearer message for the verification case
+			showStatusMessage(
+			'Assignment failed',
+			message.includes('verified') 
+				? 'This user must verify their email before being assigned as a guardian.'
+				: message,
+			'error'
+			);
+		} finally {
+			setBusyKey(null);
+		}
 	};
 
 	const handleRemoveTree = async (targetUser: ManagedUser, treeId: number) => {
@@ -293,6 +311,9 @@ export default function ManageUsersPage() {
 							{managedUser.email ? (
 								<AppText style={styles.userMeta}>Email: {managedUser.email}</AppText>
 							) : null}
+							{!managedUser.verified ? (
+							<AppText style={styles.unverifiedBadge}>⚠ Email not verified</AppText>
+							) : null}
 
 							<View style={styles.roleActions}>
 								<AppButton
@@ -338,6 +359,7 @@ export default function ManageUsersPage() {
 									</View>
 								)}
 
+
 								<TextInput
 									value={treeInputByUser[managedUser.id] ?? ''}
 									onChangeText={(value) => setUserTreeInput(managedUser.id, value)}
@@ -348,11 +370,17 @@ export default function ManageUsersPage() {
 								/>
 
 								<AppButton
-									title="Assign Tree"
-									variant="primary"
-									onPress={() => void handleAssignTree(managedUser)}
-									disabled={busyKey !== null}
+								title="Assign Tree"
+								variant="primary"
+								onPress={() => void handleAssignTree(managedUser)}
+								disabled={busyKey !== null || !managedUser.verified}
 								/>
+
+								{!managedUser.verified ? (
+								<AppText style={styles.userMeta}>
+									This user must verify their email before being assigned as a guardian.
+								</AppText>
+								) : null}
 							</View>
 
 							<View style={styles.deleteRow}>
@@ -492,4 +520,10 @@ const styles = StyleSheet.create({
 		padding: Theme.Spacing.medium,
 		marginBottom: Theme.Spacing.medium,
 	},
+	unverifiedBadge: {
+		color: Theme.Colours.error,
+		fontWeight: '600',
+		fontSize: 13,
+		marginBottom: Theme.Spacing.extraSmall,
+		},
 });

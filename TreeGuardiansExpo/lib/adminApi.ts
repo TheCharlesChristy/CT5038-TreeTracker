@@ -63,6 +63,7 @@ export type ManagedUser = {
   phone?: string | null;
   role: 'registered_user' | 'guardian' | 'admin';
   guardianTreeIds: number[];
+  verified: boolean;
 };
 
 type TreeSummary = {
@@ -116,7 +117,10 @@ export async function fetchManagedUsers(): Promise<ManagedUser[]> {
     throw new Error(formatApiError('Failed to fetch users.', response, rawBody));
   }
 
-  return data as ManagedUser[];
+  return data.map((u: any) => ({
+    ...u,
+    verified: !!u.verified_at,
+  }));
 }
 
 export async function fetchTreeOptions(): Promise<TreeSummary[]> {

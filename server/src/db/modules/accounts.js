@@ -18,17 +18,29 @@ function createAccountEndpoints(ctx) {
 
     async getById(id, tx) {
       ensurePositiveInt("id", id);
-      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE id = ?", [id]);
+      return selectOne(
+        runtimeExecutor(tx),
+        "SELECT id, username, email, phone, verified_at FROM users WHERE id = ?", 
+        [id]
+      );
     },
 
     async getByUsername(username, tx) {
       ensureRequiredString("username", username, 100);
-      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE username = ?", [username]);
+      return selectOne(
+        runtimeExecutor(tx),
+        "SELECT id, username, email, phone, verified_at FROM users WHERE username = ?",
+        [username]
+      );
     },
 
     async getByEmail(email, tx) {
       ensureRequiredString("email", email, 255);
-      return selectOne(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users WHERE email = ?", [email]);
+      return selectOne(
+        runtimeExecutor(tx),
+        "SELECT id, username, email, phone, verified_at FROM users WHERE email = ?",
+        [email]
+      );
     },
 
     async getRoleById(id, tx) {
@@ -52,7 +64,7 @@ function createAccountEndpoints(ctx) {
 
     async list(params = {}, tx) {
       const { limit, offset } = normalizeListParams(params);
-      return run(runtimeExecutor(tx), "SELECT id, username, email, phone FROM users ORDER BY id DESC LIMIT ? OFFSET ?", [
+      return run(runtimeExecutor(tx), "SELECT id, username, email, phone, verified_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?", [
         limit,
         offset
       ]);
@@ -104,7 +116,35 @@ function createAccountEndpoints(ctx) {
       ensureRequiredString("email", email, 255);
       const row = await selectOne(runtimeExecutor(tx), "SELECT 1 AS ok FROM users WHERE email = ?", [email]);
       return Boolean(row);
-    }
+    },
+
+    async setVerifiedAt(id, date, tx) {
+      ensurePositiveInt("id", id);
+      const verifiedAt = toDateInput("verifiedAt", date);
+      assert(verifiedAt, "date is required");
+      const result = await run(
+        runtimeExecutor(tx),
+        "UPDATE users SET verified_at = ? WHERE id = ?",
+        [verifiedAt, id]
+      );
+      if (result.affectedRows === 0) {
+        throw new NotFoundError(`User ${id} not found`);
+      }
+      return this.getById(id, tx);
+    },
+
+    async clearVerifiedAt(id, tx) {
+      ensurePositiveInt("id", id);
+      const result = await run(
+        runtimeExecutor(tx),
+        "UPDATE users SET verified_at = NULL WHERE id = ?",
+        [id]
+      );
+      if (result.affectedRows === 0) {
+        throw new NotFoundError(`User ${id} not found`);
+      }
+      return this.getById(id, tx);
+    },
   };
 
   const userPasswords = {
@@ -191,6 +231,52 @@ function createAccountEndpoints(ctx) {
     async list(params = {}, tx) {
       const { limit, offset } = normalizeListParams(params);
       return run(runtimeExecutor(tx), "SELECT user_id FROM guardians ORDER BY user_id DESC LIMIT ? OFFSET ?", [limit, offset]);
+    }
+  };
+
+  const emailVerificationTokens = {
+    async create(userId, tx) {
+      ensurePositiveInt("userId", userId);
+      const crypto = require("crypto");
+      const token = crypto.randomBytes(32).toString("hex"); // 64 char hex
+      const expiresAt = toDateInput("expiresAt", new Date(Date.now() + 60 * 60 * 1000)); // 1 hour
+
+      await run(
+        runtimeExecutor(tx),
+        "INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
+        [userId, token, expiresAt]
+      );
+
+      return token;
+    },
+
+    async getByToken(token, tx) {
+      ensureRequiredString("token", token, 64);
+      return selectOne(
+        runtimeExecutor(tx),
+        "SELECT id, user_id, token, created_at, expires_at FROM email_verification_tokens WHERE token = ? AND expires_at > NOW()",
+        [token]
+      );
+    },
+
+    async deleteByToken(token, tx) {
+      ensureRequiredString("token", token, 64);
+      const result = await run(
+        runtimeExecutor(tx),
+        "DELETE FROM email_verification_tokens WHERE token = ?",
+        [token]
+      );
+      return { deleted: result.affectedRows > 0 };
+    },
+
+    async deleteByUserId(userId, tx) {
+      ensurePositiveInt("userId", userId);
+      const result = await run(
+        runtimeExecutor(tx),
+        "DELETE FROM email_verification_tokens WHERE user_id = ?",
+        [userId]
+      );
+      return { count: result.affectedRows };
     }
   };
 
@@ -285,7 +371,8 @@ function createAccountEndpoints(ctx) {
     userPasswords,
     admins,
     guardianUsers,
-    userSessions
+    userSessions,
+    emailVerificationTokens
   };
 }
 

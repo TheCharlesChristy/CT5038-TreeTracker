@@ -136,6 +136,19 @@ export default function MapComponentNative({
       zoomControl: false
     });
 
+    function isWithinRegion(lat, lng) {
+      var ring = ${regionRingJson};
+      var inside = false;
+      for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        var latI = ring[i][0], lngI = ring[i][1];
+        var latJ = ring[j][0], lngJ = ring[j][1];
+        var intersects = (lngI > lng) !== (lngJ > lng) &&
+          lat < ((latJ - latI) * (lng - lngI)) / (lngJ - lngI) + latI;
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
     L.tileLayer(
       'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       {
@@ -170,6 +183,9 @@ export default function MapComponentNative({
     var selectedLocationLayer = L.layerGroup().addTo(map);
 
     map.on('click', function(e) {
+      if (!isWithinRegion(e.latlng.lat, e.latlng.lng)) {
+        return;
+      }
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'mapPress',
         latitude: e.latlng.lat,

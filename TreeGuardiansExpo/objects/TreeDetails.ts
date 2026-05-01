@@ -25,7 +25,7 @@ export type TreeDetails = {
     airQualityImprovement?: number,
     leafArea?: number,
     evapotranspiration?: number,
-    health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible'
+    health?: 'good' | 'ok' | 'bad'
 }
 
 // when the tree is successfully placed

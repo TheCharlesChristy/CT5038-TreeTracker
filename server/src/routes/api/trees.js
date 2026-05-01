@@ -2,6 +2,7 @@ const express = require("express");
 const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { parsePositiveInt, parseListParams, requireJson } = require("./utils/http");
+const { createRequireVerified } = require('../middleware/require-verified');
 const { requireAuthenticatedUser } = require("./utils/auth");
 const fs = require('fs');
 const path = require('path');
@@ -47,11 +48,9 @@ function normalizeTreeDataPayload(body) {
     trunkDiameter: toFiniteNumberOrDefault(body.diameter, DEFAULT_TREE_DATA.trunkDiameter),
     treeHeight: toFiniteNumberOrDefault(body.height, DEFAULT_TREE_DATA.treeHeight),
     health:
-      body.health === "excellent" ||
       body.health === "good" ||
       body.health === "ok" ||
-      body.health === "bad" ||
-      body.health === "terrible"
+      body.health === "bad"
         ? body.health
         : DEFAULT_TREE_DATA.health
   };
@@ -110,6 +109,7 @@ function getRouteLogger(req, extra = {}) {
 
 function createTreesRoute({ db }) {
   const router = express.Router();
+  const requireVerified = createRequireVerified({ db })
 
   const createTreeHandler = async (req, res) => {
     const routeLog = getRouteLogger(req, { route: "create-tree" });
@@ -365,8 +365,8 @@ function createTreesRoute({ db }) {
     });
   };
 
-  router.post("/trees", asyncHandler(createTreeHandler));
-  router.post("/add-tree-data", asyncHandler(createTreeHandler));
+  router.post("/trees", requireVerified, asyncHandler(createTreeHandler));
+  router.post("/add-tree-data", requireVerified, asyncHandler(createTreeHandler));
 
   router.get("/trees", asyncHandler(listTreesHandler));
   router.get("/get-trees", asyncHandler(listTreesHandler));
