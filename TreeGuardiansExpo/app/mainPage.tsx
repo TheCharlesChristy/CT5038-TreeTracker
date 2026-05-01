@@ -185,7 +185,7 @@ export default function MainPage() {
             <TouchableOpacity style={styles.dimOverlay} onPress={closeAllOverlays} activeOpacity={1} />
           ) : null}
 
-          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} />
+          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} topOffset={navOverlayInset} />
 
           <StatusMessageBox
             status={logoutStatus}
@@ -194,6 +194,7 @@ export default function MainPage() {
             closeLabel="Cancel"
             showCopyButton={false}
             onClose={cancelLogout}
+            topOffset={navOverlayInset}
           />
 
           {hasSearchFilters ? (

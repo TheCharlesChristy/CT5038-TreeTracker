@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -439,51 +440,33 @@ export default function Login() {
                 ) : activity.length === 0 ? (
                   <AppText variant="caption">No recent activity</AppText>
                 ) : (
-                  activity.map((item, index) => (
-                    <View key={item.id}>
-                      <View style={styles.activityItem}>
-                        <View
-                          style={[
-                            styles.activityDot,
-                            { backgroundColor: '#81C784' },
-                          ]}
-                        />
-                        <View style={styles.activityContent}>
-                          <AppText variant="body" style={styles.activityTitle}>
-                            {item.title}
-                          </AppText>
-                          <AppText variant="caption" style={styles.activityMeta}>
-                            {item.subtitle}
-                          </AppText>
+                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingRight: 4 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                    {activity.map((item, index) => (
+                      <View key={item.id}>
+                        <View style={styles.activityItem}>
+                          <View
+                            style={[
+                              styles.activityDot,
+                              { backgroundColor: '#81C784' },
+                            ]}
+                          />
+                          <View style={styles.activityContent}>
+                            <AppText variant="body" style={styles.activityTitle}>
+                              {item.title}
+                            </AppText>
+                            <AppText variant="caption" style={styles.activityMeta}>
+                              {item.subtitle}
+                            </AppText>
+                          </View>
                         </View>
+
+                        {index < activity.length - 1 && (
+                          <View style={styles.activityDivider} />
+                        )}
                       </View>
-
-                      {index < activity.length - 1 && (
-                        <View style={styles.activityDivider} />
-                      )}
-                    </View>
-                  ))
+                    ))}
+                  </ScrollView>
                 )}
-              </View>
-
-              <View style={styles.previewStatsRow}>
-                <View style={styles.previewStatCard}>
-                  <AppText variant="caption" style={styles.previewStatLabel}>
-                    Ready for the field
-                  </AppText>
-                  <AppText variant="subtitle" style={styles.previewStatValue}>
-                    Autofill enabled
-                  </AppText>
-                </View>
-
-                <View style={styles.previewStatCard}>
-                  <AppText variant="caption" style={styles.previewStatLabel}>
-                    Community focus
-                  </AppText>
-                  <AppText variant="subtitle" style={styles.previewStatValue}>
-                    Shared local stewardship
-                  </AppText>
-                </View>
               </View>
             </View>
           </View>
@@ -530,7 +513,6 @@ const styles = StyleSheet.create({
   formCard: {
     flex: 1,
     minHeight: 720,
-    maxHeight: 720,
     backgroundColor: 'rgba(248, 252, 248, 0.76)',
     borderRadius: 24,
     padding: Theme.Spacing.extraLarge,
@@ -734,8 +716,6 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     flex: 1,
-    minHeight: 720,
-    maxHeight: 720,
     borderRadius: 28,
     padding: Theme.Spacing.extraLarge,
     justifyContent: 'space-between',
@@ -818,6 +798,10 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   activityCard: {
+    flex: 1,
+    minHeight: 120,
+    maxHeight: 220,
+    overflow: 'hidden',
     borderRadius: 18,
     backgroundColor: 'rgba(230, 244, 231, 0.10)',
     borderWidth: 1,
