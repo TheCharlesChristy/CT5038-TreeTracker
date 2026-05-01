@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, StyleProp, ViewStyle, ScrollView, ImageBackground, View, ImageSourcePropType } from 'react-native';
+import { Platform, StyleSheet, StyleProp, ViewStyle, ScrollView, ImageBackground, View, ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '@/styles/theme';
 import { NavBar } from './NavBar';
@@ -11,7 +11,18 @@ interface AppContainerProps {
   style?: StyleProp<ViewStyle>;
   noPadding?: boolean;
   showNavBar?: boolean;
+  overlayNavBar?: boolean;
 }
+
+const webScrollStyle = Platform.select({
+  web: { overflowX: 'hidden' } as object,
+  default: {},
+});
+
+const webOverflowStyle = Platform.select({
+  web: { overflow: 'hidden' } as object,
+  default: {},
+});
 
 export const AppContainer = ({
   children,
@@ -20,17 +31,20 @@ export const AppContainer = ({
   style,
   noPadding,
   showNavBar = true,
+  overlayNavBar = false,
 }: AppContainerProps) => {
   const containerPaddingStyle = noPadding ? null : styles.padding;
   const content = scrollable ? (
     <ScrollView
       contentContainerStyle={[styles.scrollContent, containerPaddingStyle]}
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator
+      showsHorizontalScrollIndicator={false}
+      style={webScrollStyle}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.inner, containerPaddingStyle]}>{children}</View>
+    <View style={[styles.inner, containerPaddingStyle, webOverflowStyle]}>{children}</View>
   );
 
   if (backgroundImage) {
@@ -43,8 +57,13 @@ export const AppContainer = ({
       >
         <View style={styles.overlay}>
           <SafeAreaView style={[styles.containerTransparent, style]}>
-            {showNavBar && <NavBar />}
+            {showNavBar && !overlayNavBar && <NavBar />}
             {content}
+            {showNavBar && overlayNavBar ? (
+              <View style={styles.navOverlay} pointerEvents="box-none">
+                <NavBar />
+              </View>
+            ) : null}
           </SafeAreaView>
         </View>
       </ImageBackground>
@@ -53,8 +72,13 @@ export const AppContainer = ({
 
   return (
     <SafeAreaView style={[styles.container, style]}>
-      {showNavBar && <NavBar />}
+      {showNavBar && !overlayNavBar && <NavBar />}
       {content}
+      {showNavBar && overlayNavBar ? (
+        <View style={styles.navOverlay} pointerEvents="box-none">
+          <NavBar />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -90,5 +114,13 @@ const styles = StyleSheet.create({
 
   inner: {
     flex: 1,
+  },
+
+  navOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 300,
   },
 });

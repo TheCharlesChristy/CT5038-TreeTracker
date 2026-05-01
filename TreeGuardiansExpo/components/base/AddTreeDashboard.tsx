@@ -33,6 +33,8 @@ interface PlotDashboardProps {
   isSelectingOnMap: boolean;
   locationError?: string | null;
   isSubmitting?: boolean;
+  topInset?: number;
+  bottomInset?: number;
 }
 
 const MAX_PHOTOS = 5;
@@ -47,6 +49,8 @@ export default function PlotDashboard({
   isSelectingOnMap,
   locationError,
   isSubmitting = false,
+  topInset = 12,
+  bottomInset = 104,
 }: PlotDashboardProps) {
   const [species, setSpecies] = useState('');
   const [health, setHealth] = useState<TreeHealth>('ok');
@@ -322,7 +326,7 @@ export default function PlotDashboard({
   }, [photos.length]);
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
+    <View style={[styles.overlay, { top: topInset, bottom: bottomInset }]} pointerEvents="box-none">
       <View style={[styles.panel, isMobile ? styles.panelMobile : styles.panelDesktop]}>
         <ScrollView
           contentContainerStyle={styles.panelContent}
@@ -632,9 +636,7 @@ export default function PlotDashboard({
 const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
-    top: 12,
     right: 0,
-    bottom: 104,
     left: 0,
     zIndex: 220,
     alignItems: 'flex-end',

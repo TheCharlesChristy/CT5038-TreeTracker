@@ -10,6 +10,7 @@ import {
   View,
   useWindowDimensions,
   Pressable,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
@@ -33,11 +34,17 @@ import {
 } from '@/lib/treeApi';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system/legacy';
+import { EncodingType } from 'expo-file-system/legacy';
+import * as Linking from 'expo-linking';
+import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
 import { TreeSpeciesSelect } from './TreeSpeciesSelect';
 import { estimateTreeEcoStats } from '@/lib/treeEcoEstimates';
+import QRCode from 'react-native-qrcode-svg';
 
-type PopupTab = 'overview' | 'photos' | 'activity';
+type PopupTab = 'overview' | 'photos' | 'activity' | 'qr';
 type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
 type EditNumericField = 'diameter' | 'height' | 'circumference';
 
@@ -68,6 +75,7 @@ const TABS: {
   { key: 'overview', label: 'Overview', icon: 'text-box-search-outline' },
   { key: 'photos', label: 'Photos', icon: 'image-multiple-outline' },
   { key: 'activity', label: 'Activity', icon: 'message-badge-outline' },
+  { key: 'qr', label: 'QR Code', icon: 'qrcode' },
 ];
 
 function parseEstimateNumber(value: string): number | undefined {
@@ -253,37 +261,11 @@ function TreeOverview({
         </View>
       </View>
 
-      <View style={styles.summaryChipRow}>
-        {tree.species ? (
-          <View style={styles.summaryChip}>
-            <MaterialCommunityIcons name="pine-tree" size={14} color="#1B5E20" />
-            <AppText style={styles.summaryChipText}>{tree.species}</AppText>
-          </View>
-        ) : null}
-
-        <View style={styles.summaryChip}>
-          <MaterialCommunityIcons name="image-outline" size={14} color="#1B5E20" />
-          <AppText style={styles.summaryChipText}>{photoCount} photos</AppText>
-        </View>
-
-        <View style={styles.summaryChip}>
-          <MaterialCommunityIcons name="timeline-outline" size={14} color="#1B5E20" />
-          <AppText style={styles.summaryChipText}>{activityCount} updates</AppText>
-        </View>
-
-        <View style={styles.summaryChip}>
-          <MaterialCommunityIcons name="map-marker-outline" size={14} color="#1B5E20" />
-          <AppText style={styles.summaryChipText}>
-            {tree.latitude.toFixed(4)}, {tree.longitude.toFixed(4)}
-          </AppText>
-        </View>
-      </View>
-
       <TreeDataStats tree={tree} />
 
       <View style={styles.sectionStack}>
         <View style={styles.sectionHeaderRow}>
-          <AppText style={styles.sectionTitle}>Observations</AppText>
+          <AppText style={styles.sectionTitle}>Activity</AppText>
           <AppText style={styles.sectionMeta}>{observationItems.length} recorded</AppText>
         </View>
 
@@ -373,8 +355,6 @@ function TreePhotos({
               <Image source={{ uri: photo.image_url }} style={styles.galleryPhoto} />
 
               <View style={styles.photoCaption}>
-                <AppText style={styles.photoCaptionText}>Photo {index + 1}</AppText>
-
                 {canManagePhotos ? (
                   <TouchableOpacity
                     onPress={() => onDeletePhoto(photo)}
@@ -447,21 +427,15 @@ function TreePhotos({
 
 function TreeActivity({
   items,
-  onAddComment,
   onDeleteComment,
   isLoadingActivity,
-  currentUserId,
   isAdmin,
 }: {
   items: ActivityItem[];
-  onAddComment: () => void;
   onDeleteComment: (item: ActivityItem) => void;
   isLoadingActivity: boolean;
-  currentUserId: number | null;
   isAdmin: boolean;
 }) {
-  const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
-
   const commentItems = items.filter(
     (item) => item.type === 'tree_comment' || item.type === 'reply'
   );
@@ -472,23 +446,6 @@ function TreeActivity({
         <AppText style={styles.sectionTitle}>Activity Feed</AppText>
         <AppText style={styles.sectionMeta}>{commentItems.length} comments</AppText>
       </View>
-
-      <View style={styles.infoSection}>
-        <AppText style={styles.sectionTitle}>Community</AppText>
-        <AppText style={styles.infoText}>
-          When commenting on a tree, make sure it is relevant to the tree.
-        </AppText>
-      </View>
-
-      {isLoggedIn ? (
-        <AppButton
-          title="Add Comment"
-          variant="secondary"
-          onPress={onAddComment}
-          style={styles.sectionActionWrap}
-          buttonStyle={styles.sectionActionButton}
-        />
-      ) : null}
 
       {isLoadingActivity ? (
         <View style={styles.emptyStateCard}>
@@ -542,15 +499,73 @@ function TreeActivity({
   );
 }
 
+function TreeQrCode({
+  treeId,
+  qrValue,
+  onCopy,
+  onSave,
+  qrRef,
+}: {
+  treeId: number;
+  qrValue: string;
+  onCopy: () => void;
+  onSave: () => void;
+  qrRef: React.RefObject<QRCode | null>;
+}) {
+  return (
+    <View style={styles.sectionStack}>
+      <View style={styles.sectionHeaderRow}>
+        <AppText style={styles.sectionTitle}>Tree QR Code</AppText>
+        <AppText style={styles.sectionMeta}>Tree #{treeId}</AppText>
+      </View>
+
+      <View style={styles.qrCard}>
+        <View style={styles.qrCodeWrap}>
+          <QRCode value={qrValue} size={210} getRef={(ref) => (qrRef.current = ref)} />
+        </View>
+
+        <AppText style={styles.qrCardTitle}>Scan to open tree overview</AppText>
+        <AppText style={styles.qrCardBody}>
+          This QR code opens the dashboard page for this specific tree.
+        </AppText>
+
+        <View style={styles.qrLinkBox}>
+          <AppText style={styles.qrLinkText}>{qrValue}</AppText>
+        </View>
+
+        <AppButton
+          title="Copy Tree Link"
+          variant="secondary"
+          onPress={onCopy}
+          style={styles.sectionActionWrap}
+          buttonStyle={styles.sectionActionButton}
+        />
+
+        <AppButton
+          title="Save QR Code"
+          variant="primary"
+          onPress={onSave}
+          style={styles.sectionActionWrap}
+          buttonStyle={styles.sectionActionButton}
+        />
+      </View>
+    </View>
+  );
+}
+
 function TreeFooter({
   activeTab,
   onChangeTab,
+  onAddComment,
+  canAddComment,
   onClose,
   photoCount,
   activityCount,
 }: {
   activeTab: PopupTab;
   onChangeTab: (tab: PopupTab) => void;
+  onAddComment: () => void;
+  canAddComment: boolean;
   onClose: () => void;
   photoCount: number;
   activityCount: number;
@@ -579,6 +594,8 @@ function TreeFooter({
     shortcutLabel = 'Overview';
   }
 
+  const showAddComment = activeTab === 'activity' && canAddComment;
+
   return (
     <View style={styles.footer}>
       <AppButton
@@ -590,12 +607,24 @@ function TreeFooter({
         textStyle={styles.footerSecondaryText}
       />
 
+      {showAddComment ? (
+        <AppButton
+          title="Add Comment"
+          variant="accent"
+          onPress={onAddComment}
+          style={styles.footerCommentWrap}
+          buttonStyle={styles.footerCommentButton}
+          textStyle={styles.footerCommentText}
+        />
+      ) : null}
+
       <AppButton
         title="Done"
         variant="primary"
         onPress={onClose}
         style={styles.footerPrimaryWrap}
         buttonStyle={styles.footerPrimaryButton}
+        textStyle={styles.footerPrimaryText}
       />
     </View>
   );
@@ -641,6 +670,14 @@ export default function TreeDetailsDashboard({
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
   const canManagePhotos = isAdmin;
   const canDeleteTree = isAdmin;
+  const canShowQrCode = typeof tree.id === 'number';
+  const configuredWebOrigin = process.env.EXPO_PUBLIC_WEB_ORIGIN?.trim().replace(/\/+$/, '');
+  const treeOverviewPath = canShowQrCode ? `/treeDashboard/${tree.id}` : null;
+  const webUrl =
+    treeOverviewPath && configuredWebOrigin ? `${configuredWebOrigin}${treeOverviewPath}` : null;
+  const nativeDeepLink = treeOverviewPath ? Linking.createURL(treeOverviewPath) : null;
+  const qrValue = webUrl ?? nativeDeepLink;
+  const qrCodeRef = useRef<QRCode | null>(null);
 
   useEffect(() => {
     setDisplayTree(tree);
@@ -965,7 +1002,7 @@ export default function TreeDetailsDashboard({
 
     const parsed = Number(trimmed);
     if (!Number.isFinite(parsed)) {
-      throw new Error(`${label} must be a valid number.`);
+      showStatusMessage('Must be valid number', 'error');
     }
 
     return parsed;
@@ -1141,6 +1178,91 @@ export default function TreeDetailsDashboard({
     }
   };
 
+  const handleCopyQrLink = async () => {
+    if (!qrValue) {
+      showStatusMessage('QR unavailable', 'Tree link could not be generated.', 'error');
+      return;
+    }
+
+    try {
+      await Clipboard.setStringAsync(qrValue);
+      showStatusMessage('Copied', 'Tree overview link copied to clipboard.', 'success');
+    } catch (error) {
+      showStatusMessage(
+        'Copy Failed',
+        error instanceof Error ? error.message : 'Unable to copy QR link.',
+        'error'
+      );
+    }
+  };
+
+  const getQrPngDataUrl = async (): Promise<string> => {
+    const svg = qrCodeRef.current;
+    if (!svg) {
+      showStatusMessage('QR Code is not ready yet', 'Tree link could not be generated.', 'error');
+    }
+
+    return new Promise((resolve) => {
+      svg.toDataURL((data) => {
+        resolve(`data:image/png;base64,${data}`);
+      });
+    });
+  };
+
+  const handleSaveQrCode = async () => {
+    if (!canShowQrCode || !qrValue) {
+      showStatusMessage('QR unavailable', 'Tree link could not be generated.', 'error');
+      return;
+    }
+
+    try {
+      const dataUrl = await getQrPngDataUrl();
+
+      if (Platform.OS === 'web') {
+        if (typeof document === 'undefined') {
+          showStatusMessage('Unable to download on this device', 'error');
+        }
+
+        const anchor = document.createElement('a');
+        anchor.href = dataUrl;
+        anchor.download = `tree-${tree.id}-qr.png`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+
+        showStatusMessage('Downloaded', 'QR code downloaded as PNG.', 'success');
+        return;
+      }
+
+      const cacheDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+      if (!cacheDir) {
+        showStatusMessage('Unable to access local storage', 'error');
+      }
+
+      const base64 = dataUrl.replace('data:image/png;base64,', '');
+      const fileUri = `${cacheDir}tree-${tree.id}-qr.png`;
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: EncodingType.Base64,
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'image/png',
+          dialogTitle: `Save QR for Tree #${tree.id}`,
+        });
+        showStatusMessage('Ready to save', 'Use the share sheet to save the QR image.', 'success');
+      } else {
+        showStatusMessage('Saved', `QR code image created: ${fileUri}`, 'success');
+      }
+    } catch (error) {
+      showStatusMessage(
+        'Save Failed',
+        error instanceof Error ? error.message : 'Unable to save QR code image.',
+        'error'
+      );
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1246,7 +1368,8 @@ export default function TreeDetailsDashboard({
         <ScrollView
           style={styles.contentScroll}
           contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator
+          indicatorStyle="black"
         >
           {activeTab === 'overview' ? (
             <TreeOverview
@@ -1274,18 +1397,38 @@ export default function TreeDetailsDashboard({
           {activeTab === 'activity' ? (
             <TreeActivity
               items={commentItems}
-              onAddComment={handleAddComment}
               onDeleteComment={handleDeleteComment}
               isLoadingActivity={isLoadingActivity}
-              currentUserId={currentUserId}
               isAdmin={isAdmin}
             />
+          ) : null}
+
+          {activeTab === 'qr' && canShowQrCode && qrValue ? (
+            <TreeQrCode
+              treeId={tree.id}
+              qrValue={qrValue}
+              onCopy={handleCopyQrLink}
+              onSave={handleSaveQrCode}
+              qrRef={qrCodeRef}
+            />
+          ) : null}
+
+          {activeTab === 'qr' && (!canShowQrCode || !qrValue) ? (
+            <View style={styles.emptyStateCard}>
+              <MaterialCommunityIcons name="qrcode-remove" size={30} color="#4A4A4A" />
+              <AppText style={styles.emptyStateTitle}>QR code unavailable</AppText>
+              <AppText style={styles.emptyStateBody}>
+                This tree does not have enough information to generate a QR link yet.
+              </AppText>
+            </View>
           ) : null}
         </ScrollView>
 
         <TreeFooter
           activeTab={activeTab}
           onChangeTab={setActiveTab}
+          onAddComment={handleAddComment}
+          canAddComment={isLoggedIn}
           onClose={onClose}
           photoCount={photos.length}
           activityCount={activityItems.length}
@@ -1995,6 +2138,7 @@ const styles = StyleSheet.create({
 
   footerSecondaryText: {
     fontSize: 14,
+    textAlign: 'center',
   },
 
   footerPrimaryWrap: {
@@ -2002,10 +2146,40 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
 
+  footerCommentWrap: {
+    flex: 1,
+    marginBottom: 0,
+  },
+
+  footerCommentButton: {
+    minHeight: 50,
+    marginBottom: 0,
+    borderRadius: 14,
+    backgroundColor: '#2D7F36',
+    borderWidth: 1,
+    borderColor: '#1E5A26',
+    shadowColor: '#143A1A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.26,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+
+  footerCommentText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+
   footerPrimaryButton: {
     minHeight: 50,
     marginBottom: 0,
     borderRadius: 14,
+  },
+
+  footerPrimaryText: {
+    textAlign: 'center',
   },
 
   editOverlay: {
@@ -2426,6 +2600,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#56705C',
+  },
+
+  qrCard: {
+    borderRadius: 22,
+    padding: 18,
+    backgroundColor: '#EEF6EB',
+    borderWidth: 1,
+    borderColor: '#D8E7D4',
+    alignItems: 'center',
+  },
+
+  qrCodeWrap: {
+    borderRadius: 18,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D6E1D2',
+  },
+
+  qrCardTitle: {
+    marginTop: 14,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#2B4330',
+    textAlign: 'center',
+  },
+
+  qrCardBody: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#55695A',
+    textAlign: 'center',
+  },
+
+  qrLinkBox: {
+    width: '100%',
+    marginTop: 14,
+    marginBottom: 12,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#CFDDCB',
+    backgroundColor: '#F8FBF7',
+  },
+
+  qrLinkText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#31513A',
   },
 
   topRightActions: {
