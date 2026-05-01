@@ -6,7 +6,7 @@ function createRequireVerified({ db }) {
       const auth = await requireAuthenticatedUser({ req, db });
 
       if (!auth?.user) {
-        return res.status(401).json({ error: "Authentication required" });
+        return res.status(401).json({ error: "Authentication required", code: "AuthError" });
       }
 
       if (!auth.user.verified_at) {
@@ -18,8 +18,11 @@ function createRequireVerified({ db }) {
 
       req.resolvedUser = auth.user;
       next();
-    } catch {
-      return res.status(401).json({ error: "Authentication required" });
+    } catch (err) {
+      return res.status(401).json({ 
+        error: err.message || "Authentication required",
+        code: err.name || "AuthError"
+      });
     }
   };
 }
