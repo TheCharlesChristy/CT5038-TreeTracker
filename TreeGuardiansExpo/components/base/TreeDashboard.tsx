@@ -9,6 +9,7 @@ import {
   View,
   useWindowDimensions,
   Pressable,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
@@ -32,11 +33,18 @@ import {
 } from '@/lib/treeApi';
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
+import { EncodingType } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Linking from 'expo-linking';
+import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
 import { TreeSpeciesSelect } from './TreeSpeciesSelect';
 import { estimateTreeEcoStats } from '@/lib/treeEcoEstimates';
+import QRCode from 'react-native-qrcode-svg';
 
-type PopupTab = 'overview' | 'photos' | 'activity';
+type PopupTab = 'overview' | 'photos' | 'activity' | 'qr';
 type ActivityType = 'wildlife' | 'disease' | 'seen' | 'tree_comment' | 'reply';
 type EditNumericField = 'diameter' | 'height' | 'circumference';
 
@@ -67,6 +75,7 @@ const TABS: {
   { key: 'overview', label: 'Overview', icon: 'text-box-search-outline' },
   { key: 'photos', label: 'Photos', icon: 'image-multiple-outline' },
   { key: 'activity', label: 'Activity', icon: 'message-badge-outline' },
+  { key: 'qr', label: 'QR Code', icon: 'qrcode' },
 ];
 
 function parseEstimateNumber(value: string): number | undefined {
@@ -536,6 +545,60 @@ function TreeActivity({
   );
 }
 
+function TreeQrCode({
+  treeId,
+  qrValue,
+  onCopy,
+  onSave,
+  qrRef,
+}: {
+  treeId: number;
+  qrValue: string;
+  onCopy: () => void;
+  onSave: () => void;
+  qrRef: React.RefObject<QRCode | null>;
+}) {
+  return (
+    <View style={styles.sectionStack}>
+      <View style={styles.sectionHeaderRow}>
+        <AppText style={styles.sectionTitle}>Tree QR Code</AppText>
+        <AppText style={styles.sectionMeta}>Tree #{treeId}</AppText>
+      </View>
+
+      <View style={styles.qrCard}>
+        <View style={styles.qrCodeWrap}>
+          <QRCode value={qrValue} size={210} getRef={(ref) => (qrRef.current = ref)} />
+        </View>
+
+        <AppText style={styles.qrCardTitle}>Scan to open tree overview</AppText>
+        <AppText style={styles.qrCardBody}>
+          This QR code opens the dashboard page for this specific tree.
+        </AppText>
+
+        <View style={styles.qrLinkBox}>
+          <AppText style={styles.qrLinkText}>{qrValue}</AppText>
+        </View>
+
+        <AppButton
+          title="Copy Tree Link"
+          variant="secondary"
+          onPress={onCopy}
+          style={styles.sectionActionWrap}
+          buttonStyle={styles.sectionActionButton}
+        />
+
+        <AppButton
+          title="Save QR Code"
+          variant="primary"
+          onPress={onSave}
+          style={styles.sectionActionWrap}
+          buttonStyle={styles.sectionActionButton}
+        />
+      </View>
+    </View>
+  );
+}
+
 function TreeFooter({
   activeTab,
   onChangeTab,
@@ -635,6 +698,14 @@ export default function TreeDetailsDashboard({
   const isLoggedIn = typeof currentUserId === 'number' && currentUserId > 0;
   const canManagePhotos = isAdmin;
   const canDeleteTree = isAdmin;
+  const canShowQrCode = typeof tree.id === 'number';
+  const configuredWebOrigin = process.env.EXPO_PUBLIC_WEB_ORIGIN?.trim().replace(/\/+$/, '');
+  const treeOverviewPath = canShowQrCode ? `/treeDashboard/${tree.id}` : null;
+  const webUrl =
+    treeOverviewPath && configuredWebOrigin ? `${configuredWebOrigin}${treeOverviewPath}` : null;
+  const nativeDeepLink = treeOverviewPath ? Linking.createURL(treeOverviewPath) : null;
+  const qrValue = webUrl ?? nativeDeepLink;
+  const qrCodeRef = useRef<QRCode | null>(null);
 
   useEffect(() => {
     setDisplayTree(tree);
@@ -959,7 +1030,7 @@ export default function TreeDetailsDashboard({
 
     const parsed = Number(trimmed);
     if (!Number.isFinite(parsed)) {
-      throw new Error(`${label} must be a valid number.`);
+      showStatusMessage('Must be valid number', 'error');
     }
 
     return parsed;
@@ -1135,6 +1206,91 @@ export default function TreeDetailsDashboard({
     }
   };
 
+  const handleCopyQrLink = async () => {
+    if (!qrValue) {
+      showStatusMessage('QR unavailable', 'Tree link could not be generated.', 'error');
+      return;
+    }
+
+    try {
+      await Clipboard.setStringAsync(qrValue);
+      showStatusMessage('Copied', 'Tree overview link copied to clipboard.', 'success');
+    } catch (error) {
+      showStatusMessage(
+        'Copy Failed',
+        error instanceof Error ? error.message : 'Unable to copy QR link.',
+        'error'
+      );
+    }
+  };
+
+  const getQrPngDataUrl = async (): Promise<string> => {
+    const svg = qrCodeRef.current;
+    if (!svg) {
+      showStatusMessage('QR Code is not ready yet', 'Tree link could not be generated.', 'error');
+    }
+
+    return new Promise((resolve) => {
+      svg.toDataURL((data) => {
+        resolve(`data:image/png;base64,${data}`);
+      });
+    });
+  };
+
+  const handleSaveQrCode = async () => {
+    if (!canShowQrCode || !qrValue) {
+      showStatusMessage('QR unavailable', 'Tree link could not be generated.', 'error');
+      return;
+    }
+
+    try {
+      const dataUrl = await getQrPngDataUrl();
+
+      if (Platform.OS === 'web') {
+        if (typeof document === 'undefined') {
+          showStatusMessage('Unable to download on this device', 'error');
+        }
+
+        const anchor = document.createElement('a');
+        anchor.href = dataUrl;
+        anchor.download = `tree-${tree.id}-qr.png`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+
+        showStatusMessage('Downloaded', 'QR code downloaded as PNG.', 'success');
+        return;
+      }
+
+      const cacheDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+      if (!cacheDir) {
+        showStatusMessage('Unable to access local storage', 'error');
+      }
+
+      const base64 = dataUrl.replace('data:image/png;base64,', '');
+      const fileUri = `${cacheDir}tree-${tree.id}-qr.png`;
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: EncodingType.Base64,
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'image/png',
+          dialogTitle: `Save QR for Tree #${tree.id}`,
+        });
+        showStatusMessage('Ready to save', 'Use the share sheet to save the QR image.', 'success');
+      } else {
+        showStatusMessage('Saved', `QR code image created: ${fileUri}`, 'success');
+      }
+    } catch (error) {
+      showStatusMessage(
+        'Save Failed',
+        error instanceof Error ? error.message : 'Unable to save QR code image.',
+        'error'
+      );
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1274,6 +1430,26 @@ export default function TreeDetailsDashboard({
               currentUserId={currentUserId}
               isAdmin={isAdmin}
             />
+          ) : null}
+
+          {activeTab === 'qr' && canShowQrCode && qrValue ? (
+            <TreeQrCode
+              treeId={tree.id}
+              qrValue={qrValue}
+              onCopy={handleCopyQrLink}
+              onSave={handleSaveQrCode}
+              qrRef={qrCodeRef}
+            />
+          ) : null}
+
+          {activeTab === 'qr' && (!canShowQrCode || !qrValue) ? (
+            <View style={styles.emptyStateCard}>
+              <MaterialCommunityIcons name="qrcode-remove" size={30} color="#4A4A4A" />
+              <AppText style={styles.emptyStateTitle}>QR code unavailable</AppText>
+              <AppText style={styles.emptyStateBody}>
+                This tree does not have enough information to generate a QR link yet.
+              </AppText>
+            </View>
           ) : null}
         </ScrollView>
 
@@ -2381,6 +2557,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#56705C',
+  },
+
+  qrCard: {
+    borderRadius: 22,
+    padding: 18,
+    backgroundColor: '#EEF6EB',
+    borderWidth: 1,
+    borderColor: '#D8E7D4',
+    alignItems: 'center',
+  },
+
+  qrCodeWrap: {
+    borderRadius: 18,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D6E1D2',
+  },
+
+  qrCardTitle: {
+    marginTop: 14,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#2B4330',
+    textAlign: 'center',
+  },
+
+  qrCardBody: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#55695A',
+    textAlign: 'center',
+  },
+
+  qrLinkBox: {
+    width: '100%',
+    marginTop: 14,
+    marginBottom: 12,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#CFDDCB',
+    backgroundColor: '#F8FBF7',
+  },
+
+  qrLinkText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#31513A',
   },
 
   topRightActions: {
