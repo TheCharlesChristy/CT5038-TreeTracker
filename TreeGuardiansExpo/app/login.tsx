@@ -468,26 +468,6 @@ export default function Login() {
                   </ScrollView>
                 )}
               </View>
-
-              <View style={styles.previewStatsRow}>
-                <View style={styles.previewStatCard}>
-                  <AppText variant="caption" style={styles.previewStatLabel}>
-                    Ready for the field
-                  </AppText>
-                  <AppText variant="subtitle" style={styles.previewStatValue}>
-                    Autofill enabled
-                  </AppText>
-                </View>
-
-                <View style={styles.previewStatCard}>
-                  <AppText variant="caption" style={styles.previewStatLabel}>
-                    Community focus
-                  </AppText>
-                  <AppText variant="subtitle" style={styles.previewStatValue}>
-                    Shared local stewardship
-                  </AppText>
-                </View>
-              </View>
             </View>
           </View>
         </View>
