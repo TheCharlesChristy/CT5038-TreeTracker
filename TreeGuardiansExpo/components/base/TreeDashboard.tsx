@@ -36,7 +36,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import { EncodingType } from 'expo-file-system';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
@@ -315,20 +314,12 @@ function TreeOverview({
 
 function TreePhotos({
   photos,
-  onAddPhoto,
   onDeletePhoto,
-  canAddPhoto,
   canManagePhotos,
-  isPhotoLimitReached,
-  isUploadingPhotos,
 }: {
   photos: TreePhoto[];
-  onAddPhoto: () => void;
   onDeletePhoto: (photo: TreePhoto) => void;
-  canAddPhoto: boolean;
   canManagePhotos: boolean;
-  isPhotoLimitReached: boolean;
-  isUploadingPhotos: boolean;
 }) {
   return (
     <View style={styles.sectionStack}>
@@ -343,72 +334,35 @@ function TreePhotos({
           showsHorizontalScrollIndicator={true}
           contentContainerStyle={styles.photoRail}
         >
-          {photos.map((photo, index) => (
+          {photos.map((photo) => (
             <View key={photo.id} style={styles.photoCard}>
               <Image source={{ uri: photo.image_url }} style={styles.galleryPhoto} />
 
-              <View style={styles.photoCaption}>
-                {canManagePhotos ? (
-                  <TouchableOpacity
-                    onPress={() => onDeletePhoto(photo)}
-                    activeOpacity={0.8}
-                    style={styles.deletePhotoButton}
-                  >
-                    <MaterialCommunityIcons
-                      name="trash-can-outline"
-                      size={16}
-                      color="#8C2D04"
-                    />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              {canManagePhotos ? (
+                <TouchableOpacity
+                  onPress={() => onDeletePhoto(photo)}
+                  activeOpacity={0.8}
+                  style={styles.deletePhotoButton}
+                >
+                  <MaterialCommunityIcons
+                    name="trash-can-outline"
+                    size={16}
+                    color="#FFFFFF"
+                  />
+                </TouchableOpacity>
+              ) : null}
             </View>
           ))}
-
-          {canAddPhoto && !isPhotoLimitReached ? (
-            <TouchableOpacity
-              style={styles.addPhotoTile}
-              onPress={onAddPhoto}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons
-                name="camera-plus-outline"
-                size={26}
-                color="#1B5E20"
-              />
-              <AppText style={styles.addPhotoTitle}>Add photo</AppText>
-              <AppText style={styles.addPhotoText}>
-                You can upload up to 5 images for this tree.
-              </AppText>
-            </TouchableOpacity>
-          ) : null}
         </ScrollView>
       ) : (
         <View style={styles.emptyStateCard}>
           <MaterialCommunityIcons name="image-off-outline" size={30} color="#4A4A4A" />
           <AppText style={styles.emptyStateTitle}>No photos yet</AppText>
           <AppText style={styles.emptyStateBody}>
-            When images are added, they will appear here in a swipeable gallery.
+            Use the Add Photo button below to upload images for this tree.
           </AppText>
         </View>
       )}
-
-      {canAddPhoto ? (
-        <AppButton
-          title={
-            isUploadingPhotos
-              ? 'Uploading...'
-              : isPhotoLimitReached
-                ? 'Photo Limit Reached'
-                : 'Add Photo'
-          }
-          variant="secondary"
-          onPress={onAddPhoto}
-          disabled={isPhotoLimitReached || isUploadingPhotos}
-          style={styles.sectionActionWrap}
-          buttonStyle={styles.sectionActionButton}
-        />
-      ) : null}
     </View>
   );
 }
@@ -549,6 +503,10 @@ function TreeFooter({
   onClose,
   photoCount,
   activityCount,
+  onAddPhoto,
+  canAddPhoto,
+  isPhotoLimitReached,
+  isUploadingPhotos,
 }: {
   activeTab: PopupTab;
   onChangeTab: (tab: PopupTab) => void;
@@ -557,6 +515,10 @@ function TreeFooter({
   onClose: () => void;
   photoCount: number;
   activityCount: number;
+  onAddPhoto: () => void;
+  canAddPhoto: boolean;
+  isPhotoLimitReached: boolean;
+  isUploadingPhotos: boolean;
 }) {
   let shortcutTab: PopupTab = 'overview';
   let shortcutLabel = 'Overview';
@@ -583,6 +545,7 @@ function TreeFooter({
   }
 
   const showAddComment = activeTab === 'activity' && canAddComment;
+  const showAddPhoto = activeTab === 'photos' && canAddPhoto;
 
   return (
     <View style={styles.footer}>
@@ -600,6 +563,18 @@ function TreeFooter({
           title="Add Comment"
           variant="accent"
           onPress={onAddComment}
+          style={styles.footerCommentWrap}
+          buttonStyle={styles.footerCommentButton}
+          textStyle={styles.footerCommentText}
+        />
+      ) : null}
+
+      {showAddPhoto ? (
+        <AppButton
+          title={isUploadingPhotos ? 'Uploading...' : isPhotoLimitReached ? 'Photo Limit Reached' : 'Add Photo'}
+          variant="accent"
+          onPress={onAddPhoto}
+          disabled={isPhotoLimitReached || isUploadingPhotos}
           style={styles.footerCommentWrap}
           buttonStyle={styles.footerCommentButton}
           textStyle={styles.footerCommentText}
@@ -1373,12 +1348,8 @@ export default function TreeDetailsDashboard({
           {activeTab === 'photos' ? (
             <TreePhotos
               photos={photos}
-              onAddPhoto={handleAddPhoto}
               onDeletePhoto={handleDeletePhoto}
-              canAddPhoto={isLoggedIn}
               canManagePhotos={canManagePhotos}
-              isPhotoLimitReached={isPhotoLimitReached}
-              isUploadingPhotos={isUploadingPhotos}
             />
           ) : null}
 
@@ -1420,6 +1391,10 @@ export default function TreeDetailsDashboard({
           onClose={onClose}
           photoCount={photos.length}
           activityCount={activityItems.length}
+          onAddPhoto={handleAddPhoto}
+          canAddPhoto={isLoggedIn}
+          isPhotoLimitReached={isPhotoLimitReached}
+          isUploadingPhotos={isUploadingPhotos}
         />
       </View>
 
@@ -2489,17 +2464,12 @@ const styles = StyleSheet.create({
   },
 
   deletePhotoButton: {
-    marginLeft: 8,
-    padding: 4,
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    padding: 8,
     borderRadius: 999,
-    backgroundColor: '#FDECEC',
-  },
-
-  photoCaption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
 
   photoRail: {
@@ -2511,12 +2481,14 @@ const styles = StyleSheet.create({
     width: 220,
     flexShrink: 0,
     borderRadius: 16,
+    overflow: 'hidden',
     backgroundColor: '#E8F0E5',
   },
 
   galleryPhoto: {
     width: '100%',
     height: 220,
+    borderRadius: 16,
   },
 
   photoCaptionText: {

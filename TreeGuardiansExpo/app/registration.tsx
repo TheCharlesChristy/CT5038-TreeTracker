@@ -477,7 +477,6 @@ const styles = StyleSheet.create({
   formCard: {
     flex: 1,
     minHeight: 720,
-    maxHeight: 720,
     backgroundColor: 'rgba(248, 252, 248, 0.76)',
     borderRadius: 20,
     padding: Theme.Spacing.extraLarge,
@@ -665,8 +664,6 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     flex: 1,
-    minHeight: 720,
-    maxHeight: 720,
     borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.22)',
