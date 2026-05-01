@@ -10,6 +10,7 @@ export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
 
 export type HealthFilter = 'all' | 'healthy' | 'attention';
 export type DistanceFilterKm = number | null;
+export const TREE_REFRESH_INTERVAL_MS = 10000;
 
 export function useTreeMapState() {
   const [mode, setMode] = useState<PageMode>('explore');
@@ -31,6 +32,7 @@ export function useTreeMapState() {
 
   const [isLoadingTrees, setIsLoadingTrees] = useState(false);
   const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
+  const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(null);
 
   const showDimOverlay = mode !== 'explore' && mode !== 'add' ;
 
@@ -127,13 +129,15 @@ export function useTreeMapState() {
   }, []);
 
   useEffect(() => {
+    setNextRefreshAt(Date.now() + TREE_REFRESH_INTERVAL_MS);
     fetchTreesFromServer();
   }, [fetchTreesFromServer]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
+      setNextRefreshAt(Date.now() + TREE_REFRESH_INTERVAL_MS);
       void fetchTreesFromServer();
-    }, 10000);
+    }, TREE_REFRESH_INTERVAL_MS);
 
     return () => {
       clearInterval(intervalId);
@@ -351,5 +355,7 @@ export function useTreeMapState() {
     clearAddValidationError,
     clearStatusMessage,
     getDistanceFromCenterKm,
+    nextRefreshAt,
+    refreshIntervalMs: TREE_REFRESH_INTERVAL_MS,
   };
 }

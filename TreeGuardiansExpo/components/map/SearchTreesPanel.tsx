@@ -22,6 +22,8 @@ type SearchTreesPanelProps = {
   onClearFilters: () => void;
   onSelectTree: (tree: Tree) => void;
   getDistanceKm: (tree: Tree) => number;
+  topInset?: number;
+  bottomInset?: number;
 };
 
 const DISTANCE_OPTIONS: DistanceFilterKm[] = [null, 1.0, 2.5, 4.0, 6.0];
@@ -40,6 +42,8 @@ export function SearchTreesPanel({
   onClearFilters,
   onSelectTree,
   getDistanceKm,
+  topInset = 12,
+  bottomInset = 104,
 }: SearchTreesPanelProps) {
   const [sliderWidth, setSliderWidth] = React.useState(0);
 
@@ -71,7 +75,7 @@ export function SearchTreesPanel({
   }), [updateDistanceFromPosition]);
 
   return (
-    <View style={styles.searchPanelWrap}>
+    <View style={[styles.searchPanelWrap, { top: topInset, bottom: bottomInset }]}>
       <View style={styles.searchPanel}>
         <View style={styles.panelHeaderRow}>
           <AppText style={styles.panelTitle}>Search Trees</AppText>
@@ -194,9 +198,7 @@ export function SearchTreesPanel({
 const styles = StyleSheet.create({
   searchPanelWrap: {
     position: 'absolute',
-    top: 12,
     left: 0,
-    bottom: 104,
     zIndex: 220,
     width: '90%',
     maxWidth: 440,

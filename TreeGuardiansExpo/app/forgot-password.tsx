@@ -6,7 +6,8 @@ import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { Theme } from '@/styles/theme';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import { FaviconHead } from '@/components/base/FaviconHead';
 import { API_BASE, ENDPOINTS } from '@/config/api';
 
 export default function ForgotPasswordScreen() {
@@ -69,11 +70,14 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <AppContainer
-      scrollable
-      noPadding
-      backgroundImage={require('@/assets/images/CharltonKings.jpg')}
-    >
+    <>
+      <Stack.Screen options={{ title: 'Forgot Password | TreeGuardians' }} />
+      <FaviconHead title="Forgot Password | TreeGuardians" />
+      <AppContainer
+        scrollable
+        noPadding
+        backgroundImage={require('@/assets/images/CharltonKings.jpg')}
+      >
       <View
         style={[
           styles.page,
@@ -168,6 +172,7 @@ export default function ForgotPasswordScreen() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 

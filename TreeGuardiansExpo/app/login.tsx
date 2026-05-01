@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { AppContainer } from '@/components/base/AppContainer';
@@ -12,18 +11,19 @@ import { AppButton } from '@/components/base/AppButton';
 import { AppInput } from '@/components/base/AppInput';
 import { AuthenticatedRedirect } from '@/components/auth/AuthenticatedRedirect';
 import { Theme } from '@/styles/theme';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { getPasswordError } from '@/lib/authValidation';
 import { saveItem } from '@/utilities/authStorage';
 import { API_BASE, ENDPOINTS } from '@/config/api';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { fetchRecentTreeActivity, LocalTreeActivityItem } from '@/lib/activityApi';
+import { useStableViewportDimensions } from '@/hooks/useStableViewportDimensions';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function Login() {
   const successRedirectDuration = 1;
-  const { width, height } = useWindowDimensions();
+  const { width, height } = useStableViewportDimensions();
   const isMobileLayout = width < 680;
-  const isWideLayout = width >= 920;
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,8 +41,6 @@ export default function Login() {
 
   const [credentialFocused, setCredentialFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [formCardHeight, setFormCardHeight] = useState<number | undefined>(undefined);
-
   const passwordRef = useRef<TextInput>(null);
 
   const trimmedCredential = useMemo(() => usernameOrEmail.trim(), [usernameOrEmail]);
@@ -148,11 +146,14 @@ export default function Login() {
   };
 
   return (
-    <AppContainer
-      scrollable
-      noPadding
-      backgroundImage={require('@/assets/images/CharltonKings.jpg')}
-    >
+    <>
+      <Stack.Screen options={{ title: 'Sign In | TreeGuardians' }} />
+      <FaviconHead title="Sign In | TreeGuardians" />
+      <AppContainer
+        scrollable
+        noPadding
+        backgroundImage={require('@/assets/images/CharltonKings.jpg')}
+      >
       <AuthenticatedRedirect />
       <View
         style={[
@@ -179,16 +180,14 @@ export default function Login() {
           style={[
             styles.shell,
             isMobileLayout && styles.shellMobile,
-            isWideLayout ? styles.shellWide : styles.shellStacked,
           ]}
         >
           <View
             style={[
               styles.formColumn,
-              isWideLayout ? styles.formColumnWide : styles.formColumnStacked,
             ]}
           >
-            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]} onLayout={(e) => setFormCardHeight(e.nativeEvent.layout.height)}>
+            <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
               <View style={styles.topRow}>
                 <Pressable onPress={() => router.push('/')} style={styles.homeLink}>
                   <AppText variant="caption" style={styles.homeLinkText}>
@@ -363,11 +362,9 @@ export default function Login() {
           <View
             style={[
               styles.previewColumn,
-              isWideLayout ? styles.previewColumnWide : styles.previewColumnStacked,
-              isWideLayout && formCardHeight != null && { height: formCardHeight },
             ]}
           >
-            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile, isWideLayout && styles.previewCardWide]}>
+            <View style={[styles.previewCard, isMobileLayout && styles.previewCardMobile]}>
               <View style={styles.previewEyebrow}>
                 <AppText variant="caption" style={styles.previewEyebrowText}>
                   Calm, local, community-first
@@ -493,6 +490,7 @@ export default function Login() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 
@@ -514,30 +512,25 @@ const styles = StyleSheet.create({
     maxWidth: 1160,
     gap: Theme.Spacing.large,
     zIndex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+    justifyContent: 'center',
   },
   shellMobile: {
     gap: Theme.Spacing.medium,
   },
-  shellWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  shellStacked: {
-    flexDirection: 'column',
-  },
   formColumn: {
-    width: '100%',
-  },
-  formColumnWide: {
-    flex: 5,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 500,
     maxWidth: 520,
-  },
-  formColumnStacked: {
-    maxWidth: 520,
-    alignSelf: 'center',
+    minWidth: 300,
   },
   formCard: {
+    flex: 1,
+    minHeight: 720,
+    maxHeight: 720,
     backgroundColor: 'rgba(248, 252, 248, 0.76)',
     borderRadius: 24,
     padding: Theme.Spacing.extraLarge,
@@ -733,17 +726,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   previewColumn: {
-    width: '100%',
-  },
-  previewColumnWide: {
-    flex: 5,
-    maxWidth: 560,
-  },
-  previewColumnStacked: {
-    maxWidth: 560,
-    alignSelf: 'center',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 500,
+    maxWidth: 520,
+    minWidth: 300,
   },
   previewCard: {
+    flex: 1,
+    minHeight: 720,
+    maxHeight: 720,
     borderRadius: 28,
     padding: Theme.Spacing.extraLarge,
     justifyContent: 'space-between',
@@ -757,13 +749,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   previewCardMobile: {
-    minHeight: 520,
     borderRadius: 20,
     padding: Theme.Spacing.large,
-  },
-  previewCardWide: {
-    flex: 1,
-    overflow: 'hidden',
   },
   previewEyebrow: {
     alignSelf: 'flex-start',
