@@ -318,10 +318,16 @@ function TreePhotos({
   photos,
   onDeletePhoto,
   canManagePhotos,
+  isUploadingPhotos,
+  canAddPhoto,
+  onAddPhoto,
 }: {
   photos: TreePhoto[];
   onDeletePhoto: (photo: TreePhoto) => void;
   canManagePhotos: boolean;
+  isUploadingPhotos: boolean;
+  canAddPhoto: boolean;
+  onAddPhoto: () => void;
 }) {
   return (
     <View style={styles.sectionStack}>
@@ -1382,6 +1388,9 @@ export default function TreeDetailsDashboard({
               photos={photos}
               onDeletePhoto={handleDeletePhoto}
               canManagePhotos={canManagePhotos}
+              isUploadingPhotos={isUploadingPhotos}
+              canAddPhoto={isLoggedIn}
+              onAddPhoto={handleAddPhoto}
             />
           ) : null}
 
