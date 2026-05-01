@@ -11,6 +11,7 @@ import {
   Pressable,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
@@ -600,6 +601,8 @@ export default function TreeDetailsDashboard({
   isAdmin,
 }: TreeDetailsDashboardProps) {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const statusTopOffset = insets.top + (width < 760 ? 84 : 92);
   const [activeTab, setActiveTab] = useState<PopupTab>('overview');
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
@@ -1263,7 +1266,7 @@ export default function TreeDetailsDashboard({
 
   return (
     <View style={styles.wrapper} pointerEvents="box-none">
-      <StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
+      <StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} topOffset={statusTopOffset} />
 
       <View style={[styles.card, { width: cardWidth, maxHeight: cardMaxHeight }]}>
         <View style={styles.header}>

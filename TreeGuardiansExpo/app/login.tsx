@@ -820,6 +820,7 @@ const styles = StyleSheet.create({
   activityCard: {
     flex: 1,
     minHeight: 120,
+    maxHeight: 220,
     overflow: 'hidden',
     borderRadius: 18,
     backgroundColor: 'rgba(230, 244, 231, 0.10)',
