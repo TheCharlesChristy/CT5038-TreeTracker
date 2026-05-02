@@ -465,7 +465,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
       create: async () => ({ id: 2, username: "user", email: "user@example.com" }),
       getByUsername: async () => null,
       getByEmail: async () => null,
-      getById: async (id) => (id === 2 ? { id: 2, username: "user", email: "user@example.com" } : null)
+      getById: async (id) => (id === 2 ? { id: 2, username: "user", email: "user@example.com", verified_at: new Date().toISOString() } : null)
     },
     userPasswords: {
       setForUser: async () => ({ userId: 2 }),
