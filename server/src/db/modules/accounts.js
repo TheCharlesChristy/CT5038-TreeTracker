@@ -133,7 +133,7 @@ function createAccountEndpoints(ctx) {
       return this.getById(id, tx);
     },
 
-    async clearVerifiedAt(id, tx) {
+    async revokeVerification(id, tx) {
       ensurePositiveInt("id", id);
       const result = await run(
         runtimeExecutor(tx),

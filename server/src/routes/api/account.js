@@ -113,7 +113,7 @@ function createAccountRoute({ db, frontendUrl }) {
     const updatedUser = await db.transaction(async (tx) => {
       await db.users.updateById(userId, { email }, tx);
 
-      await db.users.clearVerifiedAt(userId, tx);
+      await db.users.revokeVerification(userId, tx);
 
       await db.emailVerificationTokens.deleteByUserId(userId, tx);
       verificationToken = await db.emailVerificationTokens.create(userId, tx);
