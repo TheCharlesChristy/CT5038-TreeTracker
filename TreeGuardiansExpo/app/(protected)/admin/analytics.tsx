@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -8,6 +8,7 @@ import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { canAccessManageUsers, useSessionUser } from '@/lib/session';
 import { fetchAnalytics, AnalyticsResponse } from '@/lib/adminApi';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function AnalyticsPage() {
   const { user, isLoading } = useSessionUser();
@@ -77,8 +78,11 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <AppContainer>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <>
+      <Stack.Screen options={{ title: 'Analytics | TreeGuardians' }} />
+      <FaviconHead title="Analytics | TreeGuardians" />
+      <AppContainer>
+        <ScrollView showsVerticalScrollIndicator>
         <View style={styles.topBar}>
           <NavigationButton onPress={() => router.push('/mainPage')}>
             Back to Map
@@ -199,6 +203,7 @@ export default function AnalyticsPage() {
         />
       </ScrollView>
     </AppContainer>
+    </>
   );
 }
 

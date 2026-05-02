@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import { FaviconHead } from '@/components/base/FaviconHead';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppInput } from '@/components/base/AppInput';
@@ -967,8 +968,11 @@ export default function DbTestBenchPage() {
     : undefined;
 
   return (
-    <AppContainer scrollable>
-      <View style={styles.topBar}>
+    <>
+      <Stack.Screen options={{ title: 'DB Test Bench | TreeGuardians' }} />
+      <FaviconHead title="DB Test Bench | TreeGuardians" />
+      <AppContainer scrollable>
+        <View style={styles.topBar}>
         <NavigationButton onPress={() => router.push('/mainPage')}>Return to Map</NavigationButton>
       </View>
 
@@ -1120,6 +1124,7 @@ export default function DbTestBenchPage() {
         </View>
       </View>
     </AppContainer>
+    </>
   );
 }
 

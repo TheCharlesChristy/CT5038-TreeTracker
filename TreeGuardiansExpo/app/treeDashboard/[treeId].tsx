@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import TreeDashboard from '@/components/base/TreeDashboard';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
@@ -8,6 +8,7 @@ import { Theme } from '@/styles/theme';
 import { Tree } from '@/objects/TreeDetails';
 import { fetchTrees } from '@/lib/treeApi';
 import { useSessionUser } from '@/lib/session';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function TreeDashboardPage() {
   const { treeId } = useLocalSearchParams<{ treeId: string }>();
@@ -90,15 +91,23 @@ export default function TreeDashboardPage() {
     );
   }
 
+  const pageTitle = tree.species
+    ? `${tree.species} | TreeHuggers`
+    : `Tree #${tree.id ?? treeId} | TreeHuggers`;
+
   return (
-    <AppContainer>
-      <TreeDashboard
-        tree={tree}
-        onClose={() => router.back()}
-        currentUserId={typeof user?.id === 'number' ? user.id : null}
-        isAdmin={user?.role === 'admin'}
-        isGuardian={user?.role === 'guardian'}
-      />
-    </AppContainer>
+    <>
+      <Stack.Screen options={{ title: pageTitle }} />
+      <FaviconHead title={pageTitle} />
+      <AppContainer>
+        <TreeDashboard
+          tree={tree}
+          onClose={() => router.back()}
+          currentUserId={typeof user?.id === 'number' ? user.id : null}
+          isAdmin={user?.role === 'admin'}
+          isGuardian={user?.role === 'guardian'}
+        />
+      </AppContainer>
+    </>
   );
 }

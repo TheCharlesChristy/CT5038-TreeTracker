@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import MapComponent from '@/components/base/MapComponent';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
@@ -19,13 +19,17 @@ import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
 import { DashboardPanel } from '@/components/map/DashboardPanel';
 import { FloatingActionBar } from '@/components/map/FloatingActionBar';
 import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
+import { CircularCountdown } from '@/components/base/CircularCountdown';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function MainPage() {
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
   const [loggedInUserRole, setLoggedInUserRole] = useState<AppUserRole>('user');
@@ -89,6 +93,8 @@ export default function MainPage() {
     clearSearchFilters,
     clearStatusMessage,
     getDistanceFromCenterKm,
+    nextRefreshAt,
+    refreshIntervalMs,
   } = useTreeMapState();
 
   const renderTreeIcon = useCallback((tree: Tree, { zoom }: { zoom: number }) => {
@@ -97,6 +103,11 @@ export default function MainPage() {
   }, [selectedTree?.id]);
 
   const visibleTrees = hasSearchFilters ? searchResults : plottedTrees;
+  const navOverlayInset = insets.top + (windowWidth < 760 ? 84 : 92);
+  const actionBarBottomInset = 24 + insets.bottom;
+  const actionBarHeight = 56;
+  const panelBottomInset = actionBarBottomInset + actionBarHeight + 14;
+  const refreshDurationSeconds = Math.max(1, Math.round(refreshIntervalMs / 1000));
   const activeFilterLabels = [
     searchQuery.trim() ? `Query: ${searchQuery.trim()}` : null,
     distanceFilterKm !== null ? `Distance: ${distanceFilterKm.toFixed(1)} km` : null,
@@ -153,8 +164,11 @@ export default function MainPage() {
   }, [clearLogoutTimer, closeAllOverlays, executeLogout, isLoggingOut]);
 
   return (
-    <ActionSheetProvider>
-      <AppContainer noPadding>
+    <>
+      <Stack.Screen options={{ title: 'Map | TreeGuardians' }} />
+      <FaviconHead title="Map | TreeGuardians" />
+      <ActionSheetProvider>
+        <AppContainer noPadding overlayNavBar>
         <View style={styles.page}>
           <MapComponent
             style={StyleSheet.absoluteFillObject}
@@ -171,7 +185,7 @@ export default function MainPage() {
             <TouchableOpacity style={styles.dimOverlay} onPress={closeAllOverlays} activeOpacity={1} />
           ) : null}
 
-          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} />
+          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} topOffset={navOverlayInset} />
 
           <StatusMessageBox
             status={logoutStatus}
@@ -180,13 +194,8 @@ export default function MainPage() {
             closeLabel="Cancel"
             showCopyButton={false}
             onClose={cancelLogout}
+            topOffset={navOverlayInset}
           />
-
-          <View style={styles.loggedInPill}>
-            <AppText style={styles.loggedInText}>
-              {loggedInUsername ? `Logged in as ${loggedInUsername}` : 'Browsing as Guest'}
-            </AppText>
-          </View>
 
           {hasSearchFilters ? (
             <View style={styles.activeFiltersCard}>
@@ -244,6 +253,8 @@ export default function MainPage() {
               isSelectingOnMap={isSelectingManualLocation}
               locationError={addValidationError}
               isSubmitting={isSubmittingTree}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -270,6 +281,8 @@ export default function MainPage() {
               onClearFilters={clearSearchFilters}
               onSelectTree={handleSelectSearchResultTree}
               getDistanceKm={getDistanceFromCenterKm}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -282,6 +295,8 @@ export default function MainPage() {
               onClose={closeAllOverlays}
               onLogout={handleLogout}
               isLoggingOut={isLoggingOut}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -291,6 +306,7 @@ export default function MainPage() {
               addActive={mode === 'add'}
               dashboardActive={mode === 'dashboard'}
               isGuest={loggedInUsername === null}
+              bottomOffset={actionBarBottomInset}
               onSearchPress={() => {
                 if (mode === 'search') {
                   closeAllOverlays();
@@ -315,30 +331,39 @@ export default function MainPage() {
               <AppText style={styles.loadingText}>Syncing trees...</AppText>
             </View>
           ) : null}
+
+          {nextRefreshAt !== null ? (
+            <View
+              style={[
+                styles.refreshTimer,
+                {
+                  left: insets.left + 4,
+                  bottom: insets.bottom + 4,
+                },
+              ]}
+            >
+              <CircularCountdown
+                key={`refresh-${nextRefreshAt}`}
+                duration={refreshDurationSeconds}
+                size={28}
+                strokeWidth={2}
+                color="rgba(150, 150, 150, 0.55)"
+                trackColor="rgba(150, 150, 150, 0.38)"
+                showLabel={false}
+                trackOnly={false}
+              />
+            </View>
+          ) : null}
         </View>
-      </AppContainer>
-    </ActionSheetProvider>
+        </AppContainer>
+      </ActionSheetProvider>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-  },
-
-  loggedInPill: {
-    position: 'absolute',
-    top: 20,
-    alignSelf: 'center',
-    zIndex: 180,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-
-  loggedInText: {
-    ...Theme.Typography.caption,
-    color: '#000',
-    fontFamily: 'Poppins_600SemiBold',
   },
 
   activeFiltersCard: {
@@ -846,5 +871,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     fontFamily: 'Poppins_600SemiBold',
+  },
+
+  refreshTimer: {
+    position: 'absolute',
+    zIndex: 230,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 });
