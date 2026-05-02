@@ -25,7 +25,13 @@ function createDbStub(health = { ready: true }) {
         deletedTokens.push(sessionToken);
         return { deleted: true };
       }
-    }
+    },
+    emailVerificationTokens: {
+      create: async () => "mock-token-hex",
+      deleteByUserId: async () => ({ count: 0 }),
+      deleteByToken: async () => ({ deleted: true }),
+      getByToken: async () => null
+    },
   };
 }
 
