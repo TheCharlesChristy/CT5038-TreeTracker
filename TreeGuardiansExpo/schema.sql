@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS guardians (
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
-CREATE INDEX idx_comments_tree_created_at ON comments_tree (created_at, comment_id, tree_id);
+CREATE INDEX idx_comments_tree_created_at ON comments_tree (created_at,comment_id,tree_id);
 
 CREATE INDEX idx_verification_tokens_user ON email_verification_tokens (user_id);
 
