@@ -1166,7 +1166,7 @@ export default function TreeDetailsDashboard({
     const svg = qrCodeRef.current;
 
     if (!svg) {
-      throw new Error('QR code not ready')
+      showStatusMessage('QR Code is not ready yet', 'Tree link could not be generated.', 'error');
     }
 
     return new Promise((resolve) => {
