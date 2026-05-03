@@ -35,8 +35,8 @@ import {
 import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
-import { EncodingType } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { EncodingType } from 'expo-file-system/legacy';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
@@ -550,46 +550,58 @@ function TreeFooter({
 
   return (
     <View style={styles.footer}>
-      <AppButton
-        title={shortcutLabel}
-        variant="outline"
-        onPress={() => onChangeTab(shortcutTab)}
-        style={styles.footerSecondaryWrap}
-        buttonStyle={styles.footerSecondaryButton}
-        textStyle={styles.footerSecondaryText}
-      />
-
-      {showAddComment ? (
-        <AppButton
-          title="Add Comment"
-          variant="accent"
-          onPress={onAddComment}
-          style={styles.footerCommentWrap}
-          buttonStyle={styles.footerCommentButton}
-          textStyle={styles.footerCommentText}
-        />
-      ) : null}
-
-      {showAddPhoto ? (
-        <AppButton
-          title={isUploadingPhotos ? 'Uploading...' : isPhotoLimitReached ? 'Photo Limit Reached' : 'Add Photo'}
-          variant="accent"
-          onPress={onAddPhoto}
-          disabled={isPhotoLimitReached || isUploadingPhotos}
-          style={styles.footerCommentWrap}
-          buttonStyle={styles.footerCommentButton}
-          textStyle={styles.footerCommentText}
-        />
-      ) : null}
-
-      <AppButton
-        title="Done"
-        variant="primary"
+      <Pressable
+        style={styles.footerBackButton}
         onPress={onClose}
-        style={styles.footerPrimaryWrap}
-        buttonStyle={styles.footerPrimaryButton}
-        textStyle={styles.footerPrimaryText}
-      />
+        accessibilityRole="button"
+        accessibilityLabel="Back to map"
+      >
+        <MaterialCommunityIcons name="arrow-left" size={22} color="#234229" />
+        <AppText style={styles.footerBackText}>Back</AppText>
+      </Pressable>
+
+      <View style={styles.footerRightCluster}>
+        <AppButton
+          title={shortcutLabel}
+          variant="outline"
+          onPress={() => onChangeTab(shortcutTab)}
+          style={styles.footerShortcutWrap}
+          buttonStyle={styles.footerSecondaryButton}
+          textStyle={styles.footerSecondaryText}
+        />
+
+        {showAddComment ? (
+          <AppButton
+            title="Add Comment"
+            variant="accent"
+            onPress={onAddComment}
+            style={styles.footerCommentWrap}
+            buttonStyle={styles.footerCommentButton}
+            textStyle={styles.footerCommentText}
+          />
+        ) : null}
+
+        {showAddPhoto ? (
+          <AppButton
+            title={isUploadingPhotos ? 'Uploading...' : isPhotoLimitReached ? 'Photo Limit Reached' : 'Add Photo'}
+            variant="accent"
+            onPress={onAddPhoto}
+            disabled={isPhotoLimitReached || isUploadingPhotos}
+            style={styles.footerCommentWrap}
+            buttonStyle={styles.footerCommentButton}
+            textStyle={styles.footerCommentText}
+          />
+        ) : null}
+
+        <AppButton
+          title="Done"
+          variant="primary"
+          onPress={onClose}
+          style={styles.footerDoneWrap}
+          buttonStyle={styles.footerPrimaryButton}
+          textStyle={styles.footerPrimaryText}
+        />
+      </View>
     </View>
   );
 }
@@ -1165,7 +1177,7 @@ export default function TreeDetailsDashboard({
   const getQrPngDataUrl = async (): Promise<string> => {
     const svg = qrCodeRef.current;
     if (!svg) {
-      showStatusMessage('QR Code is not ready yet', 'Tree link could not be generated.', 'error');
+      throw new Error('QR code is not ready yet.');
     }
 
     return new Promise((resolve) => {
@@ -1186,7 +1198,7 @@ export default function TreeDetailsDashboard({
 
       if (Platform.OS === 'web') {
         if (typeof document === 'undefined') {
-          showStatusMessage('Unable to download on this device', 'error');
+          throw new Error('Unable to download on this device.');
         }
 
         const anchor = document.createElement('a');
@@ -1202,7 +1214,7 @@ export default function TreeDetailsDashboard({
 
       const cacheDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
       if (!cacheDir) {
-        showStatusMessage('Unable to access local storage', 'error');
+        throw new Error('Unable to access local storage.');
       }
 
       const base64 = dataUrl.replace('data:image/png;base64,', '');
@@ -2069,9 +2081,8 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 18,
+    gap: 10,
+    paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 16,
     borderTopWidth: 1,
@@ -2079,9 +2090,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FBF8',
   },
 
-  footerSecondaryWrap: {
+  footerBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: '#E7F1E3',
+    borderWidth: 1,
+    borderColor: '#C5DCC8',
+    flexShrink: 0,
+  },
+
+  footerBackText: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#234229',
+  },
+
+  footerRightCluster: {
     flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+  },
+
+  footerShortcutWrap: {
+    flexShrink: 1,
     marginBottom: 0,
+    minWidth: 0,
   },
 
   footerSecondaryButton: {
@@ -2095,13 +2136,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  footerPrimaryWrap: {
-    flex: 1,
+  footerDoneWrap: {
+    flexShrink: 0,
     marginBottom: 0,
   },
 
   footerCommentWrap: {
-    flex: 1,
+    flexShrink: 0,
     marginBottom: 0,
   },
 

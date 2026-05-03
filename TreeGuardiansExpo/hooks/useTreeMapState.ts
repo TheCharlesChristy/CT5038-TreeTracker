@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
@@ -6,7 +6,7 @@ import { CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds }
 import { haversineDistanceKm } from '@/utilities/geo';
 import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
-export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
+export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard' | 'my-trees';
 
 export type HealthFilter = 'all' | 'healthy' | 'attention';
 export type DistanceFilterKm = number | null;
@@ -14,6 +14,7 @@ export const TREE_REFRESH_INTERVAL_MS = 10000;
 
 export function useTreeMapState() {
   const [mode, setMode] = useState<PageMode>('explore');
+  const modeBeforeTreeViewRef = useRef<PageMode>('explore');
 
   const [plottedTrees, setPlottedTrees] = useState<Tree[]>([]);
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
@@ -34,7 +35,8 @@ export function useTreeMapState() {
   const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
   const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(null);
 
-  const showDimOverlay = mode !== 'explore' && mode !== 'add' ;
+  const showDimOverlay =
+    mode !== 'explore' && mode !== 'add' && mode !== 'my-trees';
 
   const clearAddDraft = useCallback(() => {
     setDraftTreeDetails(null);
@@ -46,6 +48,7 @@ export function useTreeMapState() {
   }, []);
 
   const closeAllOverlays = useCallback(() => {
+    modeBeforeTreeViewRef.current = 'explore';
     setSelectedTree(null);
     clearAddDraft();
     setMode('explore');
@@ -195,6 +198,10 @@ export function useTreeMapState() {
       return;
     }
 
+    if (mode !== 'view-tree') {
+      modeBeforeTreeViewRef.current = mode;
+    }
+
     setSelectedTree(tree);
     setMode('view-tree');
   }, [mode]);
@@ -303,13 +310,17 @@ export function useTreeMapState() {
 
   const handleCloseTreeDetails = useCallback(() => {
     setSelectedTree(null);
-    setMode('explore');
+    setMode(modeBeforeTreeViewRef.current);
   }, []);
 
   const handleSelectSearchResultTree = useCallback((tree: Tree) => {
+    if (mode !== 'view-tree') {
+      modeBeforeTreeViewRef.current = mode;
+    }
+
     setSelectedTree(tree);
     setMode('view-tree');
-  }, []);
+  }, [mode]);
 
   const clearSearchFilters = useCallback(() => {
     setSearchQuery('');
