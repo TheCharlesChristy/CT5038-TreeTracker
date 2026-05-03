@@ -26,6 +26,12 @@ function ensureRequiredString(name, value, max) {
   assert(value.length <= max, `${name} must be <= ${max} chars`);
 }
 
+/** String that may be empty (e.g. image-only comment body stored as ''). */
+function ensureStringAllowEmptyMax(name, value, max) {
+  assert(typeof value === "string", `${name} must be a string`);
+  assert(value.length <= max, `${name} must be <= ${max} chars`);
+}
+
 function ensureLatitude(value) {
   assert(typeof value === "number" && Number.isFinite(value), "latitude must be a finite number");
   assert(value >= -90 && value <= 90, "latitude out of range");
@@ -68,6 +74,7 @@ module.exports = {
   ensurePositiveInt,
   ensureStringMax,
   ensureRequiredString,
+  ensureStringAllowEmptyMax,
   ensureLatitude,
   ensureLongitude,
   ensureBoolean,

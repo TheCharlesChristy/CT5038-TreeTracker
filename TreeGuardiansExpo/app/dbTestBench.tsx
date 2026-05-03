@@ -527,8 +527,10 @@ const EXPLICIT_SCHEMAS: Record<string, EndpointSchema> = {
     ],
   },
   'workflows.comments.replyToComment': {
-    description: 'Reply to an existing comment via workflow.',
+    description:
+      'Reply to a top-level tree comment via workflow. Requires treeId so the parent can be validated on that tree (one level of threading only).',
     fields: [
+      field('treeId', 'Tree ID', 'number', 0, 'treeId', { required: true }),
       field('parentCommentId', 'Parent Comment ID', 'number', 0, 'parentCommentId', { required: true }),
       field('userId', 'User ID', 'number', 0, 'userId'),
       field('content', 'Content', 'textarea', 0, 'content', { required: true }),

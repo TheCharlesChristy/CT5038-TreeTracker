@@ -1,7 +1,15 @@
 function createContentEndpoints(ctx) {
   const { run, selectOne, runtimeExecutor, toDateInput, ensureOrder, buildUpdate, validators, NotFoundError } = ctx;
-  const { assert, ensurePositiveInt, ensureStringMax, ensureRequiredString, ensureBoolean, ensureHex64, normalizeListParams } =
-    validators;
+  const {
+    assert,
+    ensurePositiveInt,
+    ensureStringMax,
+    ensureRequiredString,
+    ensureStringAllowEmptyMax,
+    ensureBoolean,
+    ensureHex64,
+    normalizeListParams
+  } = validators;
 
   const photos = {
     async create(payload, tx) {
@@ -276,7 +284,7 @@ function createContentEndpoints(ctx) {
     async create(payload, tx) {
       ensurePositiveInt("commentId", payload.commentId);
       ensurePositiveInt("treeId", payload.treeId);
-      ensureRequiredString("content", payload.content, 65535);
+      ensureStringAllowEmptyMax("content", payload.content, 65535);
       const createdAt = toDateInput("createdAt", payload.createdAt);
 
       await run(
@@ -315,7 +323,7 @@ function createContentEndpoints(ctx) {
     async updateContent(payload, tx) {
       ensurePositiveInt("commentId", payload.commentId);
       ensurePositiveInt("treeId", payload.treeId);
-      ensureRequiredString("content", payload.content, 65535);
+      ensureStringAllowEmptyMax("content", payload.content, 65535);
       const result = await run(runtimeExecutor(tx), "UPDATE comments_tree SET content = ? WHERE comment_id = ? AND tree_id = ?", [
         payload.content,
         payload.commentId,
@@ -354,7 +362,7 @@ function createContentEndpoints(ctx) {
     async create(payload, tx) {
       ensurePositiveInt("commentId", payload.commentId);
       ensurePositiveInt("parentCommentId", payload.parentCommentId);
-      ensureRequiredString("content", payload.content, 65535);
+      ensureStringAllowEmptyMax("content", payload.content, 65535);
       const createdAt = toDateInput("createdAt", payload.createdAt);
 
       await run(
@@ -399,7 +407,7 @@ function createContentEndpoints(ctx) {
     async updateContent(payload, tx) {
       ensurePositiveInt("commentId", payload.commentId);
       ensurePositiveInt("parentCommentId", payload.parentCommentId);
-      ensureRequiredString("content", payload.content, 65535);
+      ensureStringAllowEmptyMax("content", payload.content, 65535);
       const result = await run(
         runtimeExecutor(tx),
         "UPDATE comment_replies SET content = ? WHERE comment_id = ? AND parent_comment_id = ?",
