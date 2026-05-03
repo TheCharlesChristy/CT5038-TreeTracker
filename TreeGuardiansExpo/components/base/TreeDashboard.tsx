@@ -1177,7 +1177,7 @@ export default function TreeDetailsDashboard({
   const getQrPngDataUrl = async (): Promise<string> => {
     const svg = qrCodeRef.current;
     if (!svg) {
-      throw new Error('QR code is not ready yet.');
+      showStatusMessage('QR Code is not ready yet', 'Tree link could not be generated.', 'error');
     }
 
     return new Promise((resolve) => {
@@ -1198,7 +1198,7 @@ export default function TreeDetailsDashboard({
 
       if (Platform.OS === 'web') {
         if (typeof document === 'undefined') {
-          throw new Error('Unable to download on this device.');
+          showStatusMessage('Unable to download on this device', 'error');
         }
 
         const anchor = document.createElement('a');
@@ -1214,7 +1214,7 @@ export default function TreeDetailsDashboard({
 
       const cacheDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
       if (!cacheDir) {
-        throw new Error('Unable to access local storage.');
+        showStatusMessage('Unable to access local storage', 'error');
       }
 
       const base64 = dataUrl.replace('data:image/png;base64,', '');
