@@ -2,12 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
-import {
-  CHARLTON_CENTER,
-  MapCoordinate,
-  PlotPointer,
-  isCoordinateWithinCharltonKingsBoundary,
-} from '@/components/base/MapComponent.types';
+import { CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds } from '@/components/base/MapComponent.types';
 import { haversineDistanceKm } from '@/utilities/geo';
 import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
@@ -216,13 +211,6 @@ export function useTreeMapState() {
       return;
     }
 
-    if (!isCoordinateWithinCharltonKingsBoundary(coordinate)) {
-      setAddValidationError(
-        'That point is outside the Charlton Kings boundary. Tap inside the highlighted area on the map.'
-      );
-      return;
-    }
-
     setSelectedDraftLocation(coordinate);
     setIsSelectingManualLocation(false);
     setAddValidationError(null);
@@ -256,17 +244,10 @@ export function useTreeMapState() {
       }
 
       const location = await Location.getCurrentPositionAsync({});
-      const coord: MapCoordinate = {
+      setSelectedDraftLocation({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-      };
-      if (!isCoordinateWithinCharltonKingsBoundary(coord)) {
-        setAddValidationError(
-          'Your current location is outside the Charlton Kings boundary. Use “Select On Map” to pick a point inside the highlighted area.'
-        );
-        return;
-      }
-      setSelectedDraftLocation(coord);
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown location error.';
       setAddValidationError(`Unable to get current location: ${message}`);
@@ -287,9 +268,9 @@ export function useTreeMapState() {
       return;
     }
 
-    if (!isCoordinateWithinCharltonKingsBoundary(selectedDraftLocation)) {
+    if (!isCoordinateWithinBounds(selectedDraftLocation)) {
       setAddValidationError(
-        'Selected location is outside the Charlton Kings boundary. Choose a point inside the highlighted area.'
+        'Selected location is outside the supported map bounds (Charlton Kings). Please choose a point inside the map area.'
       );
       return;
     }
