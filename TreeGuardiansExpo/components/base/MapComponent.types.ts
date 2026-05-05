@@ -22,6 +22,7 @@ export type MapRenderContext = {
 export interface MapComponentProps {
   style?: StyleProp<ViewStyle>;
   onPress?: (coordinate: MapCoordinate) => void;
+  onViewportCenterChange?: (coordinate: MapCoordinate) => void;
   onTreeClick?: (tree: Tree) => void;
   isPlotting?: boolean;
   plottedTrees?: Tree[];

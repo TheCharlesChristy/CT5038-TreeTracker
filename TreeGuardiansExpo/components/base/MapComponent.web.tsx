@@ -47,6 +47,7 @@ const ensureLeafletCss = () => {
 
 export default function MapComponentWeb({
   onPress,
+  onViewportCenterChange,
   onTreeClick,
   isPlotting = false,
   plottedTrees = [],
@@ -56,6 +57,7 @@ export default function MapComponentWeb({
 }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const onPressRef = useRef(onPress);
+  const onViewportCenterChangeRef = useRef(onViewportCenterChange);
   const onPlotPointerMoveRef = useRef(onPlotPointerMove);
   const isPlottingRef = useRef(isPlotting);
   const leafletRef = useRef<LeafletModule | null>(null);
@@ -68,6 +70,10 @@ export default function MapComponentWeb({
   useEffect(() => {
     onPressRef.current = onPress;
   }, [onPress]);
+
+  useEffect(() => {
+    onViewportCenterChangeRef.current = onViewportCenterChange;
+  }, [onViewportCenterChange]);
 
   useEffect(() => {
     onPlotPointerMoveRef.current = onPlotPointerMove;
@@ -266,6 +272,18 @@ export default function MapComponentWeb({
 
       map.on('zoomend', () => {
         setCurrentZoom(map.getZoom());
+      });
+
+      map.on('moveend', () => {
+        if (!onViewportCenterChangeRef.current) {
+          return;
+        }
+
+        const center = map.getCenter();
+        onViewportCenterChangeRef.current({
+          latitude: center.lat,
+          longitude: center.lng,
+        });
       });
 
       setTimeout(() => map.invalidateSize(), 0);

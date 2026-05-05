@@ -82,6 +82,7 @@ export default function MainPage() {
     closeAllOverlays,
     openMode,
     setSearchQuery,
+    setSearchCenter,
     setDistanceFilterKm,
     setHealthFilter,
     handleMapPointerMove,
@@ -199,6 +200,7 @@ export default function MainPage() {
             isPlotting={mode === 'add' && isSelectingManualLocation}
             plottedTrees={visibleTrees}
             selectedLocation={selectedDraftLocation}
+            onViewportCenterChange={setSearchCenter}
             onPlotPointerMove={handleMapPointerMove}
             onTreeClick={handleMapTreeClick}
             onPress={handleMapPress}

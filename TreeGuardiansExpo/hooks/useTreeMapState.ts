@@ -30,7 +30,7 @@ export function useTreeMapState() {
   const [addValidationError, setAddValidationError] = useState<string | null>(null);
   const [isSubmittingTree, setIsSubmittingTree] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
-  const [searchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
+  const [searchCenter, setSearchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceFilterKm, setDistanceFilterKm] = useState<DistanceFilterKm>(null);
@@ -372,6 +372,7 @@ export function useTreeMapState() {
     closeAllOverlays,
     openMode,
     setSearchQuery,
+    setSearchCenter,
     setDistanceFilterKm,
     setHealthFilter,
     handleMapPointerMove,
