@@ -183,9 +183,68 @@ function createAccountRoute({ db }) {
     });
   };
 
+  const deleteAccountHandler = async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "delete-account" });
+    routeLog.info("request.start", {
+      method: req.method,
+      path: req.originalUrl || req.url,
+    });
+
+    requireJson(req);
+
+    const auth = await requireAuthenticatedUser({ req, db, routeLog });
+    const userId = auth.user.id;
+
+    const currentPassword = String(req.body.currentPassword || "");
+
+    if (!currentPassword) {
+      routeLog.warn("validation.failed", { reason: "missing-current-password", userId });
+      res.status(400).json({ error: "Current password is required" });
+      return;
+    }
+
+    const existingHash = await db.userPasswords.getHashByUserId(userId);
+
+    if (!existingHash) {
+      routeLog.warn("password.missing", { userId });
+      res.status(404).json({ error: "Password record not found" });
+      return;
+    }
+
+    const passwordMatches = await verifyPassword(currentPassword, existingHash);
+
+    if (!passwordMatches) {
+      routeLog.warn("validation.failed", { reason: "incorrect-current-password", userId });
+      res.status(401).json({ error: "Current password is incorrect" });
+      return;
+    }
+
+    let deleted = false;
+
+    await db.transaction(async (tx) => {
+      const result = await db.users.deleteById(userId, tx);
+      deleted = result.deleted;
+    });
+
+    if (!deleted) {
+      routeLog.warn("delete.not-found", { userId });
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // DB-level constraints handle data handling:
+    // - user_passwords + sessions: cascaded
+    // - guardian_trees: cascaded
+    // - tree_creation_data.creator_user_id: set to NULL
+    // - comments.user_id: set to NULL (anonymised)
+    routeLog.info("request.success", { userId });
+    res.json({ message: "Account deleted successfully" });
+  };
+
   router.put("/account/username", asyncHandler(updateUsernameHandler));
   router.put("/account/email", asyncHandler(updateEmailHandler));
   router.put("/account/password", asyncHandler(updatePasswordHandler));
+  router.delete("/account/delete", asyncHandler(deleteAccountHandler));
 
   return router;
 }

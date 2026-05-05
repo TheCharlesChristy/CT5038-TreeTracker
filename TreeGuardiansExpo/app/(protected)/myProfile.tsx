@@ -5,6 +5,7 @@ import {
 	ActivityIndicator,
 	TextInput,
 	ScrollView,
+	Modal,
 	type TextStyle,
 	type ViewStyle,
 } from 'react-native';
@@ -14,7 +15,7 @@ import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
-import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
+import { deleteAccount, logoutUser, updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
 import { FaviconHead } from '@/components/base/FaviconHead';
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -45,11 +46,13 @@ export default function MyProfilePage() {
 	const { user, isLoading } = useSessionUser();
 	const [profileUser, setProfileUser] = useState(user);
 
+	const [isAccountDeletionInProgress, setIsAccountDeletionInProgress] = useState(false);
+
 	useEffect(() => {
-		if (!isLoading && !user) {
+		if (!isLoading && !user && !isAccountDeletionInProgress) {
 			router.replace('/login');
 		}
-	}, [isLoading, user]);
+	}, [isLoading, user, isAccountDeletionInProgress]);
 
 	const [isEditingUsername, setIsEditingUsername] = useState(false);
 	const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -83,6 +86,11 @@ export default function MyProfilePage() {
 	const [passwordError, setPasswordError] = useState<string | null>(null);
 	const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 	const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [deletePassword, setDeletePassword] = useState('');
+	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+	const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
 
 	if (isLoading || !user) {
 		return (
@@ -234,6 +242,35 @@ export default function MyProfilePage() {
 			setPasswordError('Failed to change password.');
 		} finally {
 			setIsSavingPassword(false);
+		}
+	}
+
+	async function handleConfirmDeleteAccount() {
+		if (isDeletingAccount) return;
+
+		const currentPassword = deletePassword.trim();
+		setDeleteAccountError(null);
+
+		if (!currentPassword) {
+			setDeleteAccountError('Password is required.');
+			return;
+		}
+
+		setIsDeletingAccount(true);
+		setIsAccountDeletionInProgress(true);
+
+		try {
+			await deleteAccount({ currentPassword });
+			await logoutUser();
+			setIsDeleteModalVisible(false);
+			router.replace('/mainPage');
+		} catch (error) {
+			console.error('Account deletion failed:', error);
+			const message = error instanceof Error ? error.message : 'Failed to delete account.';
+			setDeleteAccountError(message);
+			setIsAccountDeletionInProgress(false);
+		} finally {
+			setIsDeletingAccount(false);
 		}
 	}
 
@@ -460,6 +497,30 @@ export default function MyProfilePage() {
 						)}
 					</View>
 
+					{/* Account deletion card */}
+					<View style={styles.card}>
+						<AppText style={styles.cardTitle}>Account Deletion</AppText>
+						<AppText style={styles.deleteDescription}>
+							Deleting your account will permanently remove your login credentials and revoke access.{'\n\n'}
+							Your trees will remain, but your account will no longer be associated with them.{'\n'}
+							Your comments will be anonymised and guardian assignments will be removed. This action cannot be undone.
+						</AppText>
+						<View style={styles.deleteButtonRow}>
+							<AppButton
+								title={isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+								variant="outline"
+								disabled={isDeletingAccount}
+								onPress={() => {
+									setDeleteAccountError(null);
+									setDeletePassword('');
+									setIsDeleteModalVisible(true);
+								}}
+								buttonStyle={styles.deleteAccountButton}
+								textStyle={styles.deleteAccountButtonText}
+							/>
+						</View>
+					</View>
+
 					<View style={styles.footerActions}>
 						<AppButton
 							title="Return to Map"
@@ -469,6 +530,64 @@ export default function MyProfilePage() {
 					</View>
 				</View>
 			</ScrollView>
+
+			<Modal
+				visible={isDeleteModalVisible}
+				transparent
+				animationType="fade"
+				onRequestClose={() => {
+					if (!isDeletingAccount) {
+						setIsDeleteModalVisible(false);
+						setDeleteAccountError(null);
+					}
+				}}
+			>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalCard}>
+						<AppText style={styles.modalTitle}>Confirm account deletion</AppText>
+						<AppText style={styles.modalMessage}>
+							Deleting your account will permanently remove your login credentials and revoke access.{'\n'}
+							Guardian assignments will be removed and your comments will be anonymised.{'\n'}
+							Your trees will remain, but they will no longer be associated with your account.{'\n\n'}
+							This action cannot be undone.{'\n'}
+							Enter your password to confirm.
+						</AppText>
+
+						<TextInput
+							value={deletePassword}
+							onChangeText={setDeletePassword}
+							placeholder="Enter your password"
+							style={styles.modalInput}
+							secureTextEntry
+							autoCapitalize="none"
+						/>
+
+						{deleteAccountError ? <AppText style={styles.errorText}>{deleteAccountError}</AppText> : null}
+
+						<View style={styles.modalActions}>
+							<AppButton
+								title={isDeletingAccount ? 'Cancel' : 'Cancel'}
+								variant="secondary"
+								disabled={isDeletingAccount}
+								onPress={() => {
+									setIsDeleteModalVisible(false);
+									setDeleteAccountError(null);
+									setDeletePassword('');
+								}}
+								buttonStyle={styles.modalButton}
+							/>
+							<AppButton
+								title={isDeletingAccount ? 'Deleting...' : 'Yes, delete my account'}
+								variant="outline"
+								disabled={isDeletingAccount || !deletePassword.trim()}
+								onPress={handleConfirmDeleteAccount}
+								buttonStyle={styles.modalDeleteConfirmButton}
+								textStyle={styles.deleteAccountButtonText}
+							/>
+						</View>
+					</View>
+				</View>
+			</Modal>
 		</AppContainer>
 		</>
 	);
@@ -639,5 +758,71 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 		fontSize: 13,
 		color: '#1B6B2A',
+	},
+	/* Account deletion */
+	deleteDescription: {
+		fontSize: 13,
+		color: Theme.Colours.textMuted,
+		lineHeight: 18,
+	},
+	deleteButtonRow: {
+		marginTop: 10,
+	},
+	deleteAccountButton: {
+		borderColor: '#B42318',
+		backgroundColor: 'rgba(180, 35, 24, 0.06)',
+		marginBottom: 0,
+	},
+	deleteAccountButtonText: {
+		color: '#B42318',
+	},
+
+	/* Modal */
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.55)',
+		justifyContent: 'center',
+		paddingHorizontal: 16,
+	},
+	modalCard: {
+		backgroundColor: 'rgba(255, 255, 255, 0.98)',
+		borderRadius: 18,
+		borderWidth: 1,
+		borderColor: 'rgba(255, 255, 255, 0.7)',
+		padding: 18,
+	},
+	modalTitle: {
+		fontSize: 16,
+		fontFamily: 'Poppins_600SemiBold',
+		color: Theme.Colours.textPrimary,
+		marginBottom: 10,
+	},
+	modalMessage: {
+		fontSize: 13,
+		color: Theme.Colours.textMuted,
+		lineHeight: 18,
+		marginBottom: 12,
+	},
+	modalInput: {
+		borderWidth: 1,
+		borderColor: 'rgba(183, 210, 185, 0.8)',
+		borderRadius: 12,
+		paddingHorizontal: Theme.Spacing.medium,
+		paddingVertical: 10,
+		backgroundColor: 'rgba(255, 255, 255, 0.82)',
+		color: Theme.Colours.textPrimary,
+		fontSize: 14,
+		marginBottom: 8,
+	},
+	modalActions: {
+		marginTop: 4,
+	},
+	modalButton: {
+		marginBottom: 0,
+	},
+	modalDeleteConfirmButton: {
+		borderColor: '#B42318',
+		backgroundColor: 'rgba(180, 35, 24, 0.06)',
+		marginBottom: 0,
 	},
 });

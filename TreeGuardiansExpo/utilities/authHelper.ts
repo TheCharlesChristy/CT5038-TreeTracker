@@ -328,3 +328,25 @@ export async function updatePassword(payload: {
   await response.json().catch(() => null as MessageResponse | null);
   return true;
 }
+
+export async function deleteAccount(payload: {
+  currentPassword: string;
+}): Promise<void> {
+  const currentPassword = payload.currentPassword.trim();
+
+  if (!currentPassword) {
+    throw new Error("Current password is required.");
+  }
+
+  const response = await fetchWithAuth(ENDPOINTS.ACCOUNT_DELETE, {
+    method: "DELETE",
+    body: JSON.stringify({ currentPassword }),
+  });
+
+  if (!response.ok) {
+    await parseErrorResponse(response, "Failed to delete account.");
+  }
+
+  // Server returns JSON; we don't depend on the shape.
+  await response.json().catch(() => null as MessageResponse | null);
+}
