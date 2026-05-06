@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './AppText';
@@ -14,8 +14,17 @@ const BASE_NAV_ITEMS = [
   { label: 'FAQs', route: '/faqs' },
 ] as const;
 
+const navScrollWebStyle = Platform.select({
+  web: { overflowX: 'hidden' } as object,
+  default: {},
+});
+
 export const NavBar = () => {
+  const { width } = useWindowDimensions();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const useCompactMenu = width < 760;
 
   useEffect(() => {
     let mounted = true;
@@ -24,6 +33,7 @@ export const NavBar = () => {
       const user = await getCurrentUser();
       if (mounted) {
         setIsLoggedIn(Boolean(user));
+        setUsername(user?.username ?? null);
       }
     };
 
@@ -39,10 +49,13 @@ export const NavBar = () => {
   );
 
   const handleAuthAction = async () => {
+    setIsMenuOpen(false);
+
     if (isLoggedIn) {
       const didLogout = await logoutUser();
       if (didLogout) {
         setIsLoggedIn(false);
+        setUsername(null);
         router.replace('/');
       }
       return;
@@ -51,62 +64,147 @@ export const NavBar = () => {
     router.push('/login');
   };
 
+  const handleNavigate = (route: (typeof BASE_NAV_ITEMS)[number]['route']) => {
+    setIsMenuOpen(false);
+    router.push(route);
+  };
+
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, useCompactMenu && styles.wrapperCompact]}>
       <View style={styles.brand}>
         <Image source={require('@/assets/images/tree_icon.png')} style={styles.logo} />
         <AppText style={styles.brandText}>TreeGuardians</AppText>
       </View>
 
-      <View style={styles.linksWrapper}>
-        <ScrollView
-          horizontal
-          contentContainerStyle={styles.linksRow}
-          showsHorizontalScrollIndicator={false}
-        >
-          {navItems.map((item) => (
+      {username && !useCompactMenu ? (
+        <View style={styles.sessionStatus}>
+          <AppText style={styles.sessionStatusText} numberOfLines={1}>
+            {`Logged in as ${username}`}
+          </AppText>
+        </View>
+      ) : null}
+
+      {useCompactMenu ? (
+        <View style={styles.compactMenuWrap}>
+          <TouchableOpacity
+            onPress={() => setIsMenuOpen((current) => !current)}
+            style={styles.menuButton}
+            activeOpacity={0.84}
+          >
+            <Ionicons
+              name={isMenuOpen ? 'close-outline' : 'menu-outline'}
+              size={24}
+              color={Theme.Colours.primary}
+            />
+          </TouchableOpacity>
+
+          {isMenuOpen ? (
+            <View style={styles.menuDropdown}>
+              {username ? (
+                <View style={styles.menuSessionPill}>
+                  <AppText style={styles.menuSessionText} numberOfLines={1}>
+                    {`Logged in as ${username}`}
+                  </AppText>
+                </View>
+              ) : null}
+
+              {navItems.map((item) => (
+                <TouchableOpacity
+                  key={item.label}
+                  onPress={() => handleNavigate(item.route)}
+                  style={styles.menuItem}
+                  activeOpacity={0.82}
+                >
+                  <AppText style={styles.menuItemText}>{item.label}</AppText>
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                onPress={() => {
+                  void handleAuthAction();
+                }}
+                style={styles.menuAuthButton}
+                activeOpacity={0.84}
+              >
+                <View style={styles.signInContent}>
+                  <Ionicons
+                    name={isLoggedIn ? 'log-out-outline' : 'person-outline'}
+                    size={16}
+                    color={Theme.Colours.white}
+                  />
+                  <AppText style={styles.signInText}>{isLoggedIn ? 'Sign Out' : 'Sign In'}</AppText>
+                </View>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.linksWrapper}>
+          <ScrollView
+            horizontal
+            contentContainerStyle={styles.linksRow}
+            showsHorizontalScrollIndicator={false}
+            style={navScrollWebStyle}
+          >
+            {navItems.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                onPress={() => handleNavigate(item.route)}
+                style={styles.linkButton}
+                activeOpacity={0.8}
+              >
+                <AppText style={styles.linkText}>{item.label}</AppText>
+              </TouchableOpacity>
+            ))}
+
             <TouchableOpacity
-              key={item.label}
-              onPress={() => router.push(item.route)}
-              style={styles.linkButton}
+              onPress={() => {
+                void handleAuthAction();
+              }}
+              style={styles.signInButton}
               activeOpacity={0.8}
             >
-              <AppText style={styles.linkText}>{item.label}</AppText>
+              <View style={styles.signInContent}>
+                <Ionicons
+                  name={isLoggedIn ? 'log-out-outline' : 'person-outline'}
+                  size={15}
+                  color={Theme.Colours.white}
+                />
+                <AppText style={styles.signInText}>{isLoggedIn ? 'Sign Out' : 'Sign In'}</AppText>
+              </View>
             </TouchableOpacity>
-          ))}          
-
-          <TouchableOpacity
-            onPress={() => {
-              void handleAuthAction();
-            }}
-            style={styles.signInButton}
-            activeOpacity={0.8}
-          >
-            <View style={styles.signInContent}>
-              <Ionicons
-                name={isLoggedIn ? 'log-out-outline' : 'person-outline'}
-                size={15}
-                color={Theme.Colours.white}
-              />
-              <AppText style={styles.signInText}>{isLoggedIn ? 'Sign Out' : 'Sign In'}</AppText>
-            </View>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   wrapper: {
-    width: '100%',
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderRadius: Theme.Radius.card,
+    marginTop: Theme.Spacing.small,
+    marginHorizontal: Theme.Spacing.medium,
+    marginBottom: Theme.Spacing.small,
     paddingVertical: Theme.Spacing.small,
     paddingHorizontal: Theme.Spacing.medium,
+    shadowColor: '#1B3A1E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.72)',
+    zIndex: 50,
+  },
+  wrapperCompact: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    zIndex: 320,
   },
   brand: {
     flexDirection: 'row',
@@ -121,6 +219,20 @@ const styles = StyleSheet.create({
   brandText: {
     color: Theme.Colours.textPrimary,
     fontSize: 16,
+  },
+  sessionStatus: {
+    position: 'absolute',
+    left: '35%',
+    right: '35%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  sessionStatusText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
   },
   linksWrapper: {
     flex: 1,
@@ -161,5 +273,72 @@ const styles = StyleSheet.create({
     color: Theme.Colours.white,
     fontSize: 14,
   },
+  compactMenuWrap: {
+    marginLeft: 'auto',
+    position: 'relative',
+    zIndex: 330,
+  },
+  menuButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(46, 125, 50, 0.18)',
+  },
+  menuDropdown: {
+    position: 'absolute',
+    top: 50,
+    right: 0,
+    minWidth: 210,
+    padding: 8,
+    gap: 6,
+    borderRadius: Theme.Radius.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.72)',
+    shadowColor: '#1B3A1E',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 14,
+    zIndex: 340,
+  },
+  menuSessionPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+  },
+  menuSessionText: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+  },
+  menuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(46, 125, 50, 0.06)',
+  },
+  menuItemText: {
+    color: Theme.Colours.textPrimary,
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  menuAuthButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: Theme.Colours.primary,
+    alignItems: 'center',
+    shadowColor: Theme.Colours.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
+  },
 });
-

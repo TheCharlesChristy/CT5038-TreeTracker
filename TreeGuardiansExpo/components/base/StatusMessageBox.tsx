@@ -25,6 +25,8 @@ type StatusMessageBoxProps = {
   countdownLabel?: string;
   closeLabel?: string;
   showCopyButton?: boolean;
+  /** Override the default top position (16px). Use to push below a nav bar. */
+  topOffset?: number;
 };
 
 export function StatusMessageBox({
@@ -34,6 +36,7 @@ export function StatusMessageBox({
   countdownLabel,
   closeLabel,
   showCopyButton,
+  topOffset,
 }: StatusMessageBoxProps) {
   const [copyFeedback, setCopyFeedback] = useState('');
   const opacity = useRef(new Animated.Value(0)).current;
@@ -105,6 +108,7 @@ export function StatusMessageBox({
         styles.wrap,
         isSuccess ? styles.successWrap : styles.errorWrap,
         { opacity, transform: [{ translateY }] },
+        topOffset !== undefined ? { top: topOffset } : undefined,
       ]}
     >
       <ScrollView

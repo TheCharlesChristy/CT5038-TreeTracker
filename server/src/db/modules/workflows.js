@@ -175,6 +175,12 @@ function createWorkflows(ctx) {
               ct.comment_id,
               ct.created_at,
               ct.content,
+              (
+                SELECT GROUP_CONCAT(p.image_url ORDER BY cp.photo_id SEPARATOR '|||')
+                FROM comment_photos cp
+                INNER JOIN photos p ON p.id = cp.photo_id
+                WHERE cp.comment_id = ct.comment_id
+              ) AS photo_urls,
               NULL AS extra,
               c.user_id,
               u.username
@@ -190,6 +196,7 @@ function createWorkflows(ctx) {
               wo.comment_id,
               c.created_at,
               wo.observation_notes AS content,
+              NULL AS photo_urls,
               wo.wildlife AS extra,
               c.user_id,
               u.username
@@ -205,6 +212,7 @@ function createWorkflows(ctx) {
               dobs.comment_id,
               c.created_at,
               dobs.evidence AS content,
+              NULL AS photo_urls,
               dobs.disease AS extra,
               c.user_id,
               u.username
@@ -220,6 +228,7 @@ function createWorkflows(ctx) {
               so.comment_id,
               c.created_at,
               so.observation_notes AS content,
+              NULL AS photo_urls,
               NULL AS extra,
               c.user_id,
               u.username
@@ -235,6 +244,12 @@ function createWorkflows(ctx) {
               cr.comment_id,
               cr.created_at,
               cr.content,
+              (
+                SELECT GROUP_CONCAT(p.image_url ORDER BY cp.photo_id SEPARATOR '|||')
+                FROM comment_photos cp
+                INNER JOIN photos p ON p.id = cp.photo_id
+                WHERE cp.comment_id = cr.comment_id
+              ) AS photo_urls,
               CAST(cr.parent_comment_id AS CHAR) AS extra,
               c.user_id,
               u.username
@@ -287,16 +302,27 @@ function createWorkflows(ctx) {
     comments: {
       async addTreeComment(payload) {
         ensurePositiveInt("treeId", payload.treeId);
-        ensureRequiredString("content", payload.content, 65535);
+        const rawContent = typeof payload.content === "string" ? payload.content.trim() : "";
+        if (rawContent.length > 65535) {
+          const error = new Error("content exceeds maximum length");
+          error.name = "ValidationError";
+          throw error;
+        }
+        const photoIds = Array.isArray(payload.photoIds)
+          ? payload.photoIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0).slice(0, 12)
+          : [];
+        if (!rawContent && photoIds.length === 0) {
+          const error = new Error("Either non-empty content or at least one image attachment is required");
+          error.name = "ValidationError";
+          throw error;
+        }
+
         return transaction(async (tx) => {
           const comment = await comments.create({ userId: payload.userId }, tx);
-          await commentsTree.create({ commentId: comment.id, treeId: payload.treeId, content: payload.content }, tx);
+          await commentsTree.create({ commentId: comment.id, treeId: payload.treeId, content: rawContent }, tx);
 
-          if (Array.isArray(payload.photoIds)) {
-            for (const photoId of payload.photoIds) {
-              ensurePositiveInt("photoId", photoId);
-              await commentPhotos.add({ commentId: comment.id, photoId }, tx);
-            }
+          for (const photoId of photoIds) {
+            await commentPhotos.add({ commentId: comment.id, photoId }, tx);
           }
 
           return { commentId: comment.id };
@@ -338,23 +364,40 @@ function createWorkflows(ctx) {
 
       async replyToComment(payload) {
         ensurePositiveInt("parentCommentId", payload.parentCommentId);
-        ensureRequiredString("content", payload.content, 65535);
+        ensurePositiveInt("treeId", payload.treeId);
+        const rawContent = typeof payload.content === "string" ? payload.content.trim() : "";
+        if (rawContent.length > 65535) {
+          const error = new Error("content exceeds maximum length");
+          error.name = "ValidationError";
+          throw error;
+        }
+        const photoIds = Array.isArray(payload.photoIds)
+          ? payload.photoIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0).slice(0, 12)
+          : [];
+        if (!rawContent && photoIds.length === 0) {
+          const error = new Error("Either non-empty content or at least one image attachment is required");
+          error.name = "ValidationError";
+          throw error;
+        }
+
         return transaction(async (tx) => {
+          const parentRow = await commentsTree.getByCommentId(payload.parentCommentId, tx);
+          if (!parentRow || Number(parentRow.tree_id) !== Number(payload.treeId)) {
+            throw new NotFoundError("Parent comment not found on this tree");
+          }
+
           const comment = await comments.create({ userId: payload.userId }, tx);
           await commentReplies.create(
             {
               commentId: comment.id,
               parentCommentId: payload.parentCommentId,
-              content: payload.content
+              content: rawContent
             },
             tx
           );
 
-          if (Array.isArray(payload.photoIds)) {
-            for (const photoId of payload.photoIds) {
-              ensurePositiveInt("photoId", photoId);
-              await commentPhotos.add({ commentId: comment.id, photoId }, tx);
-            }
+          for (const photoId of photoIds) {
+            await commentPhotos.add({ commentId: comment.id, photoId }, tx);
           }
 
           return { commentId: comment.id };

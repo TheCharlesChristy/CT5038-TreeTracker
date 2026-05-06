@@ -8,6 +8,7 @@ type FloatingActionBarProps = {
   addActive: boolean;
   dashboardActive: boolean;
   isGuest: boolean;
+  bottomOffset?: number;
   onSearchPress: () => void;
   onAddTreePress: () => void;
   onDashboardPress: () => void;
@@ -18,6 +19,7 @@ export function FloatingActionBar({
   addActive,
   dashboardActive,
   isGuest,
+  bottomOffset = 24,
   onSearchPress,
   onAddTreePress,
   onDashboardPress,
@@ -26,7 +28,7 @@ export function FloatingActionBar({
   const compact = width < 500;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { bottom: bottomOffset }]}>
       <TouchableOpacity
         style={[styles.fab, compact && styles.fabCompact, searchActive && styles.fabActive]}
         onPress={onSearchPress}
@@ -64,7 +66,6 @@ export function FloatingActionBar({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 24,
     left: 16,
     right: 16,
     zIndex: 190,

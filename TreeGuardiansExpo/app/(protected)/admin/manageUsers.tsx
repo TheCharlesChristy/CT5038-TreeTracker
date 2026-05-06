@@ -7,7 +7,7 @@ import {
 	TextInput,
 	TouchableOpacity,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
@@ -27,6 +27,7 @@ import {
 	updateUserRole,
 	UserActivityItem,
 } from '@/lib/adminApi';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 type TreeSummary = {
 	id: number;
@@ -196,7 +197,14 @@ export default function ManageUsersPage() {
 			await loadData();
 			showStatusMessage('Tree assigned', `${treeNameMap.get(treeId) ?? `Tree #${treeId}`} assigned to ${targetUser.username}.`, 'success');
 		} catch (err) {
-			showStatusMessage('Assignment failed', err instanceof Error ? err.message : 'Unknown error.', 'error');
+			const message = err instanceof Error ? err.message : 'Unknown error.';
+			showStatusMessage(
+				'Assignment failed',
+				message.includes('verified')
+					? 'This user must verify their email before being assigned as a guardian.'
+					: message,
+				'error'
+			);
 		} finally {
 			setBusyKey(null);
 		}
@@ -265,8 +273,11 @@ export default function ManageUsersPage() {
 	}
 
 	return (
-		<AppContainer>
-			<StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
+		<>
+			<Stack.Screen options={{ title: 'Manage Users | TreeGuardians' }} />
+			<FaviconHead title="Manage Users | TreeGuardians" />
+			<AppContainer>
+				<StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} />
 
 			<View style={styles.topBar}>
 				<NavigationButton onPress={() => router.push('/mainPage')}>Back to Map</NavigationButton>
@@ -309,14 +320,14 @@ export default function ManageUsersPage() {
 						</View>
 					) : null}
 
-					{filteredUsers.map((managedUser) => {
-						const isExpanded = expandedIds.has(managedUser.id);
-						const expand = getExpand(managedUser.id);
-						const isBusy = busyKey !== null;
-						const badgeStyle = roleBadgeColors(managedUser.role);
+						{filteredUsers.map((managedUser) => {
+							const isExpanded = expandedIds.has(managedUser.id);
+							const expand = getExpand(managedUser.id);
+							const isBusy = busyKey !== null;
+							const badgeStyle = roleBadgeColors(managedUser.role);
 
-						return (
-							<View key={managedUser.id} style={styles.userCard}>
+							return (
+								<View key={managedUser.id} style={styles.userCard}>
 								<TouchableOpacity
 									onPress={() => toggleExpand(managedUser.id)}
 									style={styles.cardHeader}
@@ -336,12 +347,16 @@ export default function ManageUsersPage() {
 									</View>
 								</TouchableOpacity>
 
-								{managedUser.email ? (
-									<AppText style={styles.userMetaEmail}>{managedUser.email}</AppText>
-								) : null}
+									{managedUser.email ? (
+										<AppText style={styles.userMetaEmail}>{managedUser.email}</AppText>
+									) : null}
 
-								{isExpanded ? (
-									<View style={styles.expandedContent}>
+									{!managedUser.verified ? (
+										<AppText style={styles.unverifiedBadge}>Email not verified</AppText>
+									) : null}
+
+									{isExpanded ? (
+										<View style={styles.expandedContent}>
 										<View style={styles.divider} />
 
 										{/* Role */}
@@ -414,11 +429,17 @@ export default function ManageUsersPage() {
 										<TouchableOpacity
 											onPress={() => setExpand(managedUser.id, { treePickerOpen: !expand.treePickerOpen, rolePickerOpen: false })}
 											style={styles.pickerTrigger}
-											disabled={isBusy}
+											disabled={isBusy || !managedUser.verified}
 										>
 											<AppText style={styles.pickerTriggerPlaceholder}>Select a tree...</AppText>
 											<AppText style={styles.pickerChevron}>{expand.treePickerOpen ? '▲' : '▼'}</AppText>
 										</TouchableOpacity>
+
+										{!managedUser.verified ? (
+											<AppText style={styles.userMeta}>
+												This user must verify their email before being assigned as a guardian.
+											</AppText>
+										) : null}
 
 										{expand.treePickerOpen ? (
 											<View style={styles.treePickerPanel}>
@@ -442,14 +463,14 @@ export default function ManageUsersPage() {
 														.filter((t) => !managedUser.guardianTreeIds.includes(t.id))
 														.slice(0, 30)
 														.map((t) => (
-															<TouchableOpacity
-																key={t.id}
-																onPress={() => void handleAssignTree(managedUser, t.id)}
-																style={styles.treePickerOption}
-																disabled={isBusy}
-															>
-																<AppText style={styles.treePickerOptionText}>
-																	{treeNameMap.get(t.id) ?? `Tree #${t.id}`}
+																<TouchableOpacity
+																	key={t.id}
+																	onPress={() => void handleAssignTree(managedUser, t.id)}
+																	style={styles.treePickerOption}
+																	disabled={isBusy || !managedUser.verified}
+																>
+																	<AppText style={styles.treePickerOptionText}>
+																		{treeNameMap.get(t.id) ?? `Tree #${t.id}`}
 																</AppText>
 															</TouchableOpacity>
 														))}
@@ -503,12 +524,12 @@ export default function ManageUsersPage() {
 											]}
 											disabled={isBusy || sessionUser?.id === managedUser.id}
 										>
-											<AppText style={styles.deleteButtonText}>Delete Account</AppText>
-										</TouchableOpacity>
-									</View>
-								) : null}
-							</View>
-						);
+												<AppText style={styles.deleteButtonText}>Delete Account</AppText>
+											</TouchableOpacity>
+										</View>
+									) : null}
+								</View>
+							);
 					})}
 
 					<View style={styles.actions}>
@@ -518,6 +539,7 @@ export default function ManageUsersPage() {
 				</ScrollView>
 			)}
 		</AppContainer>
+		</>
 	);
 }
 
@@ -821,4 +843,10 @@ const styles = StyleSheet.create({
 		padding: Theme.Spacing.medium,
 		marginBottom: Theme.Spacing.medium,
 	},
+	unverifiedBadge: {
+		color: Theme.Colours.error,
+		fontWeight: '600',
+		fontSize: 13,
+		marginBottom: Theme.Spacing.extraSmall,
+		},
 });

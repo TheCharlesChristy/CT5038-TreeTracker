@@ -1,11 +1,12 @@
 import React from 'react';
 import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { Asset } from 'expo-asset';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles/theme';
+import { FaviconHead } from '@/components/base/FaviconHead';
  
 const TREE_ID_GUIDE_ASSET = Asset.fromModule(
   require('@/assets/docs/Tree ID Guide.pdf'),
@@ -71,7 +72,10 @@ export default function ResourcesPage() {
   };
 
   return (
-    <AppContainer scrollable>
+    <>
+      <Stack.Screen options={{ title: 'Resources | TreeGuardians' }} />
+      <FaviconHead title="Resources | TreeGuardians" />
+      <AppContainer scrollable backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
       <View style={styles.content}>
         <AppText variant="title" style={styles.title}>
           Resources
@@ -100,6 +104,7 @@ export default function ResourcesPage() {
         ))}
       </View>
     </AppContainer>
+    </>
   );
 }
 
@@ -109,18 +114,30 @@ const styles = StyleSheet.create({
     paddingBottom: Theme.Spacing.extraLarge,
   },
   title: {
-    color: Theme.Colours.textPrimary,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   intro: {
-    color: Theme.Colours.textMuted,
+    color: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderRadius: Theme.Radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(165, 214, 167, 0.38)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopColor: 'rgba(255, 255, 255, 0.95)',
     padding: Theme.Spacing.medium,
     gap: Theme.Spacing.small,
+    shadowColor: '#0D1F10',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 8,
   },
   cardTitle: {
     color: Theme.Colours.textPrimary,
@@ -131,6 +148,7 @@ const styles = StyleSheet.create({
   button: {
     marginTop: Theme.Spacing.small,
     marginBottom: 0,
+    alignSelf: 'flex-start',
   },
 });
 

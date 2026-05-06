@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import MapComponent from '@/components/base/MapComponent';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
@@ -17,15 +17,22 @@ import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessage
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
 import { DashboardPanel } from '@/components/map/DashboardPanel';
+import { MyTreesOverlayPanel } from '@/components/map/MyTreesOverlayPanel';
 import { FloatingActionBar } from '@/components/map/FloatingActionBar';
 import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
+import { CircularCountdown } from '@/components/base/CircularCountdown';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
+import { useMyTreesFilterModel } from '../hooks/useMyTreesFilterModel';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function MainPage() {
+  const params = useLocalSearchParams<{ openMyTrees?: string }>();
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
   const [loggedInUserRole, setLoggedInUserRole] = useState<AppUserRole>('user');
@@ -75,6 +82,7 @@ export default function MainPage() {
     closeAllOverlays,
     openMode,
     setSearchQuery,
+    setSearchCenter,
     setDistanceFilterKm,
     setHealthFilter,
     handleMapPointerMove,
@@ -89,14 +97,42 @@ export default function MainPage() {
     clearSearchFilters,
     clearStatusMessage,
     getDistanceFromCenterKm,
+    nextRefreshAt,
+    refreshIntervalMs,
   } = useTreeMapState();
+
+  useEffect(() => {
+    const flag = params.openMyTrees;
+    if (flag !== '1' && flag !== 'true') {
+      return;
+    }
+    if (loggedInUserId == null) {
+      return;
+    }
+    openMode('my-trees');
+    router.setParams({ openMyTrees: undefined });
+  }, [params.openMyTrees, loggedInUserId, openMode]);
+
+  const myTreesFilter = useMyTreesFilterModel(plottedTrees, loggedInUserId);
+
+  const mapTrees =
+    mode === 'my-trees'
+      ? myTreesFilter.displayedTrees
+      : hasSearchFilters
+        ? searchResults
+        : plottedTrees;
 
   const renderTreeIcon = useCallback((tree: Tree, { zoom }: { zoom: number }) => {
     const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
     return <TreeMarkerIcon selected={selected} zoomLevel={zoom} />;
   }, [selectedTree?.id]);
 
-  const visibleTrees = hasSearchFilters ? searchResults : plottedTrees;
+  const visibleTrees = mapTrees;
+  const navOverlayInset = insets.top + (windowWidth < 760 ? 84 : 92);
+  const actionBarBottomInset = 24 + insets.bottom;
+  const actionBarHeight = 56;
+  const panelBottomInset = actionBarBottomInset + actionBarHeight + 14;
+  const refreshDurationSeconds = Math.max(1, Math.round(refreshIntervalMs / 1000));
   const activeFilterLabels = [
     searchQuery.trim() ? `Query: ${searchQuery.trim()}` : null,
     distanceFilterKm !== null ? `Distance: ${distanceFilterKm.toFixed(1)} km` : null,
@@ -153,14 +189,18 @@ export default function MainPage() {
   }, [clearLogoutTimer, closeAllOverlays, executeLogout, isLoggingOut]);
 
   return (
-    <ActionSheetProvider>
-      <AppContainer noPadding>
+    <>
+      <Stack.Screen options={{ title: 'Map | TreeGuardians' }} />
+      <FaviconHead title="Map | TreeGuardians" />
+      <ActionSheetProvider>
+        <AppContainer noPadding overlayNavBar>
         <View style={styles.page}>
           <MapComponent
             style={StyleSheet.absoluteFillObject}
             isPlotting={mode === 'add' && isSelectingManualLocation}
             plottedTrees={visibleTrees}
             selectedLocation={selectedDraftLocation}
+            onViewportCenterChange={setSearchCenter}
             onPlotPointerMove={handleMapPointerMove}
             onTreeClick={handleMapTreeClick}
             onPress={handleMapPress}
@@ -171,7 +211,7 @@ export default function MainPage() {
             <TouchableOpacity style={styles.dimOverlay} onPress={closeAllOverlays} activeOpacity={1} />
           ) : null}
 
-          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} />
+          <StatusMessageBox status={statusMessage} onClose={clearStatusMessage} topOffset={navOverlayInset} />
 
           <StatusMessageBox
             status={logoutStatus}
@@ -180,13 +220,8 @@ export default function MainPage() {
             closeLabel="Cancel"
             showCopyButton={false}
             onClose={cancelLogout}
+            topOffset={navOverlayInset}
           />
-
-          <View style={styles.loggedInPill}>
-            <AppText style={styles.loggedInText}>
-              {loggedInUsername ? `Logged in as ${loggedInUsername}` : 'Browsing as Guest'}
-            </AppText>
-          </View>
 
           {hasSearchFilters ? (
             <View style={styles.activeFiltersCard}>
@@ -244,6 +279,8 @@ export default function MainPage() {
               isSelectingOnMap={isSelectingManualLocation}
               locationError={addValidationError}
               isSubmitting={isSubmittingTree}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -270,6 +307,8 @@ export default function MainPage() {
               onClearFilters={clearSearchFilters}
               onSelectTree={handleSelectSearchResultTree}
               getDistanceKm={getDistanceFromCenterKm}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -282,6 +321,19 @@ export default function MainPage() {
               onClose={closeAllOverlays}
               onLogout={handleLogout}
               isLoggingOut={isLoggingOut}
+              onOpenMyTrees={() => openMode('my-trees')}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
+            />
+          ) : null}
+
+          {mode === 'my-trees' && loggedInUserId !== null ? (
+            <MyTreesOverlayPanel
+              filter={myTreesFilter}
+              onClose={closeAllOverlays}
+              onSelectTree={handleMapTreeClick}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
             />
           ) : null}
 
@@ -289,8 +341,9 @@ export default function MainPage() {
             <FloatingActionBar
               searchActive={mode === 'search'}
               addActive={mode === 'add'}
-              dashboardActive={mode === 'dashboard'}
+              dashboardActive={mode === 'dashboard' || mode === 'my-trees'}
               isGuest={loggedInUsername === null}
+              bottomOffset={actionBarBottomInset}
               onSearchPress={() => {
                 if (mode === 'search') {
                   closeAllOverlays();
@@ -315,30 +368,39 @@ export default function MainPage() {
               <AppText style={styles.loadingText}>Syncing trees...</AppText>
             </View>
           ) : null}
+
+          {nextRefreshAt !== null ? (
+            <View
+              style={[
+                styles.refreshTimer,
+                {
+                  left: insets.left + 4,
+                  bottom: insets.bottom + 4,
+                },
+              ]}
+            >
+              <CircularCountdown
+                key={`refresh-${nextRefreshAt}`}
+                duration={refreshDurationSeconds}
+                size={28}
+                strokeWidth={2}
+                color="rgba(150, 150, 150, 0.55)"
+                trackColor="rgba(150, 150, 150, 0.38)"
+                showLabel={false}
+                trackOnly={false}
+              />
+            </View>
+          ) : null}
         </View>
-      </AppContainer>
-    </ActionSheetProvider>
+        </AppContainer>
+      </ActionSheetProvider>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-  },
-
-  loggedInPill: {
-    position: 'absolute',
-    top: 20,
-    alignSelf: 'center',
-    zIndex: 180,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-
-  loggedInText: {
-    ...Theme.Typography.caption,
-    color: '#000',
-    fontFamily: 'Poppins_600SemiBold',
   },
 
   activeFiltersCard: {
@@ -846,5 +908,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     fontFamily: 'Poppins_600SemiBold',
+  },
+
+  refreshTimer: {
+    position: 'absolute',
+    zIndex: 230,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
 });

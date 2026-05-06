@@ -22,6 +22,51 @@ export default function Layout() {
     }
   }, [fontsLoaded]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    const styleId = 'treeguardians-scrollbar-style';
+
+    if (document.getElementById(styleId)) {
+      return;
+    }
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(47, 106, 62, 0.42) transparent;
+      }
+
+      *::-webkit-scrollbar {
+        width: 7px;
+        height: 7px;
+      }
+
+      *::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      *::-webkit-scrollbar-thumb {
+        background-color: rgba(47, 106, 62, 0.34);
+        border-radius: 999px;
+        border: 2px solid rgba(252, 254, 251, 0.78);
+      }
+
+      *::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(47, 106, 62, 0.54);
+      }
+
+      *::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
   // On web, fonts load via CSS so we never block the render — doing so causes
   // a hydration mismatch (#418) because the static export pre-renders with
   // fonts resolved but the browser's first render sees fontsLoaded=false.
@@ -31,6 +76,7 @@ export default function Layout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        title: 'TreeHuggers',
       }}
     />
   );
