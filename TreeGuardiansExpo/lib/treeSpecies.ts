@@ -82,7 +82,6 @@ const ECO_OVERRIDES: Record<string, TreeSpeciesMeta> = {
     evapotranspirationFactor: 0.00084,
     disableEstimates: false,
   },
-  },
 };
 
 export const DEFAULT_TREE_SPECIES = GENERIC_TREE_META;
