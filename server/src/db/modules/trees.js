@@ -182,14 +182,14 @@ function createTreeEndpoints(ctx) {
     trunkDiameter: "trunk_diameter",
     treeHeight: "tree_height"
   };
-  const TREE_HEALTH_VALUES = new Set(["excellent", "good", "ok", "bad", "terrible"]);
+  const TREE_HEALTH_VALUES = new Set(["good", "ok", "bad"]);
 
   const treeData = {
     async create(payload, tx) {
       ensurePositiveInt("treeId", payload.treeId);
       ensureStringMax("treeSpecies", payload.treeSpecies, 255);
       if (payload.health !== undefined && payload.health !== null) {
-        assert(TREE_HEALTH_VALUES.has(payload.health), "health must be one of excellent, good, ok, bad, terrible");
+        assert(TREE_HEALTH_VALUES.has(payload.health), "health must be one of good, ok, bad");
       }
       for (const field of Object.keys(TREE_DATA_NUMERIC_FIELDS)) {
         ensureNumberOrNull(field, payload[field]);
@@ -268,7 +268,7 @@ function createTreeEndpoints(ctx) {
         ensureStringMax("treeSpecies", fields.treeSpecies, 255);
       }
       if (Object.prototype.hasOwnProperty.call(fields, "health") && fields.health !== null) {
-        assert(TREE_HEALTH_VALUES.has(fields.health), "health must be one of excellent, good, ok, bad, terrible");
+        assert(TREE_HEALTH_VALUES.has(fields.health), "health must be one of good, ok, bad");
       }
       for (const field of Object.keys(TREE_DATA_NUMERIC_FIELDS)) {
         if (Object.prototype.hasOwnProperty.call(fields, field)) {

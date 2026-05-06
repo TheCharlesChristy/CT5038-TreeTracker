@@ -19,6 +19,7 @@ type DashboardPanelProps = {
   onClose: () => void;
   onLogout: () => Promise<void> | void;
   isLoggingOut?: boolean;
+  onOpenMyTrees?: () => void;
   topInset?: number;
   bottomInset?: number;
 };
@@ -86,6 +87,7 @@ export function DashboardPanel({
   onClose,
   onLogout,
   isLoggingOut = false,
+  onOpenMyTrees,
   topInset = 12,
   bottomInset = 104,
 }: DashboardPanelProps) {
@@ -175,7 +177,14 @@ export function DashboardPanel({
             <GridButton
               icon="tree-outline"
               label="My Trees"
-              onPress={() => { onClose(); router.push('/(protected)/myTrees' as never); }}
+              onPress={() => {
+                onClose();
+                if (onOpenMyTrees) {
+                  onOpenMyTrees();
+                } else {
+                  router.push('/(protected)/myTrees' as never);
+                }
+              }}
             />
             {userRole === 'admin' ? (
               <>

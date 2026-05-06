@@ -1,4 +1,4 @@
-import { findTreeSpeciesMeta } from "./treeSpecies";
+import { findTreeSpeciesMeta, getAverageTreeSpeciesMeta } from "./treeSpecies";
 
 type EstimateInput = {
     species?: string;
@@ -30,7 +30,10 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function estimateTreeEcoStats(input: EstimateInput): EstimateOutput {
-    const speciesMeta = findTreeSpeciesMeta(input.species);
+  const isOther = input.species?.trim().toLowerCase() === 'other';
+  const speciesMeta = isOther
+    ? getAverageTreeSpeciesMeta()
+    : findTreeSpeciesMeta(input.species);
     
     if (speciesMeta.disableEstimates) {
         return {

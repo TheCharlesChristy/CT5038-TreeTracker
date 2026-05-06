@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from './AppText';
 import { Theme } from '@/styles';
 
-export type TreeHealth = 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
+export type TreeHealth = 'good' | 'ok' | 'bad';
 export type TreeHealthFilterOption = 'all' | 'healthy' | 'attention';
 
 export type SelectOption<T extends string> = {
@@ -16,15 +16,8 @@ export type SelectOption<T extends string> = {
   textColor: string;
 };
 
-export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
-  {
-    value: 'excellent',
-    label: 'Excellent',
-    icon: 'leaf-circle',
-    borderColor: '#78C57D',
-    backgroundColor: '#EDF9EE',
-    textColor: '#206127',
-  },
+/** Good / OK / Bad only — use when adding a tree (see `AddTreeDashboard`). */
+export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'good',
     label: 'Good',
@@ -49,15 +42,9 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
     backgroundColor: '#FFF0E4',
     textColor: '#8A4712',
   },
-  {
-    value: 'terrible',
-    label: 'Terrible',
-    icon: 'alert-octagon-outline',
-    borderColor: '#E07A74',
-    backgroundColor: '#FFF0F0',
-    textColor: '#8F2520',
-  },
 ];
+
+export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = TREE_HEALTH_FORM_OPTIONS;
 
 export function getTreeHealthOption(value?: TreeHealth) {
   return (
@@ -100,22 +87,32 @@ type BaseProps<T extends string> = {
   options: SelectOption<T>[];
   prefixLabel?: string;
   compact?: boolean;
+  /** When current `value` is not in `options`, use this for trigger styling (e.g. legacy API health). */
+  getFallbackMeta?: (value: T) => SelectOption<T> | undefined;
 };
 
 type TreeHealthSelectProps = {
   value?: TreeHealth;
   onChange: (value: TreeHealth) => void;
   compact?: boolean;
+  /** Defaults to full list; use `TREE_HEALTH_FORM_OPTIONS` when adding a tree (Good / OK / Bad only). */
+  options?: SelectOption<TreeHealth>[];
 };
 
-export function TreeHealthSelect({ value = 'ok', onChange, compact = false }: TreeHealthSelectProps) {
+export function TreeHealthSelect({
+  value = 'ok',
+  onChange,
+  compact = false,
+  options = TREE_HEALTH_OPTIONS,
+}: TreeHealthSelectProps) {
   return (
     <HealthSelectBase
       value={value}
       onChange={onChange}
-      options={TREE_HEALTH_OPTIONS}
+      options={options}
       prefixLabel="Health"
       compact={compact}
+      getFallbackMeta={(v) => getTreeHealthOption(v as TreeHealth) as SelectOption<TreeHealth>}
     />
   );
 }
@@ -145,12 +142,16 @@ function HealthSelectBase<T extends string>({
   options,
   prefixLabel,
   compact = false,
+  getFallbackMeta,
 }: BaseProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
 
   const selectedMeta = useMemo(
-    () => options.find((option) => option.value === value) ?? options[0],
-    [options, value]
+    () =>
+      options.find((option) => option.value === value) ??
+      getFallbackMeta?.(value) ??
+      options[0],
+    [getFallbackMeta, options, value]
   );
 
   return (

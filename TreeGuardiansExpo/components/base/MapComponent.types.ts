@@ -22,6 +22,7 @@ export type MapRenderContext = {
 export interface MapComponentProps {
   style?: StyleProp<ViewStyle>;
   onPress?: (coordinate: MapCoordinate) => void;
+  onViewportCenterChange?: (coordinate: MapCoordinate) => void;
   onTreeClick?: (tree: Tree) => void;
   isPlotting?: boolean;
   plottedTrees?: Tree[];
@@ -121,6 +122,37 @@ export const MASK_OUTER_RING_LEAFLET: [number, number][] = closeLatLngRing([
 export const CHARLTON_CENTER = {
   latitude: 51.8865,
   longitude: -2.0475,
+};
+
+/** Outer ring as GeoJSON order: [lng, lat] — same geometry as the highlighted map boundary */
+const CHARLTON_KINGS_RING_LNG_LAT: [number, number][] = regionOuterRing
+  .filter((coordinate) => Array.isArray(coordinate) && coordinate.length >= 2)
+  .map(([lng, lat]) => [lng, lat] as [number, number]);
+
+const isPointInPolygonLngLat = (lng: number, lat: number, ring: [number, number][]): boolean => {
+  if (ring.length < 3) {
+    return false;
+  }
+
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi === yj) {
+      continue;
+    }
+    const crossesHorizontalRay =
+      (yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (crossesHorizontalRay) {
+      inside = !inside;
+    }
+  }
+  return inside;
+};
+
+/** True only inside the Charlton Kings boundary polygon (matches the highlighted outline), not the padded map box */
+export const isCoordinateWithinCharltonKingsBoundary = (coordinate: MapCoordinate): boolean => {
+  return isPointInPolygonLngLat(coordinate.longitude, coordinate.latitude, CHARLTON_KINGS_RING_LNG_LAT);
 };
 
 export const isCoordinateWithinBounds = (coordinate: MapCoordinate): boolean => {
