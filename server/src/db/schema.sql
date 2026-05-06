@@ -1,25 +1,11 @@
-/*
- * Tree Tracking System Schema (MySQL / MariaDB)
- * ---------------------------------------------
- * NOTE: This schema targets MySQL-compatible databases only and uses
- * MySQL-specific features (e.g., UNSIGNED, AUTO_INCREMENT, ENGINE).
- * It will not run as-is on PostgreSQL or SQLite.
- *
- * To apply this schema on MySQL, for example:
- * mysql -u <user> -p<password> <database> < schema.sql
- *
- * For other databases, use an engine-specific schema or migrations.
- * Note: Images are stored as URLs/Paths to keep the DB lightweight.
- * Lat/Lon uses DECIMAL(9, 6) for ~10cm precision.
- */
-
 -- Setup Users and Auth
 CREATE TABLE IF NOT EXISTS users (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     username varchar(100) NOT NULL UNIQUE,
     email varchar(255),
     phone varchar(50),
-    email_consent tinyint(1) NOT NULL DEFAULT 0
+    email_consent tinyint(1) NOT NULL DEFAULT 0,
+    verified_at TIMESTAMP NULL DEFAULT NULL  -- NULL = unverified
 ) engine = InnoDB;
 
 -- Migration: add email_consent if upgrading from an older schema
@@ -44,6 +30,16 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     session_token char(64) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     CONSTRAINT fk_sessions_user FOREIGN KEY (user_id)
+    REFERENCES users (id) ON DELETE CASCADE
+) engine = InnoDB;
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+    id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
+    user_id bigint unsigned NOT NULL,
+    token char(64) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    CONSTRAINT fk_verification_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
@@ -85,7 +81,7 @@ CREATE TABLE IF NOT EXISTS tree_data (
     trunk_circumference decimal(10,2) NULL, -- cm
     trunk_diameter decimal(10,2) NULL, -- cm
     tree_height decimal(10,2) NULL, -- m
-    health enum('excellent','good','ok','bad','terrible') NULL, -- health rating (categorical)
+    health enum('good','ok','bad') NULL, -- health rating (categorical)
     CONSTRAINT fk_data_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE
 ) engine = InnoDB;
@@ -210,5 +206,10 @@ CREATE TABLE IF NOT EXISTS guardians (
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
 
-CREATE INDEX idx_comments_tree_created_at
-ON comments_tree (created_at DESC,comment_id,tree_id);
+CREATE INDEX idx_comments_tree_created_at ON comments_tree (created_at,comment_id,tree_id);
+
+CREATE INDEX idx_verification_tokens_user ON email_verification_tokens (user_id);
+
+CREATE INDEX idx_verification_tokens_expires ON email_verification_tokens (expires_at);
+
+CREATE INDEX idx_users_verified_at ON users (verified_at);

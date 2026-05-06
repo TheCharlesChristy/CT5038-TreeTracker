@@ -15,6 +15,7 @@
     "web": "expo start --web",
     "export:web": "expo export --platform web",
     "lint": "expo lint",
+    "species:update": "node ./scripts/updateTreeSpeciesFromOtm.mjs --output ./assets/data/treeSpeciesDataset.json",
     "postinstall": "node scripts/bundleLeaflet.js"
   },
   "dependencies": {

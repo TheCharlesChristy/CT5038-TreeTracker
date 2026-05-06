@@ -13,6 +13,25 @@ import {
   TILE_MAX_NATIVE_ZOOM,
 } from './MapComponent.types';
 
+const isWithinRegion = (lat: number, lng: number): boolean => {
+  // Ray casting algorithm
+  let inside = false;
+  const ring = REGION_RING_LEAFLET;
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [latI, lngI] = ring[i];
+    const [latJ, lngJ] = ring[j];
+
+    const intersects =
+      lngI > lng !== lngJ > lng &&
+      lat < ((latJ - latI) * (lng - lngI)) / (lngJ - lngI) + latI;
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+};
+
 type LeafletModule = typeof import('leaflet');
 type LeafletMapInstance = InstanceType<LeafletModule['Map']>;
 type LeafletLayerGroupInstance = InstanceType<LeafletModule['LayerGroup']>;
@@ -47,6 +66,7 @@ const ensureLeafletCss = () => {
 
 export default function MapComponentWeb({
   onPress,
+  onViewportCenterChange,
   onTreeClick,
   isPlotting = false,
   plottedTrees = [],
@@ -56,6 +76,7 @@ export default function MapComponentWeb({
 }: MapComponentProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const onPressRef = useRef(onPress);
+  const onViewportCenterChangeRef = useRef(onViewportCenterChange);
   const onPlotPointerMoveRef = useRef(onPlotPointerMove);
   const isPlottingRef = useRef(isPlotting);
   const leafletRef = useRef<LeafletModule | null>(null);
@@ -68,6 +89,10 @@ export default function MapComponentWeb({
   useEffect(() => {
     onPressRef.current = onPress;
   }, [onPress]);
+
+  useEffect(() => {
+    onViewportCenterChangeRef.current = onViewportCenterChange;
+  }, [onViewportCenterChange]);
 
   useEffect(() => {
     onPlotPointerMoveRef.current = onPlotPointerMove;
@@ -224,19 +249,16 @@ export default function MapComponentWeb({
       setIsMapReady(true);
 
       map.on('click', (event: unknown) => {
-        if (!onPressRef.current) {
-          return;
-        }
+        if (!onPressRef.current) return;
 
         const e = event as LeafletMouseEvent;
-        if (!e.latlng) {
-          return;
-        }
+        if (!e.latlng) return;
 
-        onPressRef.current({
-          latitude: e.latlng.lat,
-          longitude: e.latlng.lng,
-        });
+        const { lat, lng } = e.latlng;
+
+        if (!isWithinRegion(lat, lng)) return;
+
+        onPressRef.current({ latitude: lat, longitude: lng });
       });
 
       map.on('mousemove', (event: unknown) => {
@@ -266,6 +288,18 @@ export default function MapComponentWeb({
 
       map.on('zoomend', () => {
         setCurrentZoom(map.getZoom());
+      });
+
+      map.on('moveend', () => {
+        if (!onViewportCenterChangeRef.current) {
+          return;
+        }
+
+        const center = map.getCenter();
+        onViewportCenterChangeRef.current({
+          latitude: center.lat,
+          longitude: center.lng,
+        });
       });
 
       setTimeout(() => map.invalidateSize(), 0);

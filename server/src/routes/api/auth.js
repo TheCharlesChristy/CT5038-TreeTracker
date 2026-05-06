@@ -31,7 +31,6 @@ function createAuthRoute({ db, frontendUrl }) {
 
   const registerHandler = async (req, res) => {
     const routeLog = getRouteLogger(req, { route: "register" });
-
     requireJson(req);
 
     const username = String(req.body.username || "").trim();
@@ -41,69 +40,54 @@ function createAuthRoute({ db, frontendUrl }) {
 
     routeLog.info("register.attempt", { username, email });
 
-    if (!username) {
-      routeLog.warn("register.missing_username");
-      return res.status(400).json({ error: "Username is required" });
-    }
-
-    if (!password) {
-      routeLog.warn("register.missing_password");
-      return res.status(400).json({ error: "Password is required" });
-    }
-
-    if (password.length < 8) {
-      routeLog.warn("register.weak_password");
-      return res.status(400).json({ error: "Password must be at least 8 characters" });
-    }
+    if (!username) return res.status(400).json({ error: "Username is required" });
+    if (!password) return res.status(400).json({ error: "Password is required" });
+    if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
 
     const jwtSecret = requireJwtSecret();
 
     try {
       const passwordHash = await hashPassword(password);
-      const refreshToken = randomHex64();
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      let refreshToken = null;                           
+      let verificationToken = null;
 
       const user = await db.transaction(async (tx) => {
         const usernameExists = await db.users.existsByUsername(username, tx);
-        if (usernameExists) {
-          routeLog.warn("register.username_exists", { username });
-          throw new Error("Username already exists");
-        }
+        if (usernameExists) throw new Error("Username already exists");
 
         if (email) {
           const emailExists = await db.users.existsByEmail(email, tx);
-          if (emailExists) {
-            routeLog.warn("register.email_exists", { email });
-            throw new Error("Email already exists");
-          }
+          if (emailExists) throw new Error("Email already exists");
         }
 
         const createdUser = await db.users.create({ username, email: email || null, emailConsent }, tx);
         await db.userPasswords.setForUser(createdUser.id, passwordHash, tx);
+
+        refreshToken = randomHex64();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         await db.userSessions.create({
           userId: createdUser.id,
           sessionToken: refreshToken,
           expiresAt
         }, tx);
 
+        if (email) {
+          verificationToken = await db.emailVerificationTokens.create(createdUser.id, tx);
+        }
+
         return createdUser;
       });
 
-      if (user.email) {
-        const verificationToken = signActionToken(
-          { userId: user.id, purpose: "verify-email" },
-          "1h"
-        );
-
+      if (user.email && verificationToken) {
         const verifyUrl = `${getFrontendUrl()}/verify-email?token=${verificationToken}`;
-
         try {
           await sendEmail({
             to: user.email,
             subject: "Verify your email",
             html: `<h2>Welcome to TreeGuardians!</h2>
-                   <p>Please verify your email:</p>
-                   <a href="${verifyUrl}">Verify Email</a>`
+                  <p>Please verify your email address to start adding trees:</p>
+                  <a href="${verifyUrl}">Verify Email</a>
+                  <p>This link expires in 1 hour.</p>`
           });
         } catch (emailError) {
           routeLog.warn("register.email_send_failed", {
@@ -114,7 +98,7 @@ function createAuthRoute({ db, frontendUrl }) {
       }
 
       const accessToken = signJwt(
-        { userId: user.id, username: user.username },
+        { userId: user.id, username: user.username, verified: false },
         jwtSecret,
         15 * 60
       );
@@ -124,8 +108,14 @@ function createAuthRoute({ db, frontendUrl }) {
       routeLog.info("register.success", { userId: user.id });
 
       res.status(201).json({
-        message: "Account created successfully",
-        user: { id: user.id, username: user.username, email: user.email, role },
+        message: "Account created. Please verify your email before adding trees.",
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role,
+          verified: false
+        },
         accessToken,
         refreshToken
       });
@@ -175,17 +165,26 @@ function createAuthRoute({ db, frontendUrl }) {
     await db.userSessions.create({ userId: user.id, sessionToken: refreshToken, expiresAt });
 
     const accessToken = signJwt(
-      { userId: user.id, username: user.username },
+      {
+        userId: user.id,
+        username: user.username,
+        verified: !!user.verified_at
+      },
       jwtSecret,
       15 * 60
     );
 
     const role = await resolveUserRole(db, user.id);
-    routeLog.info("login.success", { userId: user.id });
 
     res.json({
       message: "Login successful",
-      user: { id: user.id, username: user.username, email: user.email, role },
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role,
+        verified: !!user.verified_at
+      },
       accessToken,
       refreshToken
     });
@@ -193,22 +192,83 @@ function createAuthRoute({ db, frontendUrl }) {
 
   const verifyEmailHandler = async (req, res) => {
     const routeLog = getRouteLogger(req, { route: "verify-email" });
-    const token = String(req.query.token || "");
+    const token = String(req.query.token || "").trim();
+
+    if (!token) {
+      return res.status(400).json({ error: "Missing verification token" });
+    }
 
     try {
-      const decoded = verifyActionToken(token);
+      const record = await db.emailVerificationTokens.getByToken(token);
 
-      if (decoded.purpose !== "verify-email") {
-        routeLog.warn("verify.invalid_purpose");
-        return res.status(400).json({ error: "Invalid token" });
+      if (!record) {
+        routeLog.warn("verify.invalid_or_expired_token");
+        return res.status(400).json({ error: "Invalid or expired verification link" });
       }
 
-      routeLog.info("verify.success", { userId: decoded.userId });
+      const user = await db.users.getById(record.user_id);
+      if (!user) {
+        routeLog.warn("verify.user_not_found", { userId: record.user_id });
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.verified_at) {
+        // Still clean up the token if somehow it wasn't deleted before
+        await db.emailVerificationTokens.deleteByToken(token);
+        routeLog.info("verify.already_verified", { userId: user.id });
+        return res.json({ message: "Email already verified" });
+      }
+
+      await db.transaction(async (tx) => {
+        await db.users.setVerifiedAt(user.id, new Date(), tx);
+        await db.emailVerificationTokens.deleteByToken(token, tx);
+      });
+
+      routeLog.info("verify.success", { userId: user.id });
       res.json({ message: "Email verified successfully" });
 
     } catch (err) {
-      routeLog.warn("verify.failed", { error: err.message });
-      res.status(400).json({ error: "Invalid or expired token" });
+      routeLog.error("verify.failed", { error: err.message });
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  const resendVerificationHandler = async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "resend-verification" });
+
+    try {
+      const auth = await requireAuthenticatedUser({ req, db, routeLog });
+      const user = await db.users.getById(auth.user.id);
+
+      if (!user?.email) {
+        return res.status(400).json({ error: "No email address on account." });
+      }
+
+      if (user.verified_at) {
+        return res.status(400).json({ error: "Email is already verified." });
+      }
+
+      // Delete any existing tokens for this user and issue a fresh one
+      await db.emailVerificationTokens.deleteByUserId(user.id);
+      const verificationToken = await db.emailVerificationTokens.create(user.id);
+
+      const verifyUrl = `${getFrontendUrl()}/verify-email?token=${verificationToken}`;
+
+      await sendEmail({
+        to: user.email,
+        subject: "Verify your email – TreeGuardians",
+        html: `<h2>Email Verification</h2>
+              <p>Here is your new verification link:</p>
+              <a href="${verifyUrl}">Verify Email</a>
+              <p>This link expires in 1 hour. Any previous verification links are now invalid.</p>`
+      });
+
+      routeLog.info("resend.success", { userId: user.id });
+      res.json({ message: "Verification email sent." });
+
+    } catch (err) {
+      routeLog.error("resend.failed", { error: err.message });
+      res.status(500).json({ error: "Failed to send verification email." });
     }
   };
 
@@ -315,6 +375,7 @@ function createAuthRoute({ db, frontendUrl }) {
   router.post("/logout", asyncHandler(logoutHandler));
 
   router.get("/auth/verify-email", asyncHandler(verifyEmailHandler));
+  router.post("/auth/resend-verification", asyncHandler(resendVerificationHandler));
   router.post("/auth/forgot-password", asyncHandler(forgotPasswordHandler));
   router.post("/auth/reset-password", asyncHandler(resetPasswordHandler));
 

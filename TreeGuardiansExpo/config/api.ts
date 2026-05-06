@@ -147,6 +147,7 @@ export const ENDPOINTS = {
   ACCOUNT_USERNAME: "account/username",
   ACCOUNT_EMAIL: "account/email",
   ACCOUNT_PASSWORD: "account/password",
+  ACCOUNT_DELETE: "account/delete",
   AUTH_VERIFY_EMAIL: "auth/verify-email",
   AUTH_FORGOT_PASSWORD: "auth/forgot-password",
   AUTH_RESET_PASSWORD: "auth/reset-password",

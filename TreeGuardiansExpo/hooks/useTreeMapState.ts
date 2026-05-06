@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
-import { CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds } from '@/components/base/MapComponent.types';
+import {
+  CHARLTON_CENTER,
+  MapCoordinate,
+  PlotPointer,
+  isCoordinateWithinCharltonKingsBoundary,
+} from '@/components/base/MapComponent.types';
 import { haversineDistanceKm } from '@/utilities/geo';
 import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
-export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
+export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard' | 'my-trees';
 
 export type HealthFilter = 'all' | 'healthy' | 'attention';
 export type DistanceFilterKm = number | null;
@@ -14,6 +19,7 @@ export const TREE_REFRESH_INTERVAL_MS = 10000;
 
 export function useTreeMapState() {
   const [mode, setMode] = useState<PageMode>('explore');
+  const modeBeforeTreeViewRef = useRef<PageMode>('explore');
 
   const [plottedTrees, setPlottedTrees] = useState<Tree[]>([]);
   const [selectedTree, setSelectedTree] = useState<Tree | null>(null);
@@ -24,7 +30,7 @@ export function useTreeMapState() {
   const [addValidationError, setAddValidationError] = useState<string | null>(null);
   const [isSubmittingTree, setIsSubmittingTree] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
-  const [searchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
+  const [searchCenter, setSearchCenter] = useState<MapCoordinate>(CHARLTON_CENTER);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceFilterKm, setDistanceFilterKm] = useState<DistanceFilterKm>(null);
@@ -34,7 +40,8 @@ export function useTreeMapState() {
   const [plotPointer, setPlotPointer] = useState<PlotPointer | null>(null);
   const [nextRefreshAt, setNextRefreshAt] = useState<number | null>(null);
 
-  const showDimOverlay = mode !== 'explore' && mode !== 'add' ;
+  const showDimOverlay =
+    mode !== 'explore' && mode !== 'add' && mode !== 'my-trees';
 
   const clearAddDraft = useCallback(() => {
     setDraftTreeDetails(null);
@@ -46,6 +53,7 @@ export function useTreeMapState() {
   }, []);
 
   const closeAllOverlays = useCallback(() => {
+    modeBeforeTreeViewRef.current = 'explore';
     setSelectedTree(null);
     clearAddDraft();
     setMode('explore');
@@ -195,12 +203,23 @@ export function useTreeMapState() {
       return;
     }
 
+    if (mode !== 'view-tree') {
+      modeBeforeTreeViewRef.current = mode;
+    }
+
     setSelectedTree(tree);
     setMode('view-tree');
   }, [mode]);
 
   const handleMapPress = useCallback((coordinate: MapCoordinate) => {
     if (mode !== 'add' || !isSelectingManualLocation) {
+      return;
+    }
+
+    if (!isCoordinateWithinCharltonKingsBoundary(coordinate)) {
+      setAddValidationError(
+        'That point is outside the Charlton Kings boundary. Tap inside the highlighted area on the map.'
+      );
       return;
     }
 
@@ -237,10 +256,19 @@ export function useTreeMapState() {
       }
 
       const location = await Location.getCurrentPositionAsync({});
-      setSelectedDraftLocation({
+      const deviceCoordinate: MapCoordinate = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-      });
+      };
+
+      if (!isCoordinateWithinCharltonKingsBoundary(deviceCoordinate)) {
+        setAddValidationError(
+          'Your current location is outside the Charlton Kings boundary. Use “Select On Map” to pick a point inside the highlighted area.'
+        );
+        return;
+      }
+
+      setSelectedDraftLocation(deviceCoordinate);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown location error.';
       setAddValidationError(`Unable to get current location: ${message}`);
@@ -261,9 +289,9 @@ export function useTreeMapState() {
       return;
     }
 
-    if (!isCoordinateWithinBounds(selectedDraftLocation)) {
+    if (!isCoordinateWithinCharltonKingsBoundary(selectedDraftLocation)) {
       setAddValidationError(
-        'Selected location is outside the supported map bounds (Charlton Kings). Please choose a point inside the map area.'
+        'Selected location is outside the Charlton Kings boundary. Choose a point inside the highlighted area.'
       );
       return;
     }
@@ -303,13 +331,17 @@ export function useTreeMapState() {
 
   const handleCloseTreeDetails = useCallback(() => {
     setSelectedTree(null);
-    setMode('explore');
+    setMode(modeBeforeTreeViewRef.current);
   }, []);
 
   const handleSelectSearchResultTree = useCallback((tree: Tree) => {
+    if (mode !== 'view-tree') {
+      modeBeforeTreeViewRef.current = mode;
+    }
+
     setSelectedTree(tree);
     setMode('view-tree');
-  }, []);
+  }, [mode]);
 
   const clearSearchFilters = useCallback(() => {
     setSearchQuery('');
@@ -340,6 +372,7 @@ export function useTreeMapState() {
     closeAllOverlays,
     openMode,
     setSearchQuery,
+    setSearchCenter,
     setDistanceFilterKm,
     setHealthFilter,
     handleMapPointerMove,
