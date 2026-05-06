@@ -6,6 +6,7 @@ const { createRequireVerified } = require('../middleware/require-verified');
 const { requireAuthenticatedUser } = require("./utils/auth");
 const fs = require('fs');
 const path = require('path');
+const charltonKingsBounds = require("../../../../TreeGuardiansExpo/assets/data/charlton_kings_region_bounds.json");
 
 const DEFAULT_TREE_DATA = {
   treeSpecies: "Unknown",
@@ -21,6 +22,62 @@ const DEFAULT_TREE_DATA = {
   treeHeight: 0,
   health: "ok"
 };
+
+const EPSILON = 1e-12;
+const regionRing = Array.isArray(charltonKingsBounds?.coordinates?.[0])
+  ? charltonKingsBounds.coordinates[0]
+      .filter((coordinate) => Array.isArray(coordinate) && coordinate.length >= 2)
+      .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
+      .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+  : [];
+
+function isPointOnSegment(point, start, end) {
+  const cross =
+    (point.latitude - start.lat) * (end.lng - start.lng) -
+    (point.longitude - start.lng) * (end.lat - start.lat);
+  if (Math.abs(cross) > EPSILON) return false;
+
+  const dot =
+    (point.latitude - start.lat) * (end.lat - start.lat) +
+    (point.longitude - start.lng) * (end.lng - start.lng);
+  if (dot < -EPSILON) return false;
+
+  const squaredLength =
+    (end.lat - start.lat) * (end.lat - start.lat) +
+    (end.lng - start.lng) * (end.lng - start.lng);
+  return dot <= squaredLength + EPSILON;
+}
+
+function isCoordinateWithinCharltonKingsBoundary(latitude, longitude) {
+  if (regionRing.length < 3) {
+    return false;
+  }
+
+  let inside = false;
+  const point = { latitude, longitude };
+
+  for (let i = 0, j = regionRing.length - 1; i < regionRing.length; j = i, i += 1) {
+    const current = regionRing[i];
+    const previous = regionRing[j];
+
+    if (isPointOnSegment(point, previous, current)) {
+      return true;
+    }
+
+    const intersects =
+      (current.lat > latitude) !== (previous.lat > latitude) &&
+      longitude <
+        ((previous.lng - current.lng) * (latitude - current.lat)) /
+          (previous.lat - current.lat) +
+          current.lng;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
 
 function toFiniteNumberOrDefault(value, fallback) {
   if (value === undefined || value === null || value === "") {
@@ -139,6 +196,17 @@ function normalizeStringList(value) {
     .filter((entry) => entry.length > 0);
 }
 
+function normalizeCommentPhotoIds(body) {
+  if (!body || !Array.isArray(body.photoIds)) {
+    return [];
+  }
+
+  return body.photoIds
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0)
+    .slice(0, 12);
+}
+
 function joinObservationValues(rows, key) {
   const values = rows
     .map((row) => row && typeof row[key] === "string" ? row[key].trim() : "")
@@ -206,6 +274,13 @@ function createTreesRoute({ db }) {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       routeLog.warn("validation.failed", { reason: "invalid-coordinates" });
       const error = new Error("latitude and longitude are required numbers");
+      error.name = "ValidationError";
+      throw error;
+    }
+
+    if (!isCoordinateWithinCharltonKingsBoundary(latitude, longitude)) {
+      routeLog.warn("validation.failed", { reason: "outside-charlton-kings-boundary", latitude, longitude });
+      const error = new Error("Selected location must be inside the Charlton Kings boundary.");
       error.name = "ValidationError";
       throw error;
     }
@@ -673,8 +748,10 @@ function createTreesRoute({ db }) {
       const auth = await requireAuthenticatedUser({ req, db, routeLog: getRouteLogger(req, { route: "add-tree-comment"}) });
 
       const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
-      if (!content) {
-        const error = new Error("content is required");
+      const photoIds = normalizeCommentPhotoIds(req.body);
+
+      if (!content && photoIds.length === 0) {
+        const error = new Error("Either non-empty content or at least one image attachment is required");
         error.name = "ValidationError";
         throw error;
       }
@@ -683,7 +760,7 @@ function createTreesRoute({ db }) {
         treeId,
         userId: Number(auth.user.id),
         content,
-        photoIds: Array.isArray(req.body?.photoIds) ? req.body.photoIds : []
+        photoIds
       });
 
       res.status(201).json({
@@ -691,7 +768,7 @@ function createTreesRoute({ db }) {
         comment_id: result.commentId
       });
     })
-  )
+  );
 
   return router;
 }

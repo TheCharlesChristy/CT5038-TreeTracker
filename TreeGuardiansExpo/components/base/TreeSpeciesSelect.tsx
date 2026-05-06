@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from './AppText';
 import { Theme } from '@/styles';
-import { TREE_SPECIES } from '@/lib/treeSpecies';
+import { TREE_SPECIES, findTreeSpeciesOption } from '@/lib/treeSpecies';
 
 type TreeSpeciesSelectProps = {
     value?: string;
@@ -12,6 +12,15 @@ type TreeSpeciesSelectProps = {
     error?: string | null;
 };
 
+const DEFAULT_UK_SPECIES = [
+  'Ash',
+  'English Oak',
+  'Hawthorn',
+  'Silver Birch',
+  'Sitka Spruce',
+  'Other / Unknown',
+];
+
 export function TreeSpeciesSelect({
     value,
     onChange,
@@ -19,18 +28,38 @@ export function TreeSpeciesSelect({
     error,
 }: TreeSpeciesSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [query, setQuery] = useState('');
 
     const selected = useMemo(() => {
-        if (!value) {
-            return null;
-        }
-
-        return (
-            TREE_SPECIES.find(
-                (option) => option.label.toLowerCase() === value.trim().toLowerCase()
-            ) ?? null
-        );
+        return findTreeSpeciesOption(value);
     }, [value]);
+
+    const defaultOptions = useMemo(() => {
+      const preferredByLabel = new Map(
+        DEFAULT_UK_SPECIES.map((label) => [label.toLowerCase(), label])
+      );
+
+      const collected = new Map<string, (typeof TREE_SPECIES)[number]>();
+
+      TREE_SPECIES.forEach((option) => {
+        const normalized = option.label.toLowerCase();
+        if (preferredByLabel.has(normalized)) {
+          collected.set(normalized, option);
+        }
+      });
+
+      return DEFAULT_UK_SPECIES.map((label) => collected.get(label.toLowerCase())).filter(
+        (option): option is (typeof TREE_SPECIES)[number] => Boolean(option)
+      );
+    }, []);
+
+    const filteredOptions = useMemo(() => {
+      const normalizedQuery = query.trim().toLowerCase();
+      if (!normalizedQuery) {
+        return defaultOptions;
+      }
+      return TREE_SPECIES.filter((option) => option.searchText.includes(normalizedQuery));
+    }, [defaultOptions, query]);
 
     return (
         <View style={styles.container}>
@@ -59,7 +88,21 @@ export function TreeSpeciesSelect({
 
         {isOpen ? (
             <View style={styles.menu}>
-                {TREE_SPECIES.map((option) => {
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search common or scientific name"
+                style={styles.searchInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {!query.trim() ? (
+                <AppText style={styles.helperText}>
+                  Showing common UK species. Start typing to search all species.
+                </AppText>
+              ) : null}
+              <ScrollView style={styles.optionList} nestedScrollEnabled>
+                {filteredOptions.map((option) => {
                     const isSelected =
                         value?.trim().toLowerCase() === option.label.toLowerCase();
 
@@ -75,7 +118,12 @@ export function TreeSpeciesSelect({
                         >
                             <View style={styles.optionCopy}>
                                 <MaterialCommunityIcons name="leaf" size={16} color="#2F5A35" />
-                                <AppText style={styles.optionText}>{option.label}</AppText>
+                                <View style={styles.optionTextGroup}>
+                                  <AppText style={styles.optionText}>{option.label}</AppText>
+                                  {option.scientificName ? (
+                                    <AppText style={styles.optionSecondaryText}>{option.scientificName}</AppText>
+                                  ) : null}
+                                </View>
                             </View>
 
                             {isSelected ? (
@@ -84,6 +132,12 @@ export function TreeSpeciesSelect({
                         </TouchableOpacity>
                     );
                 })}
+                {filteredOptions.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <AppText style={styles.emptyStateText}>No species match your search.</AppText>
+                  </View>
+                ) : null}
+              </ScrollView>
             </View>
         ) : null}
         </View>
@@ -121,6 +175,25 @@ const styles = StyleSheet.create({
   menu: {
     marginTop: 8,
     gap: 8,
+    maxHeight: 320,
+  },
+  searchInput: {
+    minHeight: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D7E4D4',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    color: '#2F5A35',
+    fontSize: 14,
+  },
+  optionList: {
+    marginTop: 6,
+  },
+  helperText: {
+    ...Theme.Typography.caption,
+    color: '#56705A',
+    marginTop: 4,
   },
   option: {
     minHeight: 48,
@@ -137,19 +210,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
+  },
+  optionTextGroup: {
+    flex: 1,
   },
   optionText: {
     ...Theme.Typography.body,
     color: '#2F5A35',
   },
+  optionSecondaryText: {
+    ...Theme.Typography.caption,
+    color: '#56705A',
+  },
+  emptyState: {
+    borderWidth: 1,
+    borderColor: '#D7E4D4',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+  },
+  emptyStateText: {
+    ...Theme.Typography.caption,
+    color: '#56705A',
+  },
   triggerError: {
     borderColor: '#B3261E',
     backgroundColor: 'rgba(179, 38, 30, 0.04)',
-    },
-    errorText: {
+  },
+  errorText: {
     color: '#B3261E',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
-    },
+  },
 });

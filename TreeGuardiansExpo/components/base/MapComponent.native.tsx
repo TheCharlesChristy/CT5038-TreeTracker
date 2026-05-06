@@ -19,6 +19,7 @@ import {
 export default function MapComponentNative({
   style,
   onPress,
+  onViewportCenterChange,
   onTreeClick,
   plottedTrees = [],
   selectedLocation = null,
@@ -198,6 +199,15 @@ export default function MapComponentNative({
       }));
     });
 
+    map.on('moveend', function() {
+      var center = map.getCenter();
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'viewportCenterChange',
+        latitude: center.lat,
+        longitude: center.lng
+      }));
+    });
+
     function handleMessage(event) {
       const data = JSON.parse(event.data);
 
@@ -285,6 +295,13 @@ export default function MapComponentNative({
               }
             } else if (typedData.type === 'zoomChange' && typeof typedData.zoom === 'number') {
               setCurrentZoom(typedData.zoom);
+            } else if (
+              typedData.type === 'viewportCenterChange' &&
+              onViewportCenterChange &&
+              typeof typedData.latitude === 'number' &&
+              typeof typedData.longitude === 'number'
+            ) {
+              onViewportCenterChange({ latitude: typedData.latitude, longitude: typedData.longitude });
             } else if (
               typedData.type === 'mapPress' &&
               onPress &&

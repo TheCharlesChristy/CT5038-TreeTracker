@@ -16,7 +16,7 @@ import { router } from 'expo-router';
 import { AppText } from './AppText';
 import { TreeDetails, TreePhoto } from '@/objects/TreeDetails';
 import type { MapCoordinate } from './MapComponent.types';
-import { TreeHealth, TreeHealthSelect } from './TreeHealthSelect';
+import { TreeHealth, TreeHealthSelect, TREE_HEALTH_FORM_OPTIONS } from './TreeHealthSelect';
 import * as ImagePicker from 'expo-image-picker';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { ErrorMessageBox } from './ErrorMessageBox';
@@ -420,7 +420,7 @@ export default function PlotDashboard({
               </View>
             ) : null}
 
-            <TreeHealthSelect value={health} onChange={setHealth} />
+            <TreeHealthSelect value={health} onChange={setHealth} options={TREE_HEALTH_FORM_OPTIONS} />
 
             <View style={styles.dynamicListSection}>
               <View style={styles.dynamicListHeader}>

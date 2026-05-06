@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import MapComponent from '@/components/base/MapComponent';
 import PlotDashboard from '@/components/base/AddTreeDashboard';
@@ -17,17 +17,20 @@ import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessage
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
 import { DashboardPanel } from '@/components/map/DashboardPanel';
+import { MyTreesOverlayPanel } from '@/components/map/MyTreesOverlayPanel';
 import { FloatingActionBar } from '@/components/map/FloatingActionBar';
 import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
 import { CircularCountdown } from '@/components/base/CircularCountdown';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
+import { useMyTreesFilterModel } from '../hooks/useMyTreesFilterModel';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FaviconHead } from '@/components/base/FaviconHead';
 
 export default function MainPage() {
+  const params = useLocalSearchParams<{ openMyTrees?: string }>();
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
@@ -79,6 +82,7 @@ export default function MainPage() {
     closeAllOverlays,
     openMode,
     setSearchQuery,
+    setSearchCenter,
     setDistanceFilterKm,
     setHealthFilter,
     handleMapPointerMove,
@@ -97,12 +101,33 @@ export default function MainPage() {
     refreshIntervalMs,
   } = useTreeMapState();
 
+  useEffect(() => {
+    const flag = params.openMyTrees;
+    if (flag !== '1' && flag !== 'true') {
+      return;
+    }
+    if (loggedInUserId == null) {
+      return;
+    }
+    openMode('my-trees');
+    router.setParams({ openMyTrees: undefined });
+  }, [params.openMyTrees, loggedInUserId, openMode]);
+
+  const myTreesFilter = useMyTreesFilterModel(plottedTrees, loggedInUserId);
+
+  const mapTrees =
+    mode === 'my-trees'
+      ? myTreesFilter.displayedTrees
+      : hasSearchFilters
+        ? searchResults
+        : plottedTrees;
+
   const renderTreeIcon = useCallback((tree: Tree, { zoom }: { zoom: number }) => {
     const selected = selectedTree?.id !== undefined && selectedTree.id === tree.id;
     return <TreeMarkerIcon selected={selected} zoomLevel={zoom} />;
   }, [selectedTree?.id]);
 
-  const visibleTrees = hasSearchFilters ? searchResults : plottedTrees;
+  const visibleTrees = mapTrees;
   const navOverlayInset = insets.top + (windowWidth < 760 ? 84 : 92);
   const actionBarBottomInset = 24 + insets.bottom;
   const actionBarHeight = 56;
@@ -175,6 +200,7 @@ export default function MainPage() {
             isPlotting={mode === 'add' && isSelectingManualLocation}
             plottedTrees={visibleTrees}
             selectedLocation={selectedDraftLocation}
+            onViewportCenterChange={setSearchCenter}
             onPlotPointerMove={handleMapPointerMove}
             onTreeClick={handleMapTreeClick}
             onPress={handleMapPress}
@@ -295,6 +321,17 @@ export default function MainPage() {
               onClose={closeAllOverlays}
               onLogout={handleLogout}
               isLoggingOut={isLoggingOut}
+              onOpenMyTrees={() => openMode('my-trees')}
+              topInset={navOverlayInset}
+              bottomInset={panelBottomInset}
+            />
+          ) : null}
+
+          {mode === 'my-trees' && loggedInUserId !== null ? (
+            <MyTreesOverlayPanel
+              filter={myTreesFilter}
+              onClose={closeAllOverlays}
+              onSelectTree={handleMapTreeClick}
               topInset={navOverlayInset}
               bottomInset={panelBottomInset}
             />
@@ -304,7 +341,7 @@ export default function MainPage() {
             <FloatingActionBar
               searchActive={mode === 'search'}
               addActive={mode === 'add'}
-              dashboardActive={mode === 'dashboard'}
+              dashboardActive={mode === 'dashboard' || mode === 'my-trees'}
               isGuest={loggedInUsername === null}
               bottomOffset={actionBarBottomInset}
               onSearchPress={() => {

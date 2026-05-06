@@ -16,7 +16,8 @@ export type SelectOption<T extends string> = {
   textColor: string;
 };
 
-export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
+/** Good / OK / Bad only — use when adding a tree (see `AddTreeDashboard`). */
+export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'good',
     label: 'Good',
@@ -42,6 +43,8 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
     textColor: '#8A4712',
   },
 ];
+
+export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = TREE_HEALTH_FORM_OPTIONS;
 
 export function getTreeHealthOption(value?: TreeHealth) {
   return (
@@ -84,22 +87,32 @@ type BaseProps<T extends string> = {
   options: SelectOption<T>[];
   prefixLabel?: string;
   compact?: boolean;
+  /** When current `value` is not in `options`, use this for trigger styling (e.g. legacy API health). */
+  getFallbackMeta?: (value: T) => SelectOption<T> | undefined;
 };
 
 type TreeHealthSelectProps = {
   value?: TreeHealth;
   onChange: (value: TreeHealth) => void;
   compact?: boolean;
+  /** Defaults to full list; use `TREE_HEALTH_FORM_OPTIONS` when adding a tree (Good / OK / Bad only). */
+  options?: SelectOption<TreeHealth>[];
 };
 
-export function TreeHealthSelect({ value = 'ok', onChange, compact = false }: TreeHealthSelectProps) {
+export function TreeHealthSelect({
+  value = 'ok',
+  onChange,
+  compact = false,
+  options = TREE_HEALTH_OPTIONS,
+}: TreeHealthSelectProps) {
   return (
     <HealthSelectBase
       value={value}
       onChange={onChange}
-      options={TREE_HEALTH_OPTIONS}
+      options={options}
       prefixLabel="Health"
       compact={compact}
+      getFallbackMeta={(v) => getTreeHealthOption(v as TreeHealth) as SelectOption<TreeHealth>}
     />
   );
 }
@@ -129,12 +142,16 @@ function HealthSelectBase<T extends string>({
   options,
   prefixLabel,
   compact = false,
+  getFallbackMeta,
 }: BaseProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
 
   const selectedMeta = useMemo(
-    () => options.find((option) => option.value === value) ?? options[0],
-    [options, value]
+    () =>
+      options.find((option) => option.value === value) ??
+      getFallbackMeta?.(value) ??
+      options[0],
+    [getFallbackMeta, options, value]
   );
 
   return (
