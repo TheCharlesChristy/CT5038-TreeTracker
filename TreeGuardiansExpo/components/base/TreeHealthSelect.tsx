@@ -43,7 +43,6 @@ export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
     textColor: '#8A4712',
   },
 ];
-];
 
 export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = TREE_HEALTH_FORM_OPTIONS;
 
