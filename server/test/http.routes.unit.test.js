@@ -25,7 +25,13 @@ function createDbStub(health = { ready: true }) {
         deletedTokens.push(sessionToken);
         return { deleted: true };
       }
-    }
+    },
+    emailVerificationTokens: {
+      create: async () => "mock-token-hex",
+      deleteByUserId: async () => ({ count: 0 }),
+      deleteByToken: async () => ({ deleted: true }),
+      getByToken: async () => null
+    },
   };
 }
 
@@ -366,11 +372,21 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
     wildlifeCreate: 0,
     diseaseCreate: 0
   };
-  const accessToken = signJwt({ userId: 2, username: "user" }, process.env.JWT_SECRET, 15 * 60);
+  const accessToken = signJwt(
+    { userId: 2, username: "user", verified: true },
+    process.env.JWT_SECRET,
+    15 * 60
+  );
 
   const db = {
     health: async () => ({ ready: true }),
     transaction: async (fn) => fn({ __tx: true }),
+    emailVerificationTokens: {
+      create: async () => "mock-token-hex",
+      deleteByUserId: async () => ({ count: 0 }),
+      deleteByToken: async () => ({ deleted: true }),
+      getByToken: async () => null
+    },
     trees: {
       create: async () => {
         callLog.treesCreate += 1;
@@ -449,7 +465,7 @@ test("legacy /api routes expose old frontend-compatible endpoints", async () => 
       create: async () => ({ id: 2, username: "user", email: "user@example.com" }),
       getByUsername: async () => null,
       getByEmail: async () => null,
-      getById: async (id) => (id === 2 ? { id: 2, username: "user", email: "user@example.com" } : null)
+      getById: async (id) => (id === 2 ? { id: 2, username: "user", email: "user@example.com", verified_at: new Date().toISOString() } : null)
     },
     userPasswords: {
       setForUser: async () => ({ userId: 2 }),
@@ -534,6 +550,12 @@ test("legacy auth routes register login and return /api/me", async () => {
   const db = {
     health: async () => ({ ready: true }),
     transaction: async (fn) => fn({ __tx: true }),
+    emailVerificationTokens: {
+      create: async () => "mock-token-hex",
+      deleteByUserId: async () => ({ count: 0 }),
+      deleteByToken: async () => ({ deleted: true }),
+      getByToken: async () => null
+    },
     trees: { list: async () => [], getById: async () => null, create: async () => ({ id: 1 }) },
     treeCreationData: { create: async () => ({ id: 1 }), getByTreeId: async () => ({ id: 1 }) },
     treeData: { create: async () => ({ id: 1 }), getByTreeId: async () => null },

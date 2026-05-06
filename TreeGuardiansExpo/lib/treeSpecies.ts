@@ -80,6 +80,8 @@ const ECO_OVERRIDES: Record<string, TreeSpeciesMeta> = {
     runoffFactor: 0.00190,
     airQualityFactor: 8.4,
     evapotranspirationFactor: 0.00084,
+    disableEstimates: false,
+  },
   },
 };
 

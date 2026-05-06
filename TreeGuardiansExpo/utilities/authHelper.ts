@@ -1,5 +1,6 @@
 import { getItem, removeItem, saveItem } from "./authStorage";
 import { API_BASE, ENDPOINTS } from "@/config/api";
+import { buildApiUrl } from '@/config/api';
 
 export type UserRole = "registered_user" | "guardian" | "admin";
 export type AppUserRole = "user" | "guardian" | "admin";
@@ -9,6 +10,7 @@ export interface AuthUser {
   username: string;
   email?: string | null;
   role: UserRole;
+  verified: boolean;
 }
 
 export interface AuthState {
@@ -24,6 +26,27 @@ type AccountUserResponse = {
 type MessageResponse = {
   message?: string;
 };
+
+function formatApiError(prefix: string, response: Response, rawBody: string, explicitError?: string): string {
+  const errorMessage = explicitError || 'No explicit error field returned.';
+  const responseBody = rawBody.trim().length > 0 ? rawBody : '<empty body>';
+
+  return `${prefix}\nStatus: ${response.status} ${response.statusText}\nError: ${errorMessage}\nResponse Body: ${responseBody}`;
+}
+
+async function getAuthHeaders(includeJson = false): Promise<Record<string, string>> {
+  const token = await getAccessToken();
+
+  if (!token) {
+    throw new Error('Authentication required.');
+  }
+
+  return {
+    ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
+    Accept: 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 export async function validateSession(): Promise<AuthState> {
   try {
@@ -349,4 +372,16 @@ export async function deleteAccount(payload: {
 
   // Server returns JSON; we don't depend on the shape.
   await response.json().catch(() => null as MessageResponse | null);
+}
+
+export async function resendVerificationEmail(): Promise<void> {
+  const response = await fetch(buildApiUrl('auth/resend-verification'), {
+    method: 'POST',
+    headers: await getAuthHeaders(true),
+  });
+
+  const rawBody = await response.text();
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to resend verification email.', response, rawBody));
+  }
 }

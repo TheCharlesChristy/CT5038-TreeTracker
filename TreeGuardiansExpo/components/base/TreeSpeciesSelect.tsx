@@ -9,6 +9,7 @@ type TreeSpeciesSelectProps = {
     value?: string;
     onChange: (value: string) => void;
     compact?: boolean;
+    error?: string | null;
 };
 
 const DEFAULT_UK_SPECIES = [
@@ -24,6 +25,7 @@ export function TreeSpeciesSelect({
     value,
     onChange,
     compact = false,
+    error,
 }: TreeSpeciesSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
@@ -62,7 +64,7 @@ export function TreeSpeciesSelect({
     return (
         <View style={styles.container}>
         <TouchableOpacity
-        style={[styles.trigger, compact && styles.triggerCompact]}
+        style={[styles.trigger, compact && styles.triggerCompact, error ? styles.triggerError : null]}
         activeOpacity={0.85}
         onPress={() => setIsOpen((current) => !current)}
         >
@@ -79,6 +81,10 @@ export function TreeSpeciesSelect({
             color="#2F5A35"
         />
         </TouchableOpacity>
+
+        {error ? (
+            <AppText style={styles.errorText}>{error}</AppText>
+        ) : null}
 
         {isOpen ? (
             <View style={styles.menu}>
@@ -227,5 +233,15 @@ const styles = StyleSheet.create({
   emptyStateText: {
     ...Theme.Typography.caption,
     color: '#56705A',
+  },
+  triggerError: {
+    borderColor: '#B3261E',
+    backgroundColor: 'rgba(179, 38, 30, 0.04)',
+  },
+  errorText: {
+    color: '#B3261E',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

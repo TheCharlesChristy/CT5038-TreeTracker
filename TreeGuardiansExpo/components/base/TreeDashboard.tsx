@@ -40,7 +40,7 @@ import { showConfirm } from '@/utilities/showConfirm';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
-import { EncodingType } from 'expo-file-system/legacy';
+import { documentDirectory, cacheDirectory } from 'expo-file-system/legacy';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
@@ -868,7 +868,7 @@ export default function TreeDetailsDashboard({
     treeOverviewPath && configuredWebOrigin ? `${configuredWebOrigin}${treeOverviewPath}` : null;
   const nativeDeepLink = treeOverviewPath ? Linking.createURL(treeOverviewPath) : null;
   const qrValue = webUrl ?? nativeDeepLink;
-  const qrCodeRef = useRef<QRCode | null>(null);
+  const qrCodeRef = useRef<any>(null);
 
   useEffect(() => {
     setDisplayTree(tree);
@@ -1317,7 +1317,7 @@ export default function TreeDetailsDashboard({
 
     const parsed = Number(trimmed);
     if (!Number.isFinite(parsed)) {
-      showStatusMessage('Must be valid number', 'error');
+      showStatusMessage('Error', 'Must be valid number', 'error');
     }
 
     return parsed;
@@ -1586,12 +1586,13 @@ export default function TreeDetailsDashboard({
 
   const getQrPngDataUrl = async (): Promise<string> => {
     const svg = qrCodeRef.current;
+
     if (!svg) {
       showStatusMessage('QR Code is not ready yet', 'Tree link could not be generated.', 'error');
     }
 
     return new Promise((resolve) => {
-      svg.toDataURL((data) => {
+      svg.toDataURL((data: string) => {
         resolve(`data:image/png;base64,${data}`);
       });
     });
@@ -1608,7 +1609,7 @@ export default function TreeDetailsDashboard({
 
       if (Platform.OS === 'web') {
         if (typeof document === 'undefined') {
-          showStatusMessage('Unable to download on this device', 'error');
+          showStatusMessage('Error', 'Unable to download on this device', 'error');
         }
 
         const anchor = document.createElement('a');
@@ -1622,15 +1623,15 @@ export default function TreeDetailsDashboard({
         return;
       }
 
-      const cacheDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+      const cacheDir = documentDirectory || cacheDirectory;
       if (!cacheDir) {
-        showStatusMessage('Unable to access local storage', 'error');
+        showStatusMessage('Error', 'Unable to access local storage', 'error');
       }
 
       const base64 = dataUrl.replace('data:image/png;base64,', '');
       const fileUri = `${cacheDir}tree-${tree.id}-qr.png`;
       await FileSystem.writeAsStringAsync(fileUri, base64, {
-        encoding: EncodingType.Base64,
+        encoding: FileSystem.EncodingType.Base64,
       });
 
       if (await Sharing.isAvailableAsync()) {
@@ -1791,7 +1792,7 @@ export default function TreeDetailsDashboard({
 
           {activeTab === 'qr' && canShowQrCode && qrValue ? (
             <TreeQrCode
-              treeId={tree.id}
+              treeId={tree.id!}
               qrValue={qrValue}
               onCopy={handleCopyQrLink}
               onSave={handleSaveQrCode}
