@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
@@ -8,6 +8,7 @@ import { AppButton } from '@/components/base/AppButton';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { canAccessManageUsers, useSessionUser } from '@/lib/session';
+import { FaviconHead } from '@/components/base/FaviconHead';
 import {
 	fetchAnalytics,
 	fetchActivityTrend,
@@ -321,48 +322,51 @@ export default function AnalyticsPage() {
 	const loginTrend = activityTrend ? lastNDaysLabels(activityTrend.loginsPerDay, 14) : [];
 
 	return (
-		<AppContainer>
-			<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-				{/* Header island */}
-				<View style={styles.headerIsland}>
-					<View style={styles.topBar}>
-						<NavigationButton onPress={() => router.push('/mainPage')} color="#FFFFFF">
-							Back to Map
-						</NavigationButton>
+		<>
+			<Stack.Screen options={{ title: 'Analytics | TreeGuardians' }} />
+			<FaviconHead title="Analytics | TreeGuardians" />
+			<AppContainer>
+				<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+					{/* Header island */}
+					<View style={styles.headerIsland}>
+						<View style={styles.topBar}>
+							<NavigationButton onPress={() => router.push('/mainPage')} color="#FFFFFF">
+								Back to Map
+							</NavigationButton>
+						</View>
+						<AppText style={styles.headerTitle}>Analytics</AppText>
+						<AppText style={styles.headerSubtitle}>
+							TreeGuardians impact overview
+						</AppText>
 					</View>
-					<AppText style={styles.headerTitle}>Analytics</AppText>
-					<AppText style={styles.headerSubtitle}>
-						TreeGuardians impact overview
-					</AppText>
-				</View>
 
-				{isFetching ? (
-					<View style={styles.centered}>
-						<ActivityIndicator size="large" color={Theme.Colours.primary} />
-						<AppText style={styles.muted}>Loading analytics...</AppText>
-					</View>
-				) : error ? (
-					<View style={styles.errorCard}>
-						<AppText style={styles.errorText}>{error}</AppText>
-					</View>
-				) : (
-					<>
-						{/* ── Key Stats ─────────────────────────────────────────── */}
-						{overview ? (
-							<View style={styles.section}>
-								<AppText style={styles.sectionTitle}>Key Statistics</AppText>
-								<View style={styles.statRow}>
-									<View style={styles.statCard}>
-										<AppText style={styles.statValue}>{overview.totalTrees}</AppText>
-										<AppText style={styles.statLabel}>Trees</AppText>
-									</View>
-									<View style={styles.statCard}>
-										<AppText style={styles.statValue}>{overview.totalUsers}</AppText>
-										<AppText style={styles.statLabel}>Users</AppText>
+					{isFetching ? (
+						<View style={styles.centered}>
+							<ActivityIndicator size="large" color={Theme.Colours.primary} />
+							<AppText style={styles.muted}>Loading analytics...</AppText>
+						</View>
+					) : error ? (
+						<View style={styles.errorCard}>
+							<AppText style={styles.errorText}>{error}</AppText>
+						</View>
+					) : (
+						<>
+							{/* ── Key Stats ─────────────────────────────────────────── */}
+							{overview ? (
+								<View style={styles.section}>
+									<AppText style={styles.sectionTitle}>Key Statistics</AppText>
+									<View style={styles.statRow}>
+										<View style={styles.statCard}>
+											<AppText style={styles.statValue}>{overview.totalTrees}</AppText>
+											<AppText style={styles.statLabel}>Trees</AppText>
+										</View>
+										<View style={styles.statCard}>
+											<AppText style={styles.statValue}>{overview.totalUsers}</AppText>
+											<AppText style={styles.statLabel}>Users</AppText>
+										</View>
 									</View>
 								</View>
-							</View>
-						) : null}
+							) : null}
 
 						{/* ── Activity Trend ────────────────────────────────────── */}
 						<View style={styles.section}>
@@ -429,15 +433,16 @@ export default function AnalyticsPage() {
 							</View>
 						) : null}
 					</>
-				)}
+					)}
 
-				<AppButton
-					title="Return to Map"
-					variant="secondary"
-					onPress={() => router.push('/mainPage')}
-				/>
-			</ScrollView>
-		</AppContainer>
+					<AppButton
+						title="Return to Map"
+						variant="secondary"
+						onPress={() => router.push('/mainPage')}
+					/>
+				</ScrollView>
+			</AppContainer>
+		</>
 	);
 }
 

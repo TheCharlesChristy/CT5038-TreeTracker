@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle, Animated } from 'react-native';
+import { Platform, TouchableOpacity, StyleSheet, StyleProp, ViewStyle, TextStyle, Animated } from 'react-native';
 import { AppText } from './AppText';
 import { Theme } from '@/styles/theme';
 
@@ -21,6 +21,14 @@ interface AppButtonProps {
   textStyle?: StyleProp<TextStyle>;
   disabled?: boolean;
 }
+
+const webTouchStyle = Platform.select({
+  web: {
+    WebkitTapHighlightColor: 'transparent',
+    cursor: 'pointer',
+  } as object,
+  default: {},
+});
 
 const textColorForVariant: Record<Variant, string> = {
   primary: Theme.Colours.white,
@@ -65,7 +73,7 @@ export const AppButton = ({
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[styles.base, styles[variant], buttonStyle, disabled && styles.disabled]}
+        style={[styles.base, styles[variant], buttonStyle, disabled && styles.disabled, webTouchStyle]}
         activeOpacity={disabled ? 1 : 0.85}
         disabled={disabled}
       >
@@ -153,5 +161,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 15,
     letterSpacing: 0.3,
+    backgroundColor: 'transparent',
   },
 });

@@ -1,4 +1,4 @@
-import { buildApiUrl, ENDPOINTS } from '@/config/api';
+import { buildApiUrl, ENDPOINTS, resolveApiOrigin } from '@/config/api';
 import { Tree, TreeDetails, TreePhoto } from '@/objects/TreeDetails';
 import { getAccessToken } from '@/utilities/authHelper';
 
@@ -27,7 +27,7 @@ type ServerTreeItem = {
   airQualityImprovement?: number;
   leafArea?: number;
   evapotranspiration?: number;
-  health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
+  health?: 'good' | 'ok' | 'bad';
   photos?: ServerPhoto[];
   latitude?: number;
   longitude?: number;
@@ -417,12 +417,33 @@ export async function deleteTreePhoto(
 
 export type TreeFeedItem = {
   item_type: 'tree_comment' | 'wildlife' | 'disease' | 'seen' | 'reply';
-  comment_id: number;
+  /** Server may send bigint as string */
+  comment_id: number | string;
   created_at: string;
   content: string | null;
+  /** Pipe-separated image URLs from server (comments / replies only) */
+  photo_urls?: string | null;
   extra: string | null;
   user_id?: number | null;
   username?: string | null;
+};
+
+export function resolveUploadedImageUrl(url: string): string {
+  const trimmed = String(url || '').trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  const origin = resolveApiOrigin();
+  if (trimmed.startsWith('/')) {
+    return `${origin}${trimmed}`;
+  }
+
+  return `${origin}/${trimmed.replace(/^\/+/, '')}`;
 }
 
 export async function fetchTreeFeed(treeId: number, limit=50, offset=0): Promise<TreeFeedItem[]> {
@@ -437,7 +458,55 @@ export async function fetchTreeFeed(treeId: number, limit=50, offset=0): Promise
   return Array.isArray(data) ? (data as TreeFeedItem[]) : [];
 }
 
-export async function addTreeComment(treeId: number, content: string): Promise<void> {
+export async function uploadCommentDraftPhotos(
+  treeId: number,
+  assets: TreePhotoUploadAsset[]
+): Promise<number[]> {
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    throw new Error('Authentication is required to attach images to a comment.');
+  }
+
+  const formData = new FormData();
+  const files = await buildPhotoUploadFiles(assets);
+
+  files.forEach((file) => {
+    formData.append('photos', file as any);
+  });
+
+  const response = await fetch(buildApiUrl(`trees/${treeId}/comment-photos`), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+    body: formData,
+  });
+
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody) as
+    | { success?: boolean; photos?: { id?: number }[]; error?: string }
+    | undefined;
+
+  if (!response.ok) {
+    throw new Error(
+      formatApiError('Failed to upload comment images.', response, rawBody, parsed?.error)
+    );
+  }
+
+  const ids = (parsed?.photos ?? [])
+    .map((row) => Number(row?.id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+
+  return ids;
+}
+
+export async function addTreeComment(
+  treeId: number,
+  content: string,
+  photoIds: number[] = []
+): Promise<void> {
   const accessToken = await getAccessToken();
   if (!accessToken) {
     throw new Error('Authentication is required to add a comment.');
@@ -449,12 +518,54 @@ export async function addTreeComment(treeId: number, content: string): Promise<v
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, photoIds }),
   });
 
   const rawBody = await response.text();
   if (!response.ok) {
     throw new Error(formatApiError('Failed to add comment.', response, rawBody));
+  }
+}
+
+export async function addTreeCommentReply(
+  treeId: number,
+  parentCommentId: number,
+  content: string,
+  photoIds: number[] = []
+): Promise<void> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    throw new Error('Authentication is required to reply to a comment.');
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  const bodyFlat = JSON.stringify({ parentCommentId, content, photoIds });
+  const bodyNested = JSON.stringify({ content, photoIds });
+
+  let response = await fetch(buildApiUrl(`trees/${treeId}/comment-replies`), {
+    method: 'POST',
+    headers,
+    body: bodyFlat,
+  });
+
+  if (response.status === 404) {
+    response = await fetch(
+      buildApiUrl(`trees/${treeId}/comments/${parentCommentId}/replies`),
+      {
+        method: 'POST',
+        headers,
+        body: bodyNested,
+      }
+    );
+  }
+
+  const rawBody = await response.text();
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to add reply.', response, rawBody));
   }
 }
 

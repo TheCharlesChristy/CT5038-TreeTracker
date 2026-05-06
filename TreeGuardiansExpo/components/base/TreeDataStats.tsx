@@ -174,10 +174,6 @@ export function TreeDataStats({ tree }: { tree: Tree }) {
 
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <AppText style={styles.sectionTitle}>Tree Data</AppText>
-      </View>
-
       <View style={styles.featuredStack}>
         {featuredItems.map((item) => {
           const tone = getToneStyles(item.tone);

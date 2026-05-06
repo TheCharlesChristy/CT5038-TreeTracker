@@ -5,17 +5,19 @@ import {
 	ActivityIndicator,
 	TextInput,
 	ScrollView,
+	Modal,
 	type TextStyle,
 	type ViewStyle,
 } from 'react-native';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
-import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
-import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
+import { deleteAccount, logoutUser, updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
+import { resendVerificationEmail } from '@/utilities/authHelper';
+import { FaviconHead } from '@/components/base/FaviconHead';
 
 const ROLE_LABEL: Record<UserRole, string> = {
 	registered_user: 'Member',
@@ -45,15 +47,21 @@ export default function MyProfilePage() {
 	const { user, isLoading } = useSessionUser();
 	const [profileUser, setProfileUser] = useState(user);
 
+	const [isAccountDeletionInProgress, setIsAccountDeletionInProgress] = useState(false);
+
 	useEffect(() => {
-		if (!isLoading && !user) {
+		if (!isLoading && !user && !isAccountDeletionInProgress) {
 			router.replace('/login');
 		}
-	}, [isLoading, user]);
+	}, [isLoading, user, isAccountDeletionInProgress]);
 
 	const [isEditingUsername, setIsEditingUsername] = useState(false);
 	const [isEditingEmail, setIsEditingEmail] = useState(false);
 	const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+	const [isResendingVerification, setIsResendingVerification] = useState(false);
+	const [resendError, setResendError] = useState<string | null>(null);
+	const [resendSuccess, setResendSuccess] = useState<string | null>(null);
 
 	const [username, setUsername] = useState(user?.username ?? '');
 	const [email, setEmail] = useState(user?.email ?? '');
@@ -84,6 +92,11 @@ export default function MyProfilePage() {
 	const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 	const [isSavingPassword, setIsSavingPassword] = useState(false);
 
+	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+	const [deletePassword, setDeletePassword] = useState('');
+	const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+	const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+
 	if (isLoading || !user) {
 		return (
 			<AppContainer>
@@ -101,6 +114,21 @@ export default function MyProfilePage() {
 			newPassword: '',
 			confirmNewPassword: '',
 		});
+	}
+
+	async function handleResendVerification() {
+		setResendError(null);
+		setResendSuccess(null);
+		setIsResendingVerification(true);
+
+		try {
+			await resendVerificationEmail();
+			setResendSuccess('Verification email sent! Check your inbox and spam folder.');
+		} catch {
+			setResendError('Failed to send verification email. Please try again.');
+		} finally {
+			setIsResendingVerification(false);
+		}
 	}
 
 	async function handleSaveUsername() {
@@ -237,22 +265,49 @@ export default function MyProfilePage() {
 		}
 	}
 
+	async function handleConfirmDeleteAccount() {
+		if (isDeletingAccount) return;
+
+		const currentPassword = deletePassword.trim();
+		setDeleteAccountError(null);
+
+		if (!currentPassword) {
+			setDeleteAccountError('Password is required.');
+			return;
+		}
+
+		setIsDeletingAccount(true);
+		setIsAccountDeletionInProgress(true);
+
+		try {
+			await deleteAccount({ currentPassword });
+			await logoutUser();
+			setIsDeleteModalVisible(false);
+			router.replace('/mainPage');
+		} catch (error) {
+			console.error('Account deletion failed:', error);
+			const message = error instanceof Error ? error.message : 'Failed to delete account.';
+			setDeleteAccountError(message);
+			setIsAccountDeletionInProgress(false);
+		} finally {
+			setIsDeletingAccount(false);
+		}
+	}
+
 	const currentUser = profileUser ?? user;
 	const avatarLetter = currentUser.username.charAt(0).toUpperCase();
 
 	return (
-		<AppContainer noPadding>
+		<>
+			<Stack.Screen options={{ title: 'My Profile | TreeGuardians' }} />
+			<FaviconHead title="My Profile | TreeGuardians" />
+			<AppContainer noPadding backgroundImage={require('@/assets/images/CharltonKings.jpg')}>
 			<ScrollView
 				style={styles.scroll}
 				contentContainerStyle={styles.scrollContent}
-				showsVerticalScrollIndicator={false}
+				showsVerticalScrollIndicator
 			>
 				<View style={styles.inner}>
-					<View style={styles.topBar}>
-						<NavigationButton onPress={() => router.push('/mainPage')}>
-							Back to Map
-						</NavigationButton>
-					</View>
 
 					{/* Hero overview card */}
 					<View style={styles.heroCard}>
@@ -270,6 +325,45 @@ export default function MyProfilePage() {
 								<AppText style={styles.heroMetaLabel}>Email</AppText>
 								<AppText style={styles.heroMetaValue}>{currentUser.email ?? 'Not provided'}</AppText>
 							</View>
+						</View>
+						<View style={[
+						styles.verificationBanner,
+						currentUser.verified
+							? styles.verificationBannerVerified
+							: styles.verificationBannerUnverified
+						]}>
+						<AppText style={[
+							styles.verificationBannerText,
+							currentUser.verified
+							? styles.verificationTextVerified
+							: styles.verificationTextUnverified
+						]}>
+							{currentUser.verified ? '✓ Email verified' : '⚠ Email not verified'}
+						</AppText>
+
+						{!currentUser.verified ? (
+							<>
+							<AppText style={styles.verificationHint}>
+								You need to verify your email before you can add or manage trees.
+							</AppText>
+
+							{resendSuccess ? (
+								<AppText style={styles.successText}>{resendSuccess}</AppText>
+							) : null}
+
+							{resendError ? (
+								<AppText style={styles.errorText}>{resendError}</AppText>
+							) : null}
+
+							<AppButton
+								title={isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
+								variant="primary"
+								onPress={handleResendVerification}
+								disabled={isResendingVerification}
+								style={styles.resendButton}
+							/>
+							</>
+						) : null}
 						</View>
 						<AppText style={styles.userId}>ID #{currentUser.id}</AppText>
 					</View>
@@ -462,6 +556,30 @@ export default function MyProfilePage() {
 						)}
 					</View>
 
+					{/* Account deletion card */}
+					<View style={styles.card}>
+						<AppText style={styles.cardTitle}>Account Deletion</AppText>
+						<AppText style={styles.deleteDescription}>
+							Deleting your account will permanently remove your login credentials and revoke access.{'\n\n'}
+							Your trees will remain, but your account will no longer be associated with them.{'\n'}
+							Your comments will be anonymised and guardian assignments will be removed. This action cannot be undone.
+						</AppText>
+						<View style={styles.deleteButtonRow}>
+							<AppButton
+								title={isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+								variant="outline"
+								disabled={isDeletingAccount}
+								onPress={() => {
+									setDeleteAccountError(null);
+									setDeletePassword('');
+									setIsDeleteModalVisible(true);
+								}}
+								buttonStyle={styles.deleteAccountButton}
+								textStyle={styles.deleteAccountButtonText}
+							/>
+						</View>
+					</View>
+
 					<View style={styles.footerActions}>
 						<AppButton
 							title="Return to Map"
@@ -471,27 +589,85 @@ export default function MyProfilePage() {
 					</View>
 				</View>
 			</ScrollView>
+
+			<Modal
+				visible={isDeleteModalVisible}
+				transparent
+				animationType="fade"
+				onRequestClose={() => {
+					if (!isDeletingAccount) {
+						setIsDeleteModalVisible(false);
+						setDeleteAccountError(null);
+					}
+				}}
+			>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalCard}>
+						<AppText style={styles.modalTitle}>Confirm account deletion</AppText>
+						<AppText style={styles.modalMessage}>
+							Deleting your account will permanently remove your login credentials and revoke access.{'\n'}
+							Guardian assignments will be removed and your comments will be anonymised.{'\n'}
+							Your trees will remain, but they will no longer be associated with your account.{'\n\n'}
+							This action cannot be undone.{'\n'}
+							Enter your password to confirm.
+						</AppText>
+
+						<TextInput
+							value={deletePassword}
+							onChangeText={setDeletePassword}
+							placeholder="Enter your password"
+							style={styles.modalInput}
+							secureTextEntry
+							autoCapitalize="none"
+						/>
+
+						{deleteAccountError ? <AppText style={styles.errorText}>{deleteAccountError}</AppText> : null}
+
+						<View style={styles.modalActions}>
+							<AppButton
+								title={isDeletingAccount ? 'Cancel' : 'Cancel'}
+								variant="secondary"
+								disabled={isDeletingAccount}
+								onPress={() => {
+									setIsDeleteModalVisible(false);
+									setDeleteAccountError(null);
+									setDeletePassword('');
+								}}
+								buttonStyle={styles.modalButton}
+							/>
+							<AppButton
+								title={isDeletingAccount ? 'Deleting...' : 'Yes, delete my account'}
+								variant="outline"
+								disabled={isDeletingAccount || !deletePassword.trim()}
+								onPress={handleConfirmDeleteAccount}
+								buttonStyle={styles.modalDeleteConfirmButton}
+								textStyle={styles.deleteAccountButtonText}
+							/>
+						</View>
+					</View>
+				</View>
+			</Modal>
 		</AppContainer>
+		</>
 	);
 }
 
 const GLASS_CARD = {
-	backgroundColor: 'rgba(250, 253, 250, 0.96)',
+	backgroundColor: 'rgba(255, 255, 255, 0.88)',
 	borderRadius: 18,
 	borderWidth: 1,
-	borderColor: 'rgba(183, 210, 185, 0.7)',
-	borderTopColor: 'rgba(255, 255, 255, 0.88)',
+	borderColor: 'rgba(255, 255, 255, 0.6)',
+	borderTopColor: 'rgba(255, 255, 255, 0.96)',
 	shadowColor: '#0D1F10',
 	shadowOffset: { width: 0, height: 10 },
-	shadowOpacity: 0.14,
-	shadowRadius: 18,
-	elevation: 12,
+	shadowOpacity: 0.18,
+	shadowRadius: 20,
+	elevation: 14,
 } as const;
 
 const styles = StyleSheet.create({
 	scroll: {
 		flex: 1,
-		backgroundColor: '#E8F0E9',
 	},
 	scrollContent: {
 		paddingBottom: 40,
@@ -515,8 +691,6 @@ const styles = StyleSheet.create({
 	topBar: {
 		marginBottom: 16,
 	},
-
-	/* Hero card */
 	heroCard: {
 		...GLASS_CARD,
 		padding: 24,
@@ -641,5 +815,105 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 		fontSize: 13,
 		color: '#1B6B2A',
+	},
+	verificationBanner: {
+		marginTop: Theme.Spacing.medium,
+		borderRadius: 12,
+		padding: Theme.Spacing.medium,
+		borderWidth: 1,
+		width: '100%',
+	},
+		verificationBannerVerified: {
+		backgroundColor: 'rgba(25, 76, 34, 0.08)',
+		borderColor: 'rgba(25, 76, 34, 0.25)',
+	},
+		verificationBannerUnverified: {
+		backgroundColor: 'rgba(179, 38, 30, 0.07)',
+		borderColor: 'rgba(179, 38, 30, 0.25)',
+	},
+		verificationBannerText: {
+		fontWeight: '700',
+		fontSize: 14,
+		marginBottom: Theme.Spacing.extraSmall,
+	},
+		verificationTextVerified: {
+		color: '#194C22',
+	},
+		verificationTextUnverified: {
+		color: '#B3261E',
+	},
+		verificationHint: {
+		fontSize: 13,
+		color: '#5C3317',
+		marginBottom: Theme.Spacing.small,
+	},
+		resendButton: {
+		marginTop: Theme.Spacing.small,
+	},
+	/* Account deletion */
+	deleteDescription: {
+		fontSize: 13,
+		color: Theme.Colours.textMuted,
+		lineHeight: 18,
+	},
+	deleteButtonRow: {
+		marginTop: 10,
+	},
+	deleteAccountButton: {
+		borderColor: '#B42318',
+		backgroundColor: 'rgba(180, 35, 24, 0.06)',
+		marginBottom: 0,
+	},
+	deleteAccountButtonText: {
+		color: '#B42318',
+	},
+
+	/* Modal */
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.55)',
+		justifyContent: 'center',
+		paddingHorizontal: 16,
+	},
+	modalCard: {
+		backgroundColor: 'rgba(255, 255, 255, 0.98)',
+		borderRadius: 18,
+		borderWidth: 1,
+		borderColor: 'rgba(255, 255, 255, 0.7)',
+		padding: 18,
+	},
+	modalTitle: {
+		fontSize: 16,
+		fontFamily: 'Poppins_600SemiBold',
+		color: Theme.Colours.textPrimary,
+		marginBottom: 10,
+	},
+	modalMessage: {
+		fontSize: 13,
+		color: Theme.Colours.textMuted,
+		lineHeight: 18,
+		marginBottom: 12,
+	},
+	modalInput: {
+		borderWidth: 1,
+		borderColor: 'rgba(183, 210, 185, 0.8)',
+		borderRadius: 12,
+		paddingHorizontal: Theme.Spacing.medium,
+		paddingVertical: 10,
+		backgroundColor: 'rgba(255, 255, 255, 0.82)',
+		color: Theme.Colours.textPrimary,
+		fontSize: 14,
+		marginBottom: 8,
+	},
+	modalActions: {
+		marginTop: 4,
+	},
+	modalButton: {
+		marginBottom: 0,
+	},
+	modalDeleteConfirmButton: {
+		borderColor: '#B42318',
+		backgroundColor: 'rgba(180, 35, 24, 0.06)',
+		marginBottom: 0,
 	},
 });
