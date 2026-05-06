@@ -10,7 +10,9 @@ import {
 } from 'react-native';
 import { Theme } from '@/styles';
 import { AppButton } from './AppButton';
+import { useSessionUser } from '@/lib/session';
 import { AppInput } from './AppInput';
+import { router } from 'expo-router';
 import { AppText } from './AppText';
 import { TreeDetails, TreePhoto } from '@/objects/TreeDetails';
 import type { MapCoordinate } from './MapComponent.types';
@@ -52,6 +54,7 @@ export default function PlotDashboard({
   topInset = 12,
   bottomInset = 104,
 }: PlotDashboardProps) {
+  const { user } = useSessionUser();
   const [species, setSpecies] = useState('');
   const [health, setHealth] = useState<TreeHealth>('ok');
   const [wildlifeList, setWildlifeList] = useState<string[]>([]);
@@ -60,6 +63,14 @@ export default function PlotDashboard({
   const [diameter, setDiameter] = useState('');
   const [height, setHeight] = useState('');
   const [circumference, setCircumference] = useState('');
+  const [otherSpeciesText, setOtherSpeciesText] = useState('');
+  const [speciesError, setSpeciesError] = useState('');
+
+  const isOtherSelected = species.trim().toLowerCase() === 'other';
+
+  const resolvedSpecies = isOtherSelected
+  ? otherSpeciesText.trim() || 'Other'
+  : species.trim();
 
   const [errors, setErrors] = useState<Record<NumericField, string>>({
     diameter: '',
@@ -118,6 +129,19 @@ export default function PlotDashboard({
   };
 
   const validate = () => {
+    let valid = true;
+
+    // Species validation
+    if (!species.trim()) {
+      setSpeciesError('Please select a tree species.');
+      valid = false;
+    } else if (isOtherSelected && !otherSpeciesText.trim()) {
+      setSpeciesError('Please enter the species name.');
+      valid = false;
+    } else {
+      setSpeciesError('');
+    }
+
     const nextErrors: Record<NumericField, string> = {
       diameter: diameter.trim() && !isNumeric(diameter) ? 'Enter a valid number' : '',
       height: height.trim() && !isNumeric(height) ? 'Enter a valid number' : '',
@@ -126,19 +150,19 @@ export default function PlotDashboard({
     };
 
     setErrors(nextErrors);
-    return Object.values(nextErrors).every((value) => value === '');
+    return valid && Object.values(nextErrors).every((value) => value === '');
   };
 
   const buildTreeDetails = (): TreeDetails => {
     const estimates = estimateTreeEcoStats({
-      species: species.trim() || undefined,
+      species: resolvedSpecies || undefined,
       diameter: diameter.trim() ? Number(diameter) : undefined,
       height: height.trim() ? Number(height) : undefined,
       circumference: circumference.trim() ? Number(circumference) : undefined,
     });
 
     return {
-      species: species.trim() || undefined,
+      species: resolvedSpecies || undefined,
       health,
       notes: notes.trim() || undefined,
       wildlifeList: wildlifeList.map((entry) => entry.trim()).filter((entry) => entry.length > 0),
@@ -186,12 +210,12 @@ export default function PlotDashboard({
 
   const estimatedStats = useMemo(() => {
     return estimateTreeEcoStats({
-      species,
+      species: resolvedSpecies,
       diameter: diameter.trim() ? Number(diameter) : undefined,
       height: height.trim() ? Number(height) : undefined,
       circumference: circumference.trim() ? Number(circumference) : undefined,
     });
-  }, [species, diameter, height, circumference]);
+  }, [resolvedSpecies, diameter, height, circumference]);
 
   const upsertPhotoAtIndex = (
     photo: { uri: string; fileName?: string; mimeType?: string },
@@ -332,6 +356,21 @@ export default function PlotDashboard({
           contentContainerStyle={styles.panelContent}
           showsVerticalScrollIndicator={true}
         >
+          {user && !user.verified ? (
+            <View style={styles.unverifiedBanner}>
+              <AppText style={styles.unverifiedTitle}>⚠ Email verification required</AppText>
+              <AppText style={styles.unverifiedBody}>
+                You must verify your email address before adding trees.
+              </AppText>
+              <AppButton
+                title="Go to Profile to Verify"
+                variant="primary"
+                onPress={() => router.push('/myProfile')}
+                style={styles.unverifiedButton}
+              />
+            </View>
+          ) : null}
+
           <View style={styles.headerRow}>
             <View>
               <AppText style={styles.eyebrow}>Add Tree</AppText>
@@ -353,8 +392,33 @@ export default function PlotDashboard({
 
             <TreeSpeciesSelect
               value={species}
-              onChange={setSpecies}
+              onChange={(value) => {
+                setSpecies(value);
+                setSpeciesError('');
+                if (value.toLowerCase() !== 'other') {
+                  setOtherSpeciesText('');
+                }
+              }}
+              error={speciesError}
             />
+
+            {isOtherSelected ? (
+              <View style={styles.otherSpeciesField}>
+                <AppInput
+                  placeholder="Enter species name *"
+                  value={otherSpeciesText}
+                  onChangeText={(value) => {
+                    setOtherSpeciesText(value);
+                    if (value.trim()) setSpeciesError('');
+                  }}
+                  style={styles.input}
+                  invalid={!!speciesError && !otherSpeciesText.trim()}
+                />
+                {speciesError && !otherSpeciesText.trim() ? (
+                  <AppText style={styles.errorText}>{speciesError}</AppText>
+                ) : null}
+              </View>
+            ) : null}
 
             <TreeHealthSelect value={health} onChange={setHealth} />
 
@@ -520,11 +584,9 @@ export default function PlotDashboard({
               <AppButton
                 title="Use My Location"
                 variant="outline"
+                disabled={!!(user && !user.verified)}
                 onPress={() => {
-                  if (!validate()) {
-                    return;
-                  }
-
+                  if (!validate()) return;
                   onSelectDevice(buildTreeDetails());
                 }}
                 style={styles.locationButton}
@@ -533,11 +595,9 @@ export default function PlotDashboard({
               <AppButton
                 title="Select On Map"
                 variant="primary"
+                disabled={!!(user && !user.verified)}
                 onPress={() => {
-                  if (!validate()) {
-                    return;
-                  }
-
+                  if (!validate()) return;
                   onSelectManual(buildTreeDetails());
                 }}
                 style={styles.locationButton}
@@ -604,12 +664,9 @@ export default function PlotDashboard({
             <AppButton
               title={isSubmitting ? 'Submitting...' : 'Confirm Add Tree'}
               variant="primary"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !!(user && !user.verified)}
               onPress={() => {
-                if (!validate()) {
-                  return;
-                }
-
+                if (!validate()) return;
                 onConfirmAdd(buildTreeDetails());
               }}
               style={[styles.footerButton, isMobile && styles.footerButtonMobile]}
@@ -970,5 +1027,34 @@ const styles = StyleSheet.create({
   estimateItem: {
     ...Theme.Typography.caption,
     color: '#35503B',
+  },
+
+  unverifiedBanner: {
+    backgroundColor: 'rgba(179, 38, 30, 0.07)',
+    borderColor: 'rgba(179, 38, 30, 0.25)',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: Theme.Spacing.medium,
+    marginBottom: Theme.Spacing.medium,
+  },
+
+  unverifiedTitle: {
+    fontWeight: '700',
+    color: '#B3261E',
+    marginBottom: Theme.Spacing.extraSmall,
+  },
+
+  unverifiedBody: {
+    color: '#5C3317',
+    fontSize: 13,
+    marginBottom: Theme.Spacing.small,
+  },
+
+  unverifiedButton: {
+    marginTop: Theme.Spacing.extraSmall,
+  },
+
+  otherSpeciesField: {
+    marginTop: Theme.Spacing.small,
   },
 });

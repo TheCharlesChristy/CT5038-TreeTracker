@@ -27,7 +27,7 @@ type ServerTreeItem = {
   airQualityImprovement?: number;
   leafArea?: number;
   evapotranspiration?: number;
-  health?: 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
+  health?: 'good' | 'ok' | 'bad';
   photos?: ServerPhoto[];
   latitude?: number;
   longitude?: number;

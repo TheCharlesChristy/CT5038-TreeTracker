@@ -15,6 +15,7 @@ import { AppButton } from '@/components/base/AppButton';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
 import { updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
+import { resendVerificationEmail } from '@/utilities/authHelper';
 import { FaviconHead } from '@/components/base/FaviconHead';
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -54,6 +55,10 @@ export default function MyProfilePage() {
 	const [isEditingUsername, setIsEditingUsername] = useState(false);
 	const [isEditingEmail, setIsEditingEmail] = useState(false);
 	const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+	const [isResendingVerification, setIsResendingVerification] = useState(false);
+	const [resendError, setResendError] = useState<string | null>(null);
+	const [resendSuccess, setResendSuccess] = useState<string | null>(null);
 
 	const [username, setUsername] = useState(user?.username ?? '');
 	const [email, setEmail] = useState(user?.email ?? '');
@@ -101,6 +106,21 @@ export default function MyProfilePage() {
 			newPassword: '',
 			confirmNewPassword: '',
 		});
+	}
+
+	async function handleResendVerification() {
+		setResendError(null);
+		setResendSuccess(null);
+		setIsResendingVerification(true);
+
+		try {
+			await resendVerificationEmail();
+			setResendSuccess('Verification email sent! Check your inbox and spam folder.');
+		} catch {
+			setResendError('Failed to send verification email. Please try again.');
+		} finally {
+			setIsResendingVerification(false);
+		}
 	}
 
 	async function handleSaveUsername() {
@@ -268,6 +288,45 @@ export default function MyProfilePage() {
 								<AppText style={styles.heroMetaLabel}>Email</AppText>
 								<AppText style={styles.heroMetaValue}>{currentUser.email ?? 'Not provided'}</AppText>
 							</View>
+						</View>
+						<View style={[
+						styles.verificationBanner,
+						currentUser.verified
+							? styles.verificationBannerVerified
+							: styles.verificationBannerUnverified
+						]}>
+						<AppText style={[
+							styles.verificationBannerText,
+							currentUser.verified
+							? styles.verificationTextVerified
+							: styles.verificationTextUnverified
+						]}>
+							{currentUser.verified ? '✓ Email verified' : '⚠ Email not verified'}
+						</AppText>
+
+						{!currentUser.verified ? (
+							<>
+							<AppText style={styles.verificationHint}>
+								You need to verify your email before you can add or manage trees.
+							</AppText>
+
+							{resendSuccess ? (
+								<AppText style={styles.successText}>{resendSuccess}</AppText>
+							) : null}
+
+							{resendError ? (
+								<AppText style={styles.errorText}>{resendError}</AppText>
+							) : null}
+
+							<AppButton
+								title={isResendingVerification ? 'Sending...' : 'Resend Verification Email'}
+								variant="primary"
+								onPress={handleResendVerification}
+								disabled={isResendingVerification}
+								style={styles.resendButton}
+							/>
+							</>
+						) : null}
 						</View>
 						<AppText style={styles.userId}>ID #{currentUser.id}</AppText>
 					</View>
@@ -513,8 +572,6 @@ const styles = StyleSheet.create({
 	topBar: {
 		marginBottom: 16,
 	},
-
-	/* Hero card */
 	heroCard: {
 		...GLASS_CARD,
 		padding: 24,
@@ -639,5 +696,39 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 		fontSize: 13,
 		color: '#1B6B2A',
+	},
+	verificationBanner: {
+		marginTop: Theme.Spacing.medium,
+		borderRadius: 12,
+		padding: Theme.Spacing.medium,
+		borderWidth: 1,
+		width: '100%',
+	},
+		verificationBannerVerified: {
+		backgroundColor: 'rgba(25, 76, 34, 0.08)',
+		borderColor: 'rgba(25, 76, 34, 0.25)',
+	},
+		verificationBannerUnverified: {
+		backgroundColor: 'rgba(179, 38, 30, 0.07)',
+		borderColor: 'rgba(179, 38, 30, 0.25)',
+	},
+		verificationBannerText: {
+		fontWeight: '700',
+		fontSize: 14,
+		marginBottom: Theme.Spacing.extraSmall,
+	},
+		verificationTextVerified: {
+		color: '#194C22',
+	},
+		verificationTextUnverified: {
+		color: '#B3261E',
+	},
+		verificationHint: {
+		fontSize: 13,
+		color: '#5C3317',
+		marginBottom: Theme.Spacing.small,
+	},
+		resendButton: {
+		marginTop: Theme.Spacing.small,
 	},
 });

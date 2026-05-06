@@ -166,7 +166,7 @@ export const TREE_SPECIES: TreeSpeciesMeta[] = [
     runoffFactor: 0,
     airQualityFactor: 0,
     evapotranspirationFactor: 0,
-    disableEstimates: true,
+    disableEstimates: false,
   },
 ];
 
@@ -186,4 +186,25 @@ export function findTreeSpeciesMeta(species?: string | null): TreeSpeciesMeta {
         item.label.toLowerCase() === normalized
     ) ?? DEFAULT_TREE_SPECIES
   );
+}
+
+export function getAverageTreeSpeciesMeta(): TreeSpeciesMeta {
+  const known = TREE_SPECIES.filter((s) => s.key !== 'other');
+  const count = known.length;
+
+  const avg = (key: keyof TreeSpeciesMeta) =>
+    known.reduce((sum, s) => sum + (s[key] as number), 0) / count;
+
+  return {
+    key: 'other',
+    label: 'Other',
+    canopySpreadFactor: avg('canopySpreadFactor'),
+    leafDensityFactor: avg('leafDensityFactor'),
+    storageFactor: avg('storageFactor'),
+    removalRate: avg('removalRate'),
+    runoffFactor: avg('runoffFactor'),
+    airQualityFactor: avg('airQualityFactor'),
+    evapotranspirationFactor: avg('evapotranspirationFactor'),
+    disableEstimates: false,
+  };
 }

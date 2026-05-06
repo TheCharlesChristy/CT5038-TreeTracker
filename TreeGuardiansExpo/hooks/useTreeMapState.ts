@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as Location from 'expo-location';
 import { Tree, TreeDetails } from '@/objects/TreeDetails';
 import { addTreeData, fetchTrees } from '@/lib/treeApi';
-import { CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds } from '@/components/base/MapComponent.types';
+import { CHARLTON_CENTER, MapCoordinate, PlotPointer, isCoordinateWithinBounds, REGION_RING_LEAFLET } from '@/components/base/MapComponent.types';
 import { haversineDistanceKm } from '@/utilities/geo';
 import type { StatusMessage } from '@/components/base/StatusMessageBox';
 
@@ -11,6 +11,25 @@ export type PageMode = 'explore' | 'add' | 'view-tree' | 'search' | 'dashboard';
 export type HealthFilter = 'all' | 'healthy' | 'attention';
 export type DistanceFilterKm = number | null;
 export const TREE_REFRESH_INTERVAL_MS = 10000;
+
+// Add this function at the top of the file, outside the hook
+function isWithinRegion(lat: number, lng: number): boolean {
+  const ring = REGION_RING_LEAFLET;
+  let inside = false;
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [latI, lngI] = ring[i];
+    const [latJ, lngJ] = ring[j];
+
+    const intersects =
+      lngI > lng !== lngJ > lng &&
+      lat < ((latJ - latI) * (lng - lngI)) / (lngJ - lngI) + latI;
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
 
 export function useTreeMapState() {
   const [mode, setMode] = useState<PageMode>('explore');
@@ -237,10 +256,16 @@ export function useTreeMapState() {
       }
 
       const location = await Location.getCurrentPositionAsync({});
-      setSelectedDraftLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+        const { latitude, longitude } = location.coords;
+
+      if (!isWithinRegion(latitude, longitude)) {
+      setAddValidationError(
+          'Your current location is outside the Charlton Kings area. You must be within the mapped region to plot a tree using your device location.'
+        );
+        return;
+      }
+      
+      setSelectedDraftLocation({ latitude, longitude });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown location error.';
       setAddValidationError(`Unable to get current location: ${message}`);

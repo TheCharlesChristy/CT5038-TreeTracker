@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from './AppText';
 import { Theme } from '@/styles';
 
-export type TreeHealth = 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
+export type TreeHealth = 'good' | 'ok' | 'bad';
 export type TreeHealthFilterOption = 'all' | 'healthy' | 'attention';
 
 export type SelectOption<T extends string> = {
@@ -17,14 +17,6 @@ export type SelectOption<T extends string> = {
 };
 
 export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
-  {
-    value: 'excellent',
-    label: 'Excellent',
-    icon: 'leaf-circle',
-    borderColor: '#78C57D',
-    backgroundColor: '#EDF9EE',
-    textColor: '#206127',
-  },
   {
     value: 'good',
     label: 'Good',
@@ -48,14 +40,6 @@ export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
     borderColor: '#F1A25E',
     backgroundColor: '#FFF0E4',
     textColor: '#8A4712',
-  },
-  {
-    value: 'terrible',
-    label: 'Terrible',
-    icon: 'alert-octagon-outline',
-    borderColor: '#E07A74',
-    backgroundColor: '#FFF0F0',
-    textColor: '#8F2520',
   },
 ];
 
