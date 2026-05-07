@@ -701,7 +701,9 @@ const styles = StyleSheet.create({
 		color: Theme.Colours.textMuted,
 	},
 	topBar: {
-		marginBottom: 16,
+		paddingHorizontal: Theme.Spacing.medium,
+		paddingTop: Theme.Spacing.medium,
+		paddingBottom: Theme.Spacing.small,
 	},
 	heroCard: {
 		...GLASS_CARD,
