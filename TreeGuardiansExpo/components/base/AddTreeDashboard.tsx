@@ -506,41 +506,53 @@ export default function PlotDashboard({
 
             <View style={styles.metricsRow}>
               <View style={styles.metricField}>
-                <AppInput
-                  placeholder="Diameter (cm)"
-                  value={diameter}
-                  onChangeText={(value) => handleNumericChange(value, 'diameter', setDiameter)}
-                  keyboardType="numeric"
-                  invalid={!!errors.diameter}
-                  style={styles.input}
-                />
+                <AppText style={styles.metricLabel}>Diameter</AppText>
+                <View style={styles.inputWithUnit}>
+                  <AppInput
+                    placeholder="0"
+                    value={diameter}
+                    onChangeText={(value) => handleNumericChange(value, 'diameter', setDiameter)}
+                    keyboardType="numeric"
+                    invalid={!!errors.diameter}
+                    containerStyle={styles.inputUnitContainer}
+                  />
+                  <AppText style={styles.unitLabel}>cm</AppText>
+                </View>
                 {errors.diameter ? <AppText style={styles.errorText}>{errors.diameter}</AppText> : null}
               </View>
 
               <View style={styles.metricField}>
-                <AppInput
-                  placeholder="Height (m)"
-                  value={height}
-                  onChangeText={(value) => handleNumericChange(value, 'height', setHeight)}
-                  keyboardType="numeric"
-                  invalid={!!errors.height}
-                  style={styles.input}
-                />
+                <AppText style={styles.metricLabel}>Height</AppText>
+                <View style={styles.inputWithUnit}>
+                  <AppInput
+                    placeholder="0"
+                    value={height}
+                    onChangeText={(value) => handleNumericChange(value, 'height', setHeight)}
+                    keyboardType="numeric"
+                    invalid={!!errors.height}
+                    containerStyle={styles.inputUnitContainer}
+                  />
+                  <AppText style={styles.unitLabel}>m</AppText>
+                </View>
                 {errors.height ? <AppText style={styles.errorText}>{errors.height}</AppText> : null}
               </View>
             </View>
 
             <View style={styles.metricField}>
-              <AppInput
-                placeholder="Circumference (cm)"
-                value={circumference}
-                onChangeText={(value) =>
-                  handleNumericChange(value, 'circumference', setCircumference)
-                }
-                keyboardType="numeric"
-                invalid={!!errors.circumference}
-                style={styles.input}
-              />
+              <AppText style={styles.metricLabel}>Circumference</AppText>
+              <View style={styles.inputWithUnit}>
+                <AppInput
+                  placeholder="0"
+                  value={circumference}
+                  onChangeText={(value) =>
+                    handleNumericChange(value, 'circumference', setCircumference)
+                  }
+                  keyboardType="numeric"
+                  invalid={!!errors.circumference}
+                  containerStyle={styles.inputUnitContainer}
+                />
+                <AppText style={styles.unitLabel}>cm</AppText>
+              </View>
               {errors.circumference ? (
                 <AppText style={styles.errorText}>{errors.circumference}</AppText>
               ) : null}
@@ -549,25 +561,25 @@ export default function PlotDashboard({
             <View style={styles.estimateBox}>
               <AppText style={styles.estimateTitle}>Estimated Environmental Impact</AppText>
               <AppText style={styles.estimateItem}>
-                Avoided Runoff: {estimatedStats.avoidedRunoff ?? '—'} m3
+                Avoided Runoff: {estimatedStats.avoidedRunoff ?? '—'} m³
               </AppText>
               <AppText style={styles.estimateItem}>
-                CO2 Stored: {estimatedStats.carbonDioxideStored ?? '—'} kg
+                CO₂ Stored: {estimatedStats.carbonDioxideStored ?? '—'} kg
               </AppText>
               <AppText style={styles.estimateItem}>
-                CO2 Removed: {estimatedStats.carbonDioxideRemoved ?? '—'} kg
+                CO₂ Removed: {estimatedStats.carbonDioxideRemoved ?? '—'} kg
               </AppText>
               <AppText style={styles.estimateItem}>
-                Water Intercepted: {estimatedStats.waterIntercepted ?? '—'} m3
+                Water Intercepted: {estimatedStats.waterIntercepted ?? '—'} m³
               </AppText>
               <AppText style={styles.estimateItem}>
                 Air Quality Gain: {estimatedStats.airQualityImprovement ?? '—'} g/year
               </AppText>
               <AppText style={styles.estimateItem}>
-                Leaf Area: {estimatedStats.leafArea ?? '—'} m2
+                Leaf Area: {estimatedStats.leafArea ?? '—'} m²
               </AppText>
               <AppText style={styles.estimateItem}>
-                Evapotranspiration: {estimatedStats.evapotranspiration ?? '—'} m3
+                Evapotranspiration: {estimatedStats.evapotranspiration ?? '—'} m³
               </AppText>
             </View>
           </View>
@@ -1027,6 +1039,33 @@ const styles = StyleSheet.create({
   estimateItem: {
     ...Theme.Typography.caption,
     color: '#35503B',
+  },
+
+  metricLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 4,
+  },
+
+  unitLabel: {
+    ...Theme.Typography.body,
+    color: Theme.Colours.textMuted,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    paddingRight: 4,
+  },
+
+  inputWithUnit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  inputUnitContainer: {
+    flex: 1,
+    marginBottom: 0,
   },
 
   unverifiedBanner: {

@@ -4,7 +4,7 @@ const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { requireJson } = require("./utils/http");
 const { hashPassword, randomHex64, signJwt, verifyPassword } = require("./utils/security");
-const { requireJwtSecret, resolveUserRole } = require("./utils/auth");
+const { requireJwtSecret, resolveUserRole, requireAuthenticatedUser } = require("./utils/auth");
 const { sendEmail } = require("./utils/email");
 
 const logger = createLogger("routes.api.auth");
@@ -36,6 +36,7 @@ function createAuthRoute({ db, frontendUrl }) {
     const username = String(req.body.username || "").trim();
     const email = String(req.body.email || "").trim();
     const password = String(req.body.password || "");
+    const emailConsent = Boolean(req.body.emailConsent);
 
     routeLog.info("register.attempt", { username, email });
 
@@ -59,7 +60,7 @@ function createAuthRoute({ db, frontendUrl }) {
           if (emailExists) throw new Error("Email already exists");
         }
 
-        const createdUser = await db.users.create({ username, email: email || null }, tx);
+        const createdUser = await db.users.create({ username, email: email || null, emailConsent }, tx);
         await db.userPasswords.setForUser(createdUser.id, passwordHash, tx);
 
         refreshToken = randomHex64();
