@@ -4,7 +4,7 @@ const { asyncHandler } = require("../middleware/async-handler");
 const { createLogger } = require("../../logging");
 const { requireJson } = require("./utils/http");
 const { hashPassword, randomHex64, signJwt, verifyPassword } = require("./utils/security");
-const { requireJwtSecret, resolveUserRole } = require("./utils/auth");
+const { requireJwtSecret, resolveUserRole, requireAuthenticatedUser } = require("./utils/auth");
 const { sendEmail } = require("./utils/email");
 
 const logger = createLogger("routes.api.auth");
