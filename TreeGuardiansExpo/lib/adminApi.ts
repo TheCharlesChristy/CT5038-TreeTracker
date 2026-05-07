@@ -185,6 +185,55 @@ export async function removeGuardianFromTree(userId: number, treeId: number): Pr
   }
 }
 
+export type UserActivityItem = {
+  type: 'comment' | 'tree_added';
+  label: string;
+  detail: string;
+  treeId?: number;
+  createdAt: string | null;
+};
+
+export async function fetchUserActivity(userId: number): Promise<UserActivityItem[]> {
+  const response = await fetch(buildApiUrl(`admin/users/${userId}/activity`), {
+    headers: await getAuthHeaders(),
+  });
+
+  const rawBody = await response.text();
+  const parsed = safeParseJson(rawBody) as { comments?: any[]; createdTrees?: any[] } | undefined;
+
+  if (!response.ok) {
+    throw new Error(formatApiError('Failed to fetch user activity.', response, rawBody));
+  }
+
+  const items: UserActivityItem[] = [];
+
+  for (const c of parsed?.comments ?? []) {
+    items.push({
+      type: 'comment',
+      label: `Commented on Tree #${c.tree_id}`,
+      detail: c.content ? (c.content.length > 80 ? `${String(c.content).slice(0, 80)}…` : String(c.content)) : '',
+      treeId: Number(c.tree_id),
+      createdAt: c.created_at ?? null,
+    });
+  }
+
+  for (const t of parsed?.createdTrees ?? []) {
+    items.push({
+      type: 'tree_added',
+      label: `Added ${t.species ? String(t.species) : 'a tree'} (Tree #${t.tree_id})`,
+      detail: '',
+      treeId: Number(t.tree_id),
+      createdAt: t.created_at ?? null,
+    });
+  }
+
+  return items.sort((a, b) => {
+    const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return db - da;
+  });
+}
+
 export async function deleteManagedUser(userId: number): Promise<void> {
   const response = await fetch(buildApiUrl(`admin/users/${userId}`), {
     method: 'DELETE',

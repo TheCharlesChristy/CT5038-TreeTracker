@@ -153,6 +153,20 @@ function createUsersRoute({ db }) {
     res.json({ success: true });
   }));
 
+  router.get("/admin/users/:userId/activity", asyncHandler(async (req, res) => {
+    const routeLog = getRouteLogger(req, { route: "admin.users.activity" });
+    await requireAdminUser({ req, db, routeLog });
+
+    const userId = Number(req.params.userId);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ error: "Invalid user id." });
+    }
+
+    const activity = await db.workflows.users.getUserActivity(userId, { limit: 10 });
+    res.json(activity);
+  }));
+
   router.delete("/admin/users/:userId", asyncHandler(async (req, res) => {
     const routeLog = getRouteLogger(req, { route: "admin.users.delete" });
     const auth = await requireAdminUser({ req, db, routeLog });
