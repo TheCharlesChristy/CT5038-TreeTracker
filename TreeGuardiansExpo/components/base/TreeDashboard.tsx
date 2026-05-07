@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Modal,
   ScrollView,
@@ -409,17 +410,30 @@ function TreePhotos({
   photos,
   onDeletePhoto,
   canManagePhotos,
+  isUploadingPhotos,
+  canAddPhoto,
+  onAddPhoto,
 }: {
   photos: TreePhoto[];
   onDeletePhoto: (photo: TreePhoto) => void;
   canManagePhotos: boolean;
+  isUploadingPhotos: boolean;
+  canAddPhoto: boolean;
+  onAddPhoto: () => void;
 }) {
   return (
     <View style={styles.sectionStack}>
       <View style={styles.sectionHeaderRow}>
         <AppText style={styles.sectionTitle}>Photo Gallery</AppText>
-        <AppText style={styles.sectionMeta}>{photos.length} items</AppText>
+        <AppText style={styles.sectionMeta}>{photos.length} / 5 photos</AppText>
       </View>
+
+      {isUploadingPhotos ? (
+        <View style={styles.uploadingCard}>
+          <ActivityIndicator size="small" color="#1B5E20" />
+          <AppText style={styles.uploadingText}>Uploading photos…</AppText>
+        </View>
+      ) : null}
 
       {photos.length > 0 ? (
         <ScrollView
@@ -448,14 +462,35 @@ function TreePhotos({
           ))}
         </ScrollView>
       ) : (
-        <View style={styles.emptyStateCard}>
-          <MaterialCommunityIcons name="image-off-outline" size={30} color="#4A4A4A" />
-          <AppText style={styles.emptyStateTitle}>No photos yet</AppText>
-          <AppText style={styles.emptyStateBody}>
-            Use the Add Photo button below to upload images for this tree.
-          </AppText>
+        <View style={styles.emptyPhotoState}>
+          <View style={styles.emptyStateCard}>
+            <MaterialCommunityIcons name="image-off-outline" size={30} color="#4A4A4A" />
+            <AppText style={styles.emptyStateTitle}>No photos yet</AppText>
+            <AppText style={styles.emptyStateBody}>
+              Images added here will appear in a swipeable gallery.
+            </AppText>
+          </View>
+
+          {canAddPhoto ? (
+            <TouchableOpacity
+              style={styles.addPhotoTileStandalone}
+              onPress={onAddPhoto}
+              activeOpacity={0.85}
+              disabled={isUploadingPhotos}
+            >
+              <MaterialCommunityIcons name="camera-plus-outline" size={22} color="#1B5E20" />
+              <AppText style={styles.addPhotoTitle}>Add first photo</AppText>
+            </TouchableOpacity>
+          ) : null}
         </View>
       )}
+
+      <View style={styles.infoSection}>
+        <AppText style={styles.sectionTitle}>Photo Notes</AppText>
+        <AppText style={styles.infoText}>
+          Scroll horizontally to browse all photos. Tap the Add photo tile to upload more.
+        </AppText>
+      </View>
     </View>
   );
 }
@@ -1776,6 +1811,9 @@ export default function TreeDetailsDashboard({
               photos={photos}
               onDeletePhoto={handleDeletePhoto}
               canManagePhotos={canManagePhotos}
+              isUploadingPhotos={isUploadingPhotos}
+              canAddPhoto={isLoggedIn}
+              onAddPhoto={handleAddPhoto}
             />
           ) : null}
 
@@ -2035,32 +2073,40 @@ export default function TreeDetailsDashboard({
 
                 <View style={styles.editMetricsRow}>
                   <View style={styles.editMetricField}>
-                    <AppInput
-                      placeholder="Diameter (cm)"
-                      value={editDiameter}
-                      onChangeText={(value) =>
-                        handleEditNumericChange(value, 'diameter', setEditDiameter)
-                      }
-                      keyboardType="numeric"
-                      invalid={!!editErrors.diameter}
-                      style={styles.editFormInput}
-                    />
+                    <AppText style={styles.editMetricLabel}>Diameter</AppText>
+                    <View style={styles.editInputWithUnit}>
+                      <AppInput
+                        placeholder="0"
+                        value={editDiameter}
+                        onChangeText={(value) =>
+                          handleEditNumericChange(value, 'diameter', setEditDiameter)
+                        }
+                        keyboardType="numeric"
+                        invalid={!!editErrors.diameter}
+                        containerStyle={styles.editInputUnitContainer}
+                      />
+                      <AppText style={styles.editUnitLabel}>cm</AppText>
+                    </View>
                     {editErrors.diameter ? (
                       <AppText style={styles.editErrorText}>{editErrors.diameter}</AppText>
                     ) : null}
                   </View>
 
                   <View style={styles.editMetricField}>
-                    <AppInput
-                      placeholder="Height (m)"
-                      value={editHeight}
-                      onChangeText={(value) =>
-                        handleEditNumericChange(value, 'height', setEditHeight)
-                      }
-                      keyboardType="numeric"
-                      invalid={!!editErrors.height}
-                      style={styles.editFormInput}
-                    />
+                    <AppText style={styles.editMetricLabel}>Height</AppText>
+                    <View style={styles.editInputWithUnit}>
+                      <AppInput
+                        placeholder="0"
+                        value={editHeight}
+                        onChangeText={(value) =>
+                          handleEditNumericChange(value, 'height', setEditHeight)
+                        }
+                        keyboardType="numeric"
+                        invalid={!!editErrors.height}
+                        containerStyle={styles.editInputUnitContainer}
+                      />
+                      <AppText style={styles.editUnitLabel}>m</AppText>
+                    </View>
                     {editErrors.height ? (
                       <AppText style={styles.editErrorText}>{editErrors.height}</AppText>
                     ) : null}
@@ -2068,16 +2114,20 @@ export default function TreeDetailsDashboard({
                 </View>
 
                 <View style={styles.editMetricField}>
-                  <AppInput
-                    placeholder="Circumference (cm)"
-                    value={editCircumference}
-                    onChangeText={(value) =>
-                      handleEditNumericChange(value, 'circumference', setEditCircumference)
-                    }
-                    keyboardType="numeric"
-                    invalid={!!editErrors.circumference}
-                    style={styles.editFormInput}
-                  />
+                  <AppText style={styles.editMetricLabel}>Circumference</AppText>
+                  <View style={styles.editInputWithUnit}>
+                    <AppInput
+                      placeholder="0"
+                      value={editCircumference}
+                      onChangeText={(value) =>
+                        handleEditNumericChange(value, 'circumference', setEditCircumference)
+                      }
+                      keyboardType="numeric"
+                      invalid={!!editErrors.circumference}
+                      containerStyle={styles.editInputUnitContainer}
+                    />
+                    <AppText style={styles.editUnitLabel}>cm</AppText>
+                  </View>
                   {editErrors.circumference ? (
                     <AppText style={styles.editErrorText}>{editErrors.circumference}</AppText>
                   ) : null}
@@ -2086,25 +2136,25 @@ export default function TreeDetailsDashboard({
                 <View style={styles.editEstimateBox}>
                   <AppText style={styles.editEstimateTitle}>Estimated Environmental Impact</AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Avoided Runoff: {editEstimatedStats.avoidedRunoff ?? '-'} m3
+                    Avoided Runoff: {editEstimatedStats.avoidedRunoff ?? '—'} m³
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    CO2 Stored: {editEstimatedStats.carbonDioxideStored ?? '-'} kg
+                    CO₂ Stored: {editEstimatedStats.carbonDioxideStored ?? '—'} kg
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    CO2 Removed: {editEstimatedStats.carbonDioxideRemoved ?? '-'} kg
+                    CO₂ Removed: {editEstimatedStats.carbonDioxideRemoved ?? '—'} kg
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Water Intercepted: {editEstimatedStats.waterIntercepted ?? '-'} m3
+                    Water Intercepted: {editEstimatedStats.waterIntercepted ?? '—'} m³
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Air Quality Gain: {editEstimatedStats.airQualityImprovement ?? '-'} g/year
+                    Air Quality Gain: {editEstimatedStats.airQualityImprovement ?? '—'} g/year
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Leaf Area: {editEstimatedStats.leafArea ?? '-'} m2
+                    Leaf Area: {editEstimatedStats.leafArea ?? '—'} m²
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Evapotranspiration: {editEstimatedStats.evapotranspiration ?? '-'} m3
+                    Evapotranspiration: {editEstimatedStats.evapotranspiration ?? '—'} m³
                   </AppText>
                 </View>
               </View>
@@ -2924,6 +2974,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  editMetricLabel: {
+    ...Theme.Typography.caption,
+    color: Theme.Colours.textPrimary,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 4,
+  },
+
+  editInputWithUnit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  editInputUnitContainer: {
+    flex: 1,
+    marginBottom: 0,
+  },
+
+  editUnitLabel: {
+    ...Theme.Typography.body,
+    color: Theme.Colours.textMuted,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    paddingRight: 4,
+  },
+
   editErrorText: {
     ...Theme.Typography.caption,
     color: Theme.Colours.error,
@@ -3296,5 +3373,39 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+
+  uploadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: '#EEF6EB',
+    borderWidth: 1,
+    borderColor: '#D0E5CC',
+  },
+
+  uploadingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1B5E20',
+  },
+
+  emptyPhotoState: {
+    gap: 10,
+  },
+
+  addPhotoTileStandalone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#E4F0DF',
+    borderWidth: 1,
+    borderColor: '#CFE0CA',
   },
 });

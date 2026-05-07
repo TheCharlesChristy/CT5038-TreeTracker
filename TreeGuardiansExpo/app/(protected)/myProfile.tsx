@@ -13,6 +13,8 @@ import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
+import { PasswordStrengthIndicator } from '@/components/base/PasswordStrengthIndicator';
+import { StatusMessageBox, type StatusMessage } from '@/components/base/StatusMessageBox';
 import { Theme } from '@/styles/theme';
 import { useSessionUser } from '@/lib/session';
 import { deleteAccount, logoutUser, updateUsername, updateEmail, updatePassword, type UserRole } from '@/utilities/authHelper';
@@ -88,8 +90,7 @@ export default function MyProfilePage() {
 	const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 	const [isSavingEmail, setIsSavingEmail] = useState(false);
 
-	const [passwordError, setPasswordError] = useState<string | null>(null);
-	const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+	const [passwordStatus, setPasswordStatus] = useState<StatusMessage | null>(null);
 	const [isSavingPassword, setIsSavingPassword] = useState(false);
 
 	const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
@@ -147,13 +148,15 @@ export default function MyProfilePage() {
 			return;
 		}
 
+		if (!/^[a-zA-Z0-9_.-]+$/.test(trimmedUsername)) {
+			setUsernameError('Username may only contain letters, numbers, underscores, hyphens, and dots.');
+			return;
+		}
+
 		try {
 			setIsSavingUsername(true);
 
-			const updatedUser = await updateUsername({
-				username: trimmedUsername
-			});
-			setUsername(updatedUser.username);
+			const updatedUser = await updateUsername({ username: trimmedUsername });
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
@@ -163,8 +166,16 @@ export default function MyProfilePage() {
 			setUsernameSuccess('Username updated successfully.');
 			setIsEditingUsername(false);
 		} catch (error) {
-			console.error('Failed to update username:', error);
-			setUsernameError('Failed to update username.');
+			const message = error instanceof Error ? error.message : '';
+			if (message.toLowerCase().includes('already') || message.toLowerCase().includes('taken') || message.toLowerCase().includes('exists')) {
+				setUsernameError('That username is already taken. Please choose a different one.');
+			} else if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('characters')) {
+				setUsernameError('Username contains invalid characters. Use only letters, numbers, underscores, hyphens, or dots.');
+			} else if (message) {
+				setUsernameError(message);
+			} else {
+				setUsernameError('Failed to update username. Please try again.');
+			}
 		} finally {
 			setIsSavingUsername(false);
 		}
@@ -190,22 +201,26 @@ export default function MyProfilePage() {
 		try {
 			setIsSavingEmail(true);
 
-			const updatedUser = await updateEmail({
-				email: trimmedEmail
-			});
-
-			setEmail(updatedUser.email ?? trimmedEmail);
+			const updatedUser = await updateEmail({ email: trimmedEmail });
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
 			setProfileUser(updatedUser);
 			setUsername(updatedUser.username);
 			setEmail(updatedUser.email ?? '');
-			setEmailSuccess('Email updated successfully.');
+			setEmailSuccess('Email updated. A confirmation has been sent to your new address.');
 			setIsEditingEmail(false);
 		} catch (error) {
-			console.error('Failed to update email:', error);
-			setEmailError('Failed to update email.');
+			const message = error instanceof Error ? error.message : '';
+			if (message.toLowerCase().includes('already') || message.toLowerCase().includes('exists')) {
+				setEmailError('That email address is already associated with another account.');
+			} else if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('format')) {
+				setEmailError('Please enter a valid email address.');
+			} else if (message) {
+				setEmailError(message);
+			} else {
+				setEmailError('Failed to update email. Please try again.');
+			}
 		} finally {
 			setIsSavingEmail(false);
 		}
@@ -216,50 +231,51 @@ export default function MyProfilePage() {
 		const newPassword = passwordForm.newPassword.trim();
 		const confirmNewPassword = passwordForm.confirmNewPassword.trim();
 
-		setPasswordError(null);
-		setPasswordSuccess(null);
+		setPasswordStatus(null);
 
 		if (!currentPassword) {
-			setPasswordError('Current password is required.');
+			setPasswordStatus({ title: 'Validation Error', message: 'Current password is required.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (!newPassword) {
-			setPasswordError('New password is required.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password is required.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (newPassword.length < 8) {
-			setPasswordError('New password must be at least 8 characters long.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password must be at least 8 characters long.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (newPassword !== confirmNewPassword) {
-			setPasswordError('New password and confirm password do not match.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password and confirm password do not match.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		if (currentPassword === newPassword) {
-			setPasswordError('New password must be different from your current password.');
+			setPasswordStatus({ title: 'Validation Error', message: 'New password must be different from your current password.', variant: 'error', createdAt: Date.now() });
 			return;
 		}
 
 		try {
 			setIsSavingPassword(true);
 
-			await updatePassword({
-				currentPassword,
-				newPassword
-			});
+			await updatePassword({ currentPassword, newPassword });
 
 			await new Promise((resolve) => setTimeout(resolve, 700));
 
-			setPasswordSuccess('Password changed successfully.');
+			setPasswordStatus({ title: 'Password Changed', message: 'Your password has been updated successfully.', variant: 'success', createdAt: Date.now() });
 			resetPasswordForm();
 			setIsChangingPassword(false);
 		} catch (error) {
-			console.error('Failed to change password:', error);
-			setPasswordError('Failed to change password.');
+			const message = error instanceof Error ? error.message : '';
+			setPasswordStatus({
+				title: 'Password Change Failed',
+				message: message || 'Failed to change password. Please try again.',
+				variant: 'error',
+				createdAt: Date.now(),
+			});
 		} finally {
 			setIsSavingPassword(false);
 		}
@@ -479,20 +495,16 @@ export default function MyProfilePage() {
 					<View style={styles.card}>
 						<AppText style={styles.cardTitle}>Password</AppText>
 						{!isChangingPassword ? (
-							<>
-								{passwordSuccess ? <AppText style={styles.successText}>{passwordSuccess}</AppText> : null}
-								<View style={styles.actions}>
-									<AppButton
-										title="Change Password"
-										variant="primary"
-										onPress={() => {
-											setPasswordError(null);
-											setPasswordSuccess(null);
-											setIsChangingPassword(true);
-										}}
-									/>
-								</View>
-							</>
+							<View style={styles.actions}>
+								<AppButton
+									title="Change Password"
+									variant="primary"
+									onPress={() => {
+										setPasswordStatus(null);
+										setIsChangingPassword(true);
+									}}
+								/>
+							</View>
 						) : (
 							<>
 								<View style={styles.fieldGroup}>
@@ -520,6 +532,7 @@ export default function MyProfilePage() {
 										secureTextEntry
 										autoCapitalize="none"
 									/>
+									<PasswordStrengthIndicator password={passwordForm.newPassword} />
 								</View>
 								<View style={styles.fieldGroup}>
 									<AppText style={styles.label}>Confirm New Password</AppText>
@@ -534,7 +547,6 @@ export default function MyProfilePage() {
 										autoCapitalize="none"
 									/>
 								</View>
-								{passwordError ? <AppText style={styles.errorText}>{passwordError}</AppText> : null}
 								<View style={styles.actions}>
 									<AppButton
 										title={isSavingPassword ? 'Saving...' : 'Save Password'}
@@ -546,8 +558,7 @@ export default function MyProfilePage() {
 										variant="secondary"
 										onPress={() => {
 											resetPasswordForm();
-											setPasswordError(null);
-											setPasswordSuccess(null);
+											setPasswordStatus(null);
 											setIsChangingPassword(false);
 										}}
 									/>
@@ -589,6 +600,7 @@ export default function MyProfilePage() {
 					</View>
 				</View>
 			</ScrollView>
+			<StatusMessageBox status={passwordStatus} onClose={() => setPasswordStatus(null)} />
 
 			<Modal
 				visible={isDeleteModalVisible}

@@ -4,23 +4,25 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from './AppText';
 import { Theme } from '@/styles';
 
-export type TreeHealth = 'good' | 'ok' | 'bad';
+export type TreeHealth = 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
 export type TreeHealthFilterOption = 'all' | 'healthy' | 'attention';
 
 export type SelectOption<T extends string> = {
   value: T;
   label: string;
+  description: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   borderColor: string;
   backgroundColor: string;
   textColor: string;
 };
 
-/** Good / OK / Bad only — use when adding a tree (see `AddTreeDashboard`). */
+/** Good / OK / Bad only - use when adding a tree (see `AddTreeDashboard`). */
 export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'good',
     label: 'Good',
+    description: 'Healthy appearance with minor cosmetic issues, no significant threats.',
     icon: 'leaf',
     borderColor: '#A2CF5F',
     backgroundColor: '#F5FAE8',
@@ -29,6 +31,7 @@ export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'ok',
     label: 'OK',
+    description: 'Some stress signs visible, sparse foliage or minor deadwood. Worth monitoring.',
     icon: 'checkbox-marked-circle-outline',
     borderColor: '#E1C14C',
     backgroundColor: '#FFF8E1',
@@ -37,6 +40,7 @@ export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'bad',
     label: 'Bad',
+    description: 'Noticeable decline, significant deadwood, crown dieback, or pest and disease activity.',
     icon: 'alert-outline',
     borderColor: '#F1A25E',
     backgroundColor: '#FFF0E4',
@@ -44,7 +48,28 @@ export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   },
 ];
 
-export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = TREE_HEALTH_FORM_OPTIONS;
+/** Full tree health range - use when displaying or editing existing tree details. */
+export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
+  {
+    value: 'excellent',
+    label: 'Excellent',
+    description: 'Full canopy, vibrant leaves, no visible damage or disease.',
+    icon: 'leaf-circle',
+    borderColor: '#78C57D',
+    backgroundColor: '#EDF9EE',
+    textColor: '#206127',
+  },
+  ...TREE_HEALTH_FORM_OPTIONS,
+  {
+    value: 'terrible',
+    label: 'Terrible',
+    description: 'Severe structural risk or advanced disease. Requires urgent professional assessment.',
+    icon: 'alert-octagon-outline',
+    borderColor: '#E07A74',
+    backgroundColor: '#FFF0F0',
+    textColor: '#8F2520',
+  },
+];
 
 export function getTreeHealthOption(value?: TreeHealth) {
   return (
@@ -58,6 +83,7 @@ const TREE_HEALTH_FILTER_OPTIONS: SelectOption<TreeHealthFilterOption>[] = [
   {
     value: 'all',
     label: 'All Trees',
+    description: '',
     icon: 'forest',
     borderColor: '#B7CEC0',
     backgroundColor: '#F3F8F4',
@@ -66,6 +92,7 @@ const TREE_HEALTH_FILTER_OPTIONS: SelectOption<TreeHealthFilterOption>[] = [
   {
     value: 'healthy',
     label: 'Healthy',
+    description: '',
     icon: 'heart-pulse',
     borderColor: '#9FCC7E',
     backgroundColor: '#F3FAEB',
@@ -74,6 +101,7 @@ const TREE_HEALTH_FILTER_OPTIONS: SelectOption<TreeHealthFilterOption>[] = [
   {
     value: 'attention',
     label: 'Needs Attention',
+    description: '',
     icon: 'alert-outline',
     borderColor: '#E6B07B',
     backgroundColor: '#FFF2E5',
@@ -185,6 +213,12 @@ function HealthSelectBase<T extends string>({
         />
       </TouchableOpacity>
 
+      {!compact && selectedMeta.description ? (
+        <AppText style={[styles.description, { color: selectedMeta.textColor }]}>
+          {selectedMeta.description}
+        </AppText>
+      ) : null}
+
       {isOpen ? (
         <View style={styles.menu}>
           {options.map((optionMeta) => {
@@ -213,9 +247,16 @@ function HealthSelectBase<T extends string>({
                     size={compact ? 15 : 17}
                     color={optionMeta.textColor}
                   />
-                  <AppText style={[styles.optionText, compact && styles.optionTextCompact, { color: optionMeta.textColor }]}>
-                    {optionMeta.label}
-                  </AppText>
+                  <View style={styles.optionLabelStack}>
+                    <AppText style={[styles.optionText, compact && styles.optionTextCompact, { color: optionMeta.textColor }]}>
+                      {optionMeta.label}
+                    </AppText>
+                    {!compact && optionMeta.description ? (
+                      <AppText style={[styles.optionDescription, { color: optionMeta.textColor }]}>
+                        {optionMeta.description}
+                      </AppText>
+                    ) : null}
+                  </View>
                 </View>
                 {selected ? (
                   <MaterialCommunityIcons name="check" size={compact ? 16 : 18} color={optionMeta.textColor} />
@@ -269,6 +310,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: Theme.Spacing.medium,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -278,6 +320,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   optionCopy: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -288,5 +331,21 @@ const styles = StyleSheet.create({
   optionTextCompact: {
     fontSize: 14,
     lineHeight: 18,
+  },
+  description: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 6,
+    marginBottom: 4,
+    opacity: 0.82,
+  },
+  optionLabelStack: {
+    flex: 1,
+  },
+  optionDescription: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 2,
+    opacity: 0.75,
   },
 });
