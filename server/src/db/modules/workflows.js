@@ -499,6 +499,39 @@ function createWorkflows(ctx) {
           isAdmin,
           guardianTreeIds
         };
+      },
+
+      async getUserActivity(userId, params = {}) {
+        ensurePositiveInt("userId", userId);
+        const { limit } = normalizeListParams({ limit: params.limit ?? 10, offset: 0 });
+
+        const [recentComments, recentTrees] = await Promise.all([
+          run(
+            runtimeExecutor(),
+            `SELECT ct.comment_id, ct.tree_id, ct.content, ct.created_at
+             FROM comments_tree ct
+             INNER JOIN comments c ON c.id = ct.comment_id
+             WHERE c.user_id = ?
+             ORDER BY ct.created_at DESC
+             LIMIT ?`,
+            [userId, limit]
+          ),
+          run(
+            runtimeExecutor(),
+            `SELECT tcd.tree_id, tcd.created_at, td.tree_species AS species
+             FROM tree_creation_data tcd
+             LEFT JOIN tree_data td ON td.tree_id = tcd.tree_id
+             WHERE tcd.creator_user_id = ?
+             ORDER BY tcd.created_at DESC
+             LIMIT ?`,
+            [userId, limit]
+          ),
+        ]);
+
+        return {
+          comments: Array.isArray(recentComments) ? recentComments : [],
+          createdTrees: Array.isArray(recentTrees) ? recentTrees : [],
+        };
       }
     },
 
