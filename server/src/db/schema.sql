@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     email varchar(255),
     phone varchar(50),
     email_consent tinyint(1) NOT NULL DEFAULT 0,
-    verified_at TIMESTAMP NULL DEFAULT NULL  -- NULL = unverified
+    verified_at TIMESTAMP NULL DEFAULT NULL,  -- NULL = unverified
+    INDEX idx_users_verified_at (verified_at)
 ) engine = InnoDB;
 
 -- Migration: add email_consent if upgrading from an older schema
@@ -39,6 +40,8 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
     token char(64) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at DATETIME NOT NULL,
+    INDEX idx_verification_tokens_user (user_id),
+    INDEX idx_verification_tokens_expires (expires_at),
     CONSTRAINT fk_verification_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
@@ -147,6 +150,7 @@ CREATE TABLE IF NOT EXISTS comments_tree (
     content text NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (comment_id,tree_id),
+    INDEX idx_comments_tree_created_at (created_at,comment_id,tree_id),
     CONSTRAINT fk_comments_tree FOREIGN KEY (tree_id)
     REFERENCES trees (id) ON DELETE CASCADE,
     CONSTRAINT fk_comments_comment FOREIGN KEY (comment_id)
@@ -205,11 +209,3 @@ CREATE TABLE IF NOT EXISTS guardians (
     CONSTRAINT fk_guardians_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
-
-CREATE INDEX idx_comments_tree_created_at ON comments_tree (created_at,comment_id,tree_id);
-
-CREATE INDEX idx_verification_tokens_user ON email_verification_tokens (user_id);
-
-CREATE INDEX idx_verification_tokens_expires ON email_verification_tokens (expires_at);
-
-CREATE INDEX idx_users_verified_at ON users (verified_at);
