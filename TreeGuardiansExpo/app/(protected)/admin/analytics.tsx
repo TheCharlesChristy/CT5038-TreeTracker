@@ -370,7 +370,7 @@ export default function AnalyticsPage() {
 
 						{/* ── Activity Trend ────────────────────────────────────── */}
 						<View style={styles.section}>
-							<AppText style={styles.sectionTitle}>Activity — last 14 days</AppText>
+							<AppText style={styles.sectionTitle}>Activity - last 14 days</AppText>
 
 							<View style={[styles.glassCard, styles.chartCard]}>
 								<TimeSeriesLineChart
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: Theme.Spacing.medium,
 	},
 
-	// Header island — floating glass
+	// Header island - floating glass
 	headerIsland: {
 		backgroundColor: 'rgba(18, 72, 32, 0.88)',
 		borderRadius: Theme.Radius.medium,

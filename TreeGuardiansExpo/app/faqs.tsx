@@ -11,32 +11,47 @@ const FAQ_ITEMS = [
   {
     question: 'What is TreeGuardians?',
     answer:
-      'TreeGuardians is a community tree mapping and monitoring application. You can explore local trees, add observations, and help improve shared tree health data.',
+      'TreeGuardians is a community tree mapping app. You can explore trees on the map, view details for each one, and add your own records to help build a shared picture of local tree health.',
   },
   {
     question: 'Do I need an account to use the application?',
     answer:
-      'You can browse map content without an account, but creating an account unlocks features including tree submissions, survey notes, and tracking your contributions.',
+      'You can browse the map without an account. To add trees you will need a registered account with a verified email address. Registration is free.',
+  },
+  {
+    question: 'Why do I need to verify my email?',
+    answer:
+      'Email verification helps keep the app and its data trustworthy. After registering, check your inbox for a verification link. If it did not arrive, you can resend it from your profile page.',
   },
   {
     question: 'How do I add a tree record?',
     answer:
-      'Open the Map page, choose Plot, and complete the dashboard details. You can place a tree manually or use your device location, this can then be saved.',
+      'Open the Map page and tap Add Tree. Place the tree by tapping a spot on the map or using your current location, then fill in the details and tap Confirm Add Tree to save.',
+  },
+  {
+    question: 'Where can I see the trees I have submitted?',
+    answer:
+      'Open the Map page and tap the dashboard icon, then select My Trees. This filters the map to show only your submissions.',
   },
   {
     question: 'How do I report pests or disease signs?',
     answer:
-      'Use the Resources page and open the Pest & Disease guide for official guidance and reporting pathways. When uploading a tree, include clear photographs and details about tree disease.',
+      'Go to the Resources page and open the Pest and Disease guide for step-by-step guidance. When adding a tree, include clear photos and notes describing any visible signs of pest or disease activity.',
   },
   {
     question: 'What makes a good survey submission?',
     answer:
-      'A high-quality submission includes accurate location, clear species clues, useful measurements, and focused photographs that document condition or visible issues.',
+      'A useful submission includes an accurate location, clear species details, measurements where possible, and focused photos showing the tree and any visible issues.',
   },
   {
-    question: 'Can I edit or remove a record later?',
+    question: 'Can I edit or remove a record after submitting?',
     answer:
-      'Your profile and future moderation features are designed to support data quality improvements over time. For now, ensure submissions are accurate and include the best available detail.',
+      'Tree records are managed by admins to maintain data quality. If you have spotted a mistake in one of your submissions, please get in touch with an admin.',
+  },
+  {
+    question: 'How do I reset my password?',
+    answer:
+      'On the login screen, tap Forgot password and enter your email address. You will receive a link to set a new password.',
   },
 ] as const;
 

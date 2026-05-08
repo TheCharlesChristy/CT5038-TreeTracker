@@ -86,7 +86,7 @@ export default function ResetPasswordScreen() {
       const msg =
         err instanceof Error ? `${err.name}: ${err.message}` : String(err);
 
-      setMessage(`Network error — ${msg}`);
+      setMessage(`Network error - ${msg}`);
       setError(true);
     } finally {
       setLoading(false);

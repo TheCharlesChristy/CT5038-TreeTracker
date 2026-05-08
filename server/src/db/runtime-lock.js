@@ -6,7 +6,7 @@ const mysqlPromise = require("mysql2/promise");
 const DB_ROOT = path.resolve(__dirname).replace(/\\/g, "/");
 let installed = false;
 
-// Cheap per-call context flag — set by runWithDbAccess() at middleware entrypoints.
+// Cheap per-call context flag - set by runWithDbAccess() at middleware entrypoints.
 const dbAccessStore = new AsyncLocalStorage();
 
 function isDbAccessAllowed() {

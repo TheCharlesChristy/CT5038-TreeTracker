@@ -67,7 +67,7 @@ export default function Layout() {
     document.head.appendChild(style);
   }, []);
 
-  // On web, fonts load via CSS so we never block the render — doing so causes
+  // On web, fonts load via CSS so we never block the render - doing so causes
   // a hydration mismatch (#418) because the static export pre-renders with
   // fonts resolved but the browser's first render sees fontsLoaded=false.
   if (!fontsLoaded && Platform.OS !== 'web') return null;

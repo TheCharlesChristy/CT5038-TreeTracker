@@ -1,7 +1,7 @@
 export const Colours = {
-  // Forest green — primary CTA
+  // Forest green - primary CTA
   primary: '#2E7D32',
-  // Lighter green — secondary / accents
+  // Lighter green - secondary / accents
   secondary: '#66BB6A',
   // Soft accent green
   accent: '#A5D6A7',

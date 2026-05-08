@@ -124,7 +124,7 @@ export const CHARLTON_CENTER = {
   longitude: -2.0475,
 };
 
-/** Outer ring as GeoJSON order: [lng, lat] — same geometry as the highlighted map boundary */
+/** Outer ring as GeoJSON order: [lng, lat] - same geometry as the highlighted map boundary */
 const CHARLTON_KINGS_RING_LNG_LAT: [number, number][] = regionOuterRing
   .filter((coordinate) => Array.isArray(coordinate) && coordinate.length >= 2)
   .map(([lng, lat]) => [lng, lat] as [number, number]);
