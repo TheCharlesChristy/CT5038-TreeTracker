@@ -101,6 +101,52 @@ test("getRecentComments normalizes list params and queries newest tree comments"
   assert.deepEqual(calls[0][2], [12, 3]);
 });
 
+test("getActivityTrend returns calendar-day tree and comment counts", async () => {
+  const calls = [];
+  const executor = { name: "runtime" };
+  const ctx = createCtx({
+    runtimeExecutor: () => executor,
+    run: async (...args) => {
+      calls.push(args);
+      const sql = args[1];
+      if (sql.includes("FROM tree_creation_data")) {
+        return [{ day: "2026-04-29", count: "2" }];
+      }
+      if (sql.includes("FROM comments")) {
+        return [{ day: "2026-04-30", count: "3" }];
+      }
+      if (sql.includes("FROM users")) {
+        return [{ day: "2026-04-28", count: "4" }];
+      }
+      if (sql.includes("FROM user_sessions")) {
+        return [{ day: "2026-04-27", count: "5" }];
+      }
+      return [];
+    }
+  });
+  const workflows = createWorkflows(ctx);
+
+  const trend = await workflows.analytics.getActivityTrend(14);
+
+  assert.deepEqual(trend, {
+    treesPerDay: [{ day: "2026-04-29", count: 2 }],
+    commentsPerDay: [{ day: "2026-04-30", count: 3 }],
+    registeredUsersPerDay: [{ day: "2026-04-28", count: 4 }],
+    loginsPerDay: [{ day: "2026-04-27", count: 5 }]
+  });
+  assert.equal(calls.length, 4);
+  assert.match(calls[0][1], /DATE_FORMAT\(created_at, '%Y-%m-%d'\) AS day/);
+  assert.match(calls[1][1], /FROM comments/);
+  assert.doesNotMatch(calls[1][1], /FROM comments_tree/);
+  assert.match(calls[2][1], /FROM users/);
+  assert.match(calls[3][1], /FROM user_sessions/);
+  assert.match(calls[3][1], /COUNT\(DISTINCT user_id\) AS count/);
+  assert.deepEqual(calls[0][2], [13]);
+  assert.deepEqual(calls[1][2], [13]);
+  assert.deepEqual(calls[2][2], [13]);
+  assert.deepEqual(calls[3][2], [13]);
+});
+
 test("validateSession handles valid invalid and expired", async () => {
   const workflowsInvalid = createWorkflows(createCtx({ userSessions: { getByToken: async () => null } }));
   const invalid = await workflowsInvalid.auth.validateSession({ sessionToken: "a".repeat(64) });

@@ -248,7 +248,7 @@ export async function fetchRecentTrees(limit: number = 6): Promise<ServerRecentT
 }
 
 async function buildPhotoUploadFiles(
-  assets: { uri: string; fileName?: string; mimeType?: string }[]
+  assets: { uri: string; fileName?: string | null; mimeType?: string | null }[]
 ): Promise<(File | { uri: string; name: string; type: string })[]> {
   return Promise.all(
     assets.map(async (asset, index) => {

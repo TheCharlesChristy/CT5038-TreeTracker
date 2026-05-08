@@ -86,6 +86,38 @@ const ECO_OVERRIDES: Record<string, TreeSpeciesMeta> = {
 
 export const DEFAULT_TREE_SPECIES = GENERIC_TREE_META;
 
+export function getAverageTreeSpeciesMeta(): TreeSpeciesMeta {
+  const estimateSources = Object.values(ECO_OVERRIDES).filter((meta) => !meta.disableEstimates);
+
+  if (estimateSources.length === 0) {
+    return DEFAULT_TREE_SPECIES;
+  }
+
+  const average = (field: keyof Pick<
+    TreeSpeciesMeta,
+    | "canopySpreadFactor"
+    | "leafDensityFactor"
+    | "storageFactor"
+    | "removalRate"
+    | "runoffFactor"
+    | "airQualityFactor"
+    | "evapotranspirationFactor"
+  >) => estimateSources.reduce((sum, meta) => sum + meta[field], 0) / estimateSources.length;
+
+  return {
+    key: "average_tree",
+    label: "Average Tree",
+    canopySpreadFactor: average("canopySpreadFactor"),
+    leafDensityFactor: average("leafDensityFactor"),
+    storageFactor: average("storageFactor"),
+    removalRate: average("removalRate"),
+    runoffFactor: average("runoffFactor"),
+    airQualityFactor: average("airQualityFactor"),
+    evapotranspirationFactor: average("evapotranspirationFactor"),
+    disableEstimates: false,
+  };
+}
+
 function normalize(value?: string | null) {
   return String(value || "").trim().toLowerCase();
 }

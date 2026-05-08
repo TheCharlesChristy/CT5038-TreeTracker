@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from './AppText';
+import { AppTouchableOpacity as TouchableOpacity } from './AppTouchableOpacity';
 import { Theme } from '@/styles';
 import { TREE_SPECIES, findTreeSpeciesOption } from '@/lib/treeSpecies';
 
@@ -167,10 +168,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   triggerText: {
     ...Theme.Typography.body,
     color: '#2F5A35',
+    flexShrink: 1,
   },
   menu: {
     marginTop: 8,
@@ -211,9 +214,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   optionTextGroup: {
     flex: 1,
+    minWidth: 0,
   },
   optionText: {
     ...Theme.Typography.body,

@@ -1,10 +1,12 @@
 import React from 'react';
-import { PanResponder, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { PanResponder, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
 import { Tree } from '@/objects/TreeDetails';
 import { Theme } from '@/styles';
 import { TreeHealthFilterSelect } from '@/components/base/TreeHealthSelect';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 import type { DistanceFilterKm } from '@/hooks/useTreeMapState';
 
@@ -46,6 +48,7 @@ export function SearchTreesPanel({
   bottomInset = 104,
 }: SearchTreesPanelProps) {
   const [sliderWidth, setSliderWidth] = React.useState(0);
+  const layout = useResponsiveLayout();
 
   const updateDistanceFromPosition = React.useCallback((positionX: number) => {
     if (sliderWidth <= 0) {
@@ -75,8 +78,21 @@ export function SearchTreesPanel({
   }), [updateDistanceFromPosition]);
 
   return (
-    <View style={[styles.searchPanelWrap, { top: topInset, bottom: bottomInset }]}>
-      <View style={styles.searchPanel}>
+    <View
+      style={[
+        styles.searchPanelWrap,
+        {
+          top: topInset,
+          bottom: bottomInset,
+          left: layout.mapPanelHorizontalInset,
+          right: layout.isPhone ? layout.mapPanelHorizontalInset : undefined,
+          width: layout.mapPanelWidth,
+          maxWidth: layout.mapPanelMaxWidth,
+          padding: layout.edgeInset,
+        },
+      ]}
+    >
+      <View style={[styles.searchPanel, { borderRadius: layout.cardRadius, padding: layout.panelPadding }]}>
         <View style={styles.panelHeaderRow}>
           <AppText style={styles.panelTitle}>Search Trees</AppText>
           <AppButton
@@ -221,11 +237,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
     marginBottom: 12,
   },
   panelTitle: {
     ...Theme.Typography.subtitle,
     color: Theme.Colours.textPrimary,
+    flex: 1,
+    minWidth: 0,
   },
   panelCloseWrap: {
     marginBottom: 0,
@@ -256,8 +275,10 @@ const styles = StyleSheet.create({
   },
   distanceTopRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 10,
   },
   anyChip: {
@@ -282,6 +303,7 @@ const styles = StyleSheet.create({
   sliderRangeText: {
     ...Theme.Typography.caption,
     color: Theme.Colours.textMuted,
+    flexShrink: 1,
   },
   sliderWrap: {
     position: 'relative',
@@ -323,11 +345,14 @@ const styles = StyleSheet.create({
   },
   sliderStopsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 6,
     marginTop: 6,
   },
   sliderStop: {
     alignItems: 'center',
+    flexGrow: 1,
   },
   sliderLabel: {
     ...Theme.Typography.caption,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
@@ -38,6 +38,8 @@ export function StatusMessageBox({
   showCopyButton,
   topOffset,
 }: StatusMessageBoxProps) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 380;
   const [copyFeedback, setCopyFeedback] = useState('');
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
@@ -107,6 +109,7 @@ export function StatusMessageBox({
       style={[
         styles.wrap,
         isSuccess ? styles.successWrap : styles.errorWrap,
+        width < 420 ? styles.wrapCompact : undefined,
         { opacity, transform: [{ translateY }] },
         topOffset !== undefined ? { top: topOffset } : undefined,
       ]}
@@ -140,20 +143,20 @@ export function StatusMessageBox({
         <AppText style={styles.copyFeedback}>{copyFeedback}</AppText>
       ) : null}
 
-      <View style={styles.actions}>
+      <View style={[styles.actions, isCompact && styles.actionsCompact]}>
         {shouldShowCopyButton && (
           <AppButton
             title="Copy"
             variant="outline"
             onPress={handleCopy}
-            style={styles.actionButton}
+            style={[styles.actionButton, isCompact && styles.actionButtonCompact]}
           />
         )}
         <AppButton
           title={closeLabel ?? (isSuccess ? 'Continue' : 'Close')}
           variant="secondary"
           onPress={handleClose}
-          style={styles.actionButton}
+          style={[styles.actionButton, isCompact && styles.actionButtonCompact]}
         />
       </View>
     </Animated.View>
@@ -177,6 +180,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 12,
+  },
+  wrapCompact: {
+    left: 16,
+    right: 16,
+    maxWidth: undefined,
   },
   successWrap: {
     borderColor: '#B8D8BC',
@@ -230,10 +238,19 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 10,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
+  },
+  actionsCompact: {
+    flexDirection: 'column',
   },
   actionButton: {
     flex: 1,
     marginBottom: 0,
+    minWidth: 120,
+  },
+  actionButtonCompact: {
+    width: '100%',
+    minWidth: 0,
   },
 });

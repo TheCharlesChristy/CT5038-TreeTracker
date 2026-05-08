@@ -158,6 +158,11 @@ if [ ! -e /dev/kvm ]; then
   echo "Error: /dev/kvm is not available on this host."
   echo "Android emulator service requires KVM; enable virtualization and KVM access."
   exit 1
+elif [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+  echo "Error: /dev/kvm exists but is not accessible by user '$(whoami)'."
+  echo "Add your user to the kvm group and re-login:"
+  echo "  sudo usermod -aG kvm \$USER"
+  exit 1
 fi
 
 if [ ! -f "$ENV_FILE" ]; then

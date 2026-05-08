@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from './AppText';
+import { AppTouchableOpacity as TouchableOpacity } from './AppTouchableOpacity';
 import { Theme } from '@/styles';
 
 export type TreeHealth = 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
@@ -292,10 +293,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flexShrink: 1,
+    minWidth: 0,
   },
   triggerText: {
     ...Theme.Typography.body,
     fontFamily: 'Poppins_600SemiBold',
+    flexShrink: 1,
   },
   triggerTextCompact: {
     fontSize: 14,
@@ -321,6 +324,7 @@ const styles = StyleSheet.create({
   },
   optionCopy: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -341,6 +345,7 @@ const styles = StyleSheet.create({
   },
   optionLabelStack: {
     flex: 1,
+    minWidth: 0,
   },
   optionDescription: {
     fontSize: 12,

@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
 		fontFamily: 'Poppins_600SemiBold',
 		color: Theme.Colours.textMuted,
 		textTransform: 'uppercase',
-		letterSpacing: 0.6,
+		letterSpacing: 0,
 		marginBottom: 12,
 	},
 	fieldGroup: {

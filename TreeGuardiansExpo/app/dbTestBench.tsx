@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { FaviconHead } from '@/components/base/FaviconHead';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppInput } from '@/components/base/AppInput';
 import { AppButton } from '@/components/base/AppButton';
+import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { Theme } from '@/styles/theme';
 import { API_ORIGIN } from '@/config/api';
@@ -1183,11 +1184,14 @@ const styles = StyleSheet.create({
   },
   rowButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: Theme.Spacing.small,
   },
   compactButton: {
     flex: 1,
+    flexBasis: 180,
+    minWidth: 0,
   },
   endpointList: {
     borderWidth: 1,
@@ -1243,10 +1247,12 @@ const styles = StyleSheet.create({
   },
   booleanRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Theme.Spacing.small,
   },
   booleanChoice: {
     flex: 1,
+    minWidth: 110,
     borderWidth: 1,
     borderColor: '#DADCE0',
     borderRadius: Theme.Radius.small,
