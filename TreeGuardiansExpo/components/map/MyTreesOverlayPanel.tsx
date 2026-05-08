@@ -1,6 +1,7 @@
 import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton } from '@/components/base/AppButton';
+import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
 import { AppText } from '@/components/base/AppText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Theme } from '@/styles';
@@ -12,6 +13,7 @@ import {
   myTreesHealthLabel,
 } from '@/hooks/useMyTreesFilterModel';
 import { MyTreesFilterToolbar } from '@/components/map/MyTreesFilterToolbar';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 export type MyTreesOverlayPanelProps = {
   filter: MyTreesFilterModel;
@@ -29,10 +31,28 @@ export function MyTreesOverlayPanel({
   bottomInset = 104,
 }: MyTreesOverlayPanelProps) {
   const { myTrees, displayedTrees, treeSummary } = filter;
+  const layout = useResponsiveLayout();
 
   return (
-    <View style={[styles.wrap, { top: topInset, bottom: bottomInset }]} pointerEvents="box-none">
-      <View style={styles.panel} pointerEvents="auto">
+    <View
+      style={[
+        styles.wrap,
+        {
+          top: topInset,
+          bottom: bottomInset,
+          left: layout.mapPanelHorizontalInset,
+          right: layout.isPhone ? layout.mapPanelHorizontalInset : undefined,
+          width: layout.mapPanelWidth,
+          maxWidth: layout.isPhone ? undefined : 420,
+          paddingLeft: layout.isPhone ? 0 : layout.edgeInset,
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      <View
+        style={[styles.panel, { borderRadius: layout.cardRadius, padding: layout.panelPadding }]}
+        pointerEvents="auto"
+      >
         <View style={styles.headerRow}>
           <View style={styles.headerCopy}>
             <AppText style={styles.panelTitle}>My Trees</AppText>
@@ -197,6 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F3E5',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   rowBody: {
     flex: 1,
@@ -206,6 +227,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 2,
   },

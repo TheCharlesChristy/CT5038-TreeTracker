@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   View,
   useWindowDimensions,
   Pressable,
@@ -14,8 +13,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Theme } from '@/styles';
+import { Layout, Theme } from '@/styles';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { AppButton } from './AppButton';
+import { AppTouchableOpacity as TouchableOpacity } from './AppTouchableOpacity';
 import { AppInput } from './AppInput';
 import { AppText } from './AppText';
 import { StatusMessageBox, StatusMessage } from './StatusMessageBox';
@@ -763,6 +764,8 @@ function TreeFooter({
   isPhotoLimitReached: boolean;
   isUploadingPhotos: boolean;
 }) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 430;
   let shortcutTab: PopupTab = 'overview';
   let shortcutLabel = 'Overview';
 
@@ -791,7 +794,7 @@ function TreeFooter({
   const showAddPhoto = activeTab === 'photos' && canAddPhoto;
 
   return (
-    <View style={styles.footer}>
+    <View style={[styles.footer, isCompact && styles.footerCompact]}>
       <Pressable
         style={styles.footerBackButton}
         onPress={onClose}
@@ -802,12 +805,12 @@ function TreeFooter({
         <AppText style={styles.footerBackText}>Back</AppText>
       </Pressable>
 
-      <View style={styles.footerRightCluster}>
+      <View style={[styles.footerRightCluster, isCompact && styles.footerRightClusterCompact]}>
         <AppButton
           title={shortcutLabel}
           variant="outline"
           onPress={() => onChangeTab(shortcutTab)}
-          style={styles.footerShortcutWrap}
+          style={[styles.footerShortcutWrap, isCompact && styles.footerButtonFull]}
           buttonStyle={styles.footerSecondaryButton}
           textStyle={styles.footerSecondaryText}
         />
@@ -817,7 +820,7 @@ function TreeFooter({
             title="Add Comment"
             variant="accent"
             onPress={onAddComment}
-            style={styles.footerCommentWrap}
+            style={[styles.footerCommentWrap, isCompact && styles.footerButtonFull]}
             buttonStyle={styles.footerCommentButton}
             textStyle={styles.footerCommentText}
           />
@@ -829,7 +832,7 @@ function TreeFooter({
             variant="accent"
             onPress={onAddPhoto}
             disabled={isPhotoLimitReached || isUploadingPhotos}
-            style={styles.footerCommentWrap}
+            style={[styles.footerCommentWrap, isCompact && styles.footerButtonFull]}
             buttonStyle={styles.footerCommentButton}
             textStyle={styles.footerCommentText}
           />
@@ -839,7 +842,7 @@ function TreeFooter({
           title="Done"
           variant="primary"
           onPress={onClose}
-          style={styles.footerDoneWrap}
+          style={[styles.footerDoneWrap, isCompact && styles.footerButtonFull]}
           buttonStyle={styles.footerPrimaryButton}
           textStyle={styles.footerPrimaryText}
         />
@@ -856,6 +859,9 @@ export default function TreeDetailsDashboard({
 }: TreeDetailsDashboardProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const layout = useResponsiveLayout();
+  const isMobile = !layout.isDesktop;
+  const showTabLabels = width >= 430;
   const statusTopOffset = insets.top + (width < 760 ? 84 : 92);
   const [activeTab, setActiveTab] = useState<PopupTab>('overview');
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
@@ -957,8 +963,9 @@ export default function TreeDetailsDashboard({
     });
   }, [editSpecies, editDiameter, editHeight, editCircumference]);
 
-  const cardWidth = Math.min(width - 28, 520);
-  const cardMaxHeight = Math.min(height * 0.78, 720);
+  const cardWidth = Math.max(0, Math.min(width - layout.edgeInset * 2, 520));
+  const availableCardHeight = Math.max(280, height - insets.top - insets.bottom - layout.edgeInset * 2);
+  const cardMaxHeight = Math.min(availableCardHeight, 720);
 
   const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
   const SUPPORTED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
@@ -1723,11 +1730,16 @@ export default function TreeDetailsDashboard({
   }, [tree.id]);
 
   return (
-    <View style={styles.wrapper} pointerEvents="box-none">
+    <View style={[styles.wrapper, { padding: layout.edgeInset }]} pointerEvents="box-none">
       <StatusMessageBox status={statusMessage} onClose={() => setStatusMessage(null)} topOffset={statusTopOffset} />
 
-      <View style={[styles.card, { width: cardWidth, maxHeight: cardMaxHeight }]}>
-        <View style={styles.header}>
+      <View
+        style={[
+          styles.card,
+          { width: cardWidth, maxHeight: cardMaxHeight, borderRadius: layout.cardRadius },
+        ]}
+      >
+        <View style={[styles.header, { paddingHorizontal: layout.panelPadding, paddingTop: layout.panelPadding }]}>
           <View style={styles.headerCopy}>
             <AppText style={styles.eyebrow}>Tree Marker</AppText>
             <AppText style={styles.title}>
@@ -1743,7 +1755,11 @@ export default function TreeDetailsDashboard({
             {isLoggedIn && (
               <Pressable
                 onPress={handleEditTreeData}
-                style={styles.editTreeButton}
+                style={[
+                  styles.editTreeButton,
+                  Platform.OS === 'android' && styles.editTreeButtonAndroid,
+                  Platform.OS === 'android' && Layout.androidFlatSurface,
+                ]}
               >
                 <MaterialCommunityIcons name="pencil-outline" size={17} color="#FFFFFF" />
                 <AppText style={styles.editTreeButtonText}>Edit</AppText>
@@ -1765,7 +1781,7 @@ export default function TreeDetailsDashboard({
           </View>
         </View>
 
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { marginHorizontal: layout.panelPadding }]}>
           {TABS.map((tab) => {
             const isActive = tab.key === activeTab;
 
@@ -1781,9 +1797,11 @@ export default function TreeDetailsDashboard({
                   size={16}
                   color={isActive ? Theme.Colours.white : '#31553A'}
                 />
-                <AppText style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
-                  {tab.label}
-                </AppText>
+                {showTabLabels ? (
+                  <AppText style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>
+                    {tab.label}
+                  </AppText>
+                ) : null}
               </TouchableOpacity>
             );
           })}
@@ -1791,7 +1809,13 @@ export default function TreeDetailsDashboard({
 
         <ScrollView
           style={styles.contentScroll}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[
+            styles.contentContainer,
+            {
+              paddingHorizontal: layout.panelPadding,
+              paddingBottom: layout.panelPadding,
+            },
+          ]}
           showsVerticalScrollIndicator
           indicatorStyle="black"
         >
@@ -1875,8 +1899,8 @@ export default function TreeDetailsDashboard({
           }
         }}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
+        <View style={[styles.modalBackdrop, { padding: layout.edgeInset }]}>
+          <View style={[styles.modalCard, { borderRadius: layout.cardRadius, padding: layout.panelPadding }]}>
             <AppText style={styles.modalTitle}>Add Comment</AppText>
             <AppText style={styles.modalSubtitle}>
               Tell us how the tree is. You can add text, images, or both (up to {MAX_COMMENT_ATTACHMENTS}{' '}
@@ -1954,8 +1978,8 @@ export default function TreeDetailsDashboard({
           }
         }}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
+        <View style={[styles.modalBackdrop, { padding: layout.edgeInset }]}>
+          <View style={[styles.modalCard, { borderRadius: layout.cardRadius, padding: layout.panelPadding }]}>
             <AppText style={styles.modalTitle}>Reply</AppText>
             <AppText style={styles.modalSubtitle} numberOfLines={3}>
               Replying to:{' '}
@@ -2035,14 +2059,29 @@ export default function TreeDetailsDashboard({
           }
         }}
       >
-        <View style={styles.editOverlay} pointerEvents="box-none">
-          <View style={[styles.editPanel, width < 900 ? styles.editPanelMobile : styles.editPanelDesktop]}>
+        <View
+          style={[
+            styles.editOverlay,
+            { padding: layout.edgeInset, alignItems: isMobile ? 'stretch' : 'flex-end' },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View
+            style={[
+              styles.editPanel,
+              isMobile ? styles.editPanelMobile : styles.editPanelDesktop,
+              { borderRadius: layout.cardRadius },
+            ]}
+          >
             <ScrollView
-              contentContainerStyle={styles.editPanelContent}
+              contentContainerStyle={[
+                styles.editPanelContent,
+                { padding: layout.panelPadding, paddingBottom: layout.panelPadding + 12 },
+              ]}
               showsVerticalScrollIndicator={true}
             >
               <View style={styles.editHeaderRow}>
-                <View>
+                <View style={styles.editHeaderCopy}>
                   <AppText style={styles.editEyebrow}>Edit Tree</AppText>
                   <AppText style={styles.editTitle}>Tree Details</AppText>
                   <AppText style={styles.editSubtitle}>Update details, photos, and notes for this tree.</AppText>
@@ -2220,12 +2259,12 @@ export default function TreeDetailsDashboard({
                 />
               </View>
 
-              <View style={[styles.editFooter, width < 900 && styles.editFooterMobile]}>
+              <View style={[styles.editFooter, isMobile && styles.editFooterMobile]}>
                 <AppButton
                   title="Cancel"
                   variant="secondary"
                   onPress={() => setIsEditModalVisible(false)}
-                  style={[styles.editFooterButton, width < 900 && styles.editFooterButtonMobile]}
+                  style={[styles.editFooterButton, isMobile && styles.editFooterButtonMobile]}
                 />
 
                 <AppButton
@@ -2233,7 +2272,7 @@ export default function TreeDetailsDashboard({
                   variant="primary"
                   onPress={handleSubmitTreeData}
                   disabled={isSavingTreeData}
-                  style={[styles.editFooterButton, width < 900 && styles.editFooterButtonMobile]}
+                  style={[styles.editFooterButton, isMobile && styles.editFooterButtonMobile]}
                 />
               </View>
             </ScrollView>
@@ -2254,8 +2293,6 @@ const styles = StyleSheet.create({
     zIndex: 240,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 18,
   },
 
   card: {
@@ -2272,8 +2309,6 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
     paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -2282,13 +2317,14 @@ const styles = StyleSheet.create({
 
   headerCopy: {
     flex: 1,
+    minWidth: 0,
     paddingRight: 12,
   },
 
   eyebrow: {
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0,
     textTransform: 'uppercase',
     color: '#55705B',
     marginBottom: 4,
@@ -2298,6 +2334,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     color: '#183221',
+    lineHeight: 30,
   },
 
   subtitle: {
@@ -2318,7 +2355,6 @@ const styles = StyleSheet.create({
 
   tabBar: {
     flexDirection: 'row',
-    marginHorizontal: 18,
     marginBottom: 8,
     backgroundColor: '#EAF3E6',
     borderRadius: 18,
@@ -2328,6 +2364,7 @@ const styles = StyleSheet.create({
 
   tabButton: {
     flex: 1,
+    minWidth: 52,
     minHeight: 42,
     borderRadius: 14,
     alignItems: 'center',
@@ -2355,7 +2392,6 @@ const styles = StyleSheet.create({
   },
 
   contentContainer: {
-    paddingHorizontal: 18,
     paddingTop: 8,
     paddingBottom: 18,
   },
@@ -2405,8 +2441,10 @@ const styles = StyleSheet.create({
     right: 14,
     top: 14,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
 
   heroLabel: {
@@ -2521,6 +2559,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 10,
   },
 
   emptyStateCard: {
@@ -2564,6 +2603,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginBottom: 10,
+    flexShrink: 1,
   },
 
   activityTagWildlife: {
@@ -2581,6 +2621,7 @@ const styles = StyleSheet.create({
   activityTagText: {
     fontSize: 12,
     fontWeight: '700',
+    flexShrink: 1,
   },
 
   activityTagTextWildlife: {
@@ -2627,12 +2668,14 @@ const styles = StyleSheet.create({
 
   feedBody: {
     flex: 1,
+    minWidth: 0,
   },
 
   feedTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 8,
   },
 
@@ -2783,6 +2826,10 @@ const styles = StyleSheet.create({
     borderTopColor: '#E3EBE3',
     backgroundColor: '#F8FBF8',
   },
+  footerCompact: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
 
   footerBackButton: {
     flexDirection: 'row',
@@ -2811,6 +2858,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     minWidth: 0,
+  },
+  footerRightClusterCompact: {
+    width: '100%',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  footerButtonFull: {
+    width: '100%',
+    flexShrink: 0,
   },
 
   footerShortcutWrap: {
@@ -2874,9 +2930,7 @@ const styles = StyleSheet.create({
   editOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    alignItems: 'flex-end',
     justifyContent: 'center',
-    padding: 14,
   },
 
   editPanel: {
@@ -2895,7 +2949,7 @@ const styles = StyleSheet.create({
   editPanelDesktop: {
     width: '42%',
     maxWidth: 560,
-    minWidth: 430,
+    minWidth: 0,
   },
 
   editPanelMobile: {
@@ -2903,7 +2957,6 @@ const styles = StyleSheet.create({
   },
 
   editPanelContent: {
-    padding: 18,
     paddingBottom: 30,
   },
 
@@ -2911,14 +2964,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 10,
     marginBottom: 10,
+  },
+  editHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
   },
 
   editEyebrow: {
     ...Theme.Typography.caption,
     color: Theme.Colours.secondary,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0,
     marginBottom: 2,
   },
 
@@ -2967,11 +3025,14 @@ const styles = StyleSheet.create({
 
   editMetricsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
 
   editMetricField: {
     flex: 1,
+    flexBasis: 160,
+    minWidth: 0,
   },
 
   editMetricLabel: {
@@ -2990,6 +3051,7 @@ const styles = StyleSheet.create({
 
   editInputUnitContainer: {
     flex: 1,
+    minWidth: 0,
     marginBottom: 0,
   },
 
@@ -3133,15 +3195,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
 
   modalCard: {
     width: '100%',
     maxWidth: 460,
+    maxHeight: '92%',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 18,
     borderWidth: 1,
     borderColor: '#DDE6D8',
   },
@@ -3362,6 +3423,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  editTreeButtonAndroid: {
+    backgroundColor: Theme.Colours.primary,
+    borderColor: '#CFE3CF',
+    borderTopColor: '#EEF7EE',
+    overflow: 'hidden',
+  },
 
   editTreeButtonText: {
     fontSize: 13,
@@ -3407,5 +3474,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#E4F0DF',
     borderWidth: 1,
     borderColor: '#CFE0CA',
+    flexWrap: 'wrap',
   },
 });

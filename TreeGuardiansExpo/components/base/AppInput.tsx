@@ -7,6 +7,7 @@ import {
   StyleProp,
   TextStyle,
   ViewStyle,
+  Platform,
 } from 'react-native';
 import { Theme } from '@/styles/theme';
 
@@ -60,7 +61,12 @@ const splitInputStyles = (style?: StyleProp<TextStyle | ViewStyle>) => {
   };
 };
 
-interface AppInputProps extends TextInputProps {
+const webInputStyle = Platform.select({
+  web: { outlineStyle: 'none' } as unknown as TextStyle,
+  default: undefined,
+});
+
+interface AppInputProps extends Omit<TextInputProps, 'style'> {
   containerStyle?: StyleProp<ViewStyle>;
   inputWrapperStyle?: StyleProp<ViewStyle>;
   leftAdornment?: ReactNode;
@@ -106,6 +112,7 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(({
             styles.input,
             multiline && styles.inputMultiline,
             !editable && styles.inputDisabled,
+            webInputStyle,
             textInputStyle,
           ]}
         />
@@ -127,6 +134,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
     flexDirection: 'row',
     alignItems: 'center',
+    minWidth: 0,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: 12,
     borderWidth: 1,
@@ -156,16 +164,17 @@ const styles = StyleSheet.create({
   adornment: {
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
 
   input: {
     flex: 1,
+    minWidth: 0,
     paddingVertical: 15,
     paddingHorizontal: Theme.Spacing.small,
     ...Theme.Typography.body,
     color: Theme.Colours.black,
-    outlineStyle: 'none',
-  } as TextStyle,
+  },
 
   inputMultiline: {
     minHeight: 120,

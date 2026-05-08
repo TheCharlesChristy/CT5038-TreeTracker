@@ -533,6 +533,114 @@ function createWorkflows(ctx) {
           createdTrees: Array.isArray(recentTrees) ? recentTrees : [],
         };
       }
+    },
+
+    analytics: {
+      async getActivityTrend(days = 30) {
+        const dayWindow = Math.max(1, Number(days) || 30);
+        const dayOffset = dayWindow - 1;
+        const [treesPerDay, commentsPerDay, registeredUsersPerDay, loginsPerDay] = await Promise.all([
+          run(
+            runtimeExecutor(),
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count
+             FROM tree_creation_data
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+             ORDER BY day ASC`,
+            [dayOffset]
+          ),
+          run(
+            runtimeExecutor(),
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count
+             FROM comments
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+             ORDER BY day ASC`,
+            [dayOffset]
+          ),
+          run(
+            runtimeExecutor(),
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count
+             FROM users
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+             ORDER BY day ASC`,
+            [dayOffset]
+          ),
+          run(
+            runtimeExecutor(),
+            `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(DISTINCT user_id) AS count
+             FROM user_sessions
+             WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+             GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+             ORDER BY day ASC`,
+            [dayOffset]
+          )
+        ]);
+
+        return {
+          treesPerDay: Array.isArray(treesPerDay)
+            ? treesPerDay.map((r) => ({ day: String(r.day), count: Number(r.count) }))
+            : [],
+          commentsPerDay: Array.isArray(commentsPerDay)
+            ? commentsPerDay.map((r) => ({ day: String(r.day), count: Number(r.count) }))
+            : [],
+          registeredUsersPerDay: Array.isArray(registeredUsersPerDay)
+            ? registeredUsersPerDay.map((r) => ({ day: String(r.day), count: Number(r.count) }))
+            : [],
+          loginsPerDay: Array.isArray(loginsPerDay)
+            ? loginsPerDay.map((r) => ({ day: String(r.day), count: Number(r.count) }))
+            : []
+        };
+      },
+
+      async getUserAnalytics() {
+        const [adminCount, guardianCount, totalUsers, topTreeSubmitters, topCommenters] =
+          await Promise.all([
+            run(runtimeExecutor(), "SELECT COUNT(*) AS count FROM admins", []),
+            run(runtimeExecutor(), "SELECT COUNT(*) AS count FROM guardians", []),
+            run(runtimeExecutor(), "SELECT COUNT(*) AS count FROM users", []),
+            run(
+              runtimeExecutor(),
+              `SELECT u.id, u.username, COUNT(tcd.tree_id) AS treeCount
+               FROM users u
+               INNER JOIN tree_creation_data tcd ON tcd.creator_user_id = u.id
+               GROUP BY u.id, u.username
+               ORDER BY treeCount DESC
+               LIMIT 5`,
+              []
+            ),
+            run(
+              runtimeExecutor(),
+              `SELECT u.id, u.username, COUNT(c.id) AS commentCount
+               FROM users u
+               INNER JOIN comments c ON c.user_id = u.id
+               GROUP BY u.id, u.username
+               ORDER BY commentCount DESC
+               LIMIT 5`,
+              []
+            )
+          ]);
+
+        const total = Array.isArray(totalUsers) && totalUsers[0] ? Number(totalUsers[0].count) : 0;
+        const admins_count = Array.isArray(adminCount) && adminCount[0] ? Number(adminCount[0].count) : 0;
+        const guardian_count = Array.isArray(guardianCount) && guardianCount[0] ? Number(guardianCount[0].count) : 0;
+
+        return {
+          totalUsers: total,
+          roleBreakdown: {
+            admin: admins_count,
+            guardian: guardian_count,
+            registered_user: Math.max(0, total - admins_count - guardian_count)
+          },
+          topTreeSubmitters: Array.isArray(topTreeSubmitters)
+            ? topTreeSubmitters.map((r) => ({ id: Number(r.id), username: String(r.username), count: Number(r.treeCount) }))
+            : [],
+          topCommenters: Array.isArray(topCommenters)
+            ? topCommenters.map((r) => ({ id: Number(r.id), username: String(r.username), count: Number(r.commentCount) }))
+            : []
+        };
+      }
     }
   };
 }

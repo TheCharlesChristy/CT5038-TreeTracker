@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     color: '#16391A',
     fontSize: 34,
     lineHeight: 40,
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   titleMobile: {
     fontSize: 28,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     color: '#16391A',
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   inputContainer: {
     marginBottom: Theme.Spacing.extraSmall,

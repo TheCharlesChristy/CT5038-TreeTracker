@@ -6,6 +6,8 @@ export type TreePhoto = {
   mimeType?: string;
 };
 
+export type TreeHealthState = 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
+
 // information filled in dashboard
 export type TreeDetails = {
     species?: string,
@@ -25,7 +27,7 @@ export type TreeDetails = {
     airQualityImprovement?: number,
     leafArea?: number,
     evapotranspiration?: number,
-    health?: 'good' | 'ok' | 'bad'
+    health?: TreeHealthState
 }
 
 // when the tree is successfully placed

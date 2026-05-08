@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 500,
     maxWidth: 520,
-    minWidth: 300,
+    minWidth: 0,
   },
   formCard: {
     flex: 1,
@@ -527,6 +527,7 @@ const styles = StyleSheet.create({
   formCardMobile: {
     borderRadius: 18,
     padding: Theme.Spacing.large,
+    minHeight: 0,
   },
   topRow: {
     flexDirection: 'row',
@@ -549,7 +550,7 @@ const styles = StyleSheet.create({
     color: '#16391A',
     fontSize: 34,
     lineHeight: 40,
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   titleMobile: {
     fontSize: 28,
@@ -574,7 +575,7 @@ const styles = StyleSheet.create({
     color: '#16391A',
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   inputContainer: {
     marginBottom: Theme.Spacing.extraSmall,
@@ -597,6 +598,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Theme.Spacing.small,
   },
   forgotPasswordText: {
     color: '#2E7D32',
@@ -626,6 +628,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: Theme.Spacing.small,
     marginBottom: Theme.Spacing.small,
+    minWidth: 0,
   },
   checkboxBox: {
     width: 22,
@@ -651,6 +654,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     color: '#2B392B',
     fontWeight: '600',
+    flexShrink: 1,
   },
   securePill: {
     borderRadius: 999,
@@ -712,7 +716,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 500,
     maxWidth: 520,
-    minWidth: 300,
+    minWidth: 0,
   },
   previewCard: {
     flex: 1,
@@ -748,7 +752,7 @@ const styles = StyleSheet.create({
     color: '#F7FBF7',
     fontSize: 38,
     lineHeight: 44,
-    letterSpacing: 0.15,
+    letterSpacing: 0,
     marginBottom: Theme.Spacing.medium,
   },
   previewTitleMobile: {
@@ -787,6 +791,7 @@ const styles = StyleSheet.create({
   },
   previewFeatureCopy: {
     flex: 1,
+    minWidth: 0,
   },
   previewFeatureTitle: {
     color: '#F7FBF7',
@@ -812,7 +817,7 @@ const styles = StyleSheet.create({
   activityHeading: {
     color: 'rgba(230, 244, 231, 0.60)',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0,
     fontSize: 11,
     fontWeight: '700',
     marginBottom: Theme.Spacing.medium,
@@ -831,6 +836,7 @@ const styles = StyleSheet.create({
   },
   activityContent: {
     flex: 1,
+    minWidth: 0,
   },
   activityTitle: {
     color: '#F7FBF7',
@@ -854,7 +860,8 @@ const styles = StyleSheet.create({
     marginHorizontal: -6,
   },
   previewStatCard: {
-    minWidth: 210,
+    minWidth: 0,
+    flexBasis: 210,
     flex: 1,
     marginHorizontal: 6,
     marginBottom: 12,
