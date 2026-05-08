@@ -1,6 +1,16 @@
 import React from 'react';
-import { Platform, StyleSheet, StyleProp, ViewStyle, ScrollView, ImageBackground, View, ImageSourcePropType } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Platform,
+  StatusBar,
+  StyleSheet,
+  StyleProp,
+  ViewStyle,
+  ScrollView,
+  ImageBackground,
+  View,
+  ImageSourcePropType,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '@/styles/theme';
 import { NavBar } from './NavBar';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -35,6 +45,9 @@ export const AppContainer = ({
   overlayNavBar = false,
 }: AppContainerProps) => {
   const layout = useResponsiveLayout();
+  const insets = useSafeAreaInsets();
+  const topSafeInset = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
+  const RootView = overlayNavBar ? View : SafeAreaView;
   const containerPaddingStyle = noPadding
     ? null
     : { paddingHorizontal: layout.screenPadding, paddingVertical: layout.screenPadding };
@@ -60,30 +73,30 @@ export const AppContainer = ({
         blurRadius={4}
       >
         <View style={styles.overlay}>
-          <SafeAreaView style={[styles.containerTransparent, style]}>
+          <RootView style={[styles.containerTransparent, style]}>
             {showNavBar && !overlayNavBar && <NavBar />}
             {content}
             {showNavBar && overlayNavBar ? (
-              <View style={styles.navOverlay} pointerEvents="box-none">
+              <View style={[styles.navOverlay, { paddingTop: topSafeInset }]} pointerEvents="box-none">
                 <NavBar />
               </View>
             ) : null}
-          </SafeAreaView>
+          </RootView>
         </View>
       </ImageBackground>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, style]}>
+    <RootView style={[styles.container, style]}>
       {showNavBar && !overlayNavBar && <NavBar />}
       {content}
       {showNavBar && overlayNavBar ? (
-        <View style={styles.navOverlay} pointerEvents="box-none">
+        <View style={[styles.navOverlay, { paddingTop: topSafeInset }]} pointerEvents="box-none">
           <NavBar />
         </View>
       ) : null}
-    </SafeAreaView>
+    </RootView>
   );
 };
 

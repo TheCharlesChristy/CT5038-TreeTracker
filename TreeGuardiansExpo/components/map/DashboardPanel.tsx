@@ -1,4 +1,13 @@
-import { Platform, ScrollView, StyleSheet, View, ActivityIndicator, Modal } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  View,
+  ViewStyle,
+  ActivityIndicator,
+  Modal,
+} from 'react-native';
 import { router } from 'expo-router';
 import { AppButton } from '@/components/base/AppButton';
 import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
@@ -30,13 +39,15 @@ type GridButtonProps = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   label: string;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
-function GridButton({ icon, label, onPress }: GridButtonProps) {
+function GridButton({ icon, label, onPress, style }: GridButtonProps) {
   return (
     <TouchableOpacity
       style={[
         styles.gridButton,
+        style,
         Platform.OS === 'android' && styles.gridButtonAndroid,
         Platform.OS === 'android' && Layout.androidFlatSurface,
       ]}
@@ -103,6 +114,8 @@ export function DashboardPanel({
 }: DashboardPanelProps) {
   const [activePopup, setActivePopup] = useState<PopupType>(null);
   const layout = useResponsiveLayout();
+  const gridButtonStyle = layout.isPhone ? styles.gridButtonPhone : styles.gridButtonWide;
+  const scrollGutterStyle = { paddingRight: layout.isPhone ? 10 : 12 };
 
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -168,26 +181,35 @@ export function DashboardPanel({
           />
         </View>
 
-        <ScrollView style={styles.dashboardList} contentContainerStyle={styles.dashboardListContent}>
+        <ScrollView
+          style={styles.dashboardList}
+          contentContainerStyle={[styles.dashboardListContent, scrollGutterStyle]}
+          scrollIndicatorInsets={{ right: 2 }}
+          showsVerticalScrollIndicator
+        >
           <View style={styles.buttonGrid}>
             <GridButton
               icon="account-outline"
               label="My Profile"
+              style={gridButtonStyle}
               onPress={() => { onClose(); router.push('/(protected)/myProfile' as never); }}
             />
             <GridButton
               icon="timeline-text-outline"
               label="Local Activity"
+              style={gridButtonStyle}
               onPress={openActivityPopup}
             />
             <GridButton
               icon="weather-partly-cloudy"
               label="Weather"
+              style={gridButtonStyle}
               onPress={openWeatherPopup}
             />
             <GridButton
               icon="tree-outline"
               label="My Trees"
+              style={gridButtonStyle}
               onPress={() => {
                 onClose();
                 if (onOpenMyTrees) {
@@ -202,11 +224,13 @@ export function DashboardPanel({
                 <GridButton
                   icon="chart-bar"
                   label="Analytics"
+                  style={gridButtonStyle}
                   onPress={() => { onClose(); router.push('/(protected)/admin/analytics' as never); }}
                 />
                 <GridButton
                   icon="account-group-outline"
                   label="Manage Users"
+                  style={gridButtonStyle}
                   onPress={() => { onClose(); router.push('/(protected)/admin/manageUsers' as never); }}
                 />
               </>
@@ -661,16 +685,16 @@ const styles = StyleSheet.create({
   buttonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 6,
   },
 
   gridButton: {
-    width: '48%',
-    minWidth: 112,
     flexGrow: 1,
-    aspectRatio: 1,
+    flexShrink: 1,
+    flexBasis: 150,
+    minWidth: 118,
+    minHeight: 98,
     borderRadius: 18,
     overflow: 'hidden',
     alignItems: 'center',
@@ -686,6 +710,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 14,
     elevation: 10,
+  },
+
+  gridButtonPhone: {
+    flexBasis: 132,
+    minWidth: 118,
+    minHeight: 88,
+    paddingVertical: 10,
+  },
+
+  gridButtonWide: {
+    flexBasis: 150,
+    minHeight: 102,
   },
 
   gridButtonAndroid: {
@@ -730,6 +766,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: 'rgba(200, 100, 100, 0.28)',
     borderTopColor: 'rgba(255, 210, 210, 0.65)',
+    marginTop: 0,
     marginBottom: 8,
     shadowColor: '#3c0000',
     shadowOffset: { width: 0, height: 4 },

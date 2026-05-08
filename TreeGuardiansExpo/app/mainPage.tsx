@@ -4,6 +4,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
@@ -130,7 +131,8 @@ export default function MainPage() {
   }, [selectedTree?.id]);
 
   const visibleTrees = mapTrees;
-  const navOverlayInset = insets.top + (layout.isPhone ? 82 : 92);
+  const topSystemInset = insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
+  const navOverlayInset = topSystemInset + (layout.isPhone ? 82 : 92);
   const actionBarBottomInset = (layout.isCompact ? 16 : 24) + insets.bottom;
   const actionBarHeight = 56;
   const panelBottomInset = actionBarBottomInset + actionBarHeight + layout.edgeInset;
