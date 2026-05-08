@@ -3,6 +3,7 @@ import { Platform, StyleSheet, StyleProp, ViewStyle, ScrollView, ImageBackground
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '@/styles/theme';
 import { NavBar } from './NavBar';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface AppContainerProps {
   children: React.ReactNode;
@@ -33,7 +34,10 @@ export const AppContainer = ({
   showNavBar = true,
   overlayNavBar = false,
 }: AppContainerProps) => {
-  const containerPaddingStyle = noPadding ? null : styles.padding;
+  const layout = useResponsiveLayout();
+  const containerPaddingStyle = noPadding
+    ? null
+    : { paddingHorizontal: layout.screenPadding, paddingVertical: layout.screenPadding };
   const content = scrollable ? (
     <ScrollView
       contentContainerStyle={[styles.scrollContent, containerPaddingStyle]}
@@ -98,10 +102,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Theme.Colours.white,
-  },
-
-  padding: {
-    padding: Theme.Spacing.medium,
   },
 
   containerTransparent: {

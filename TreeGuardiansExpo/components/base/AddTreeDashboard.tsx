@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
-  TouchableOpacity,
   Image,
   Platform,
   ScrollView,
-  useWindowDimensions,
 } from 'react-native';
 import { Theme } from '@/styles';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { AppButton } from './AppButton';
+import { AppTouchableOpacity as TouchableOpacity } from './AppTouchableOpacity';
 import { useSessionUser } from '@/lib/session';
 import { AppInput } from './AppInput';
 import { router } from 'expo-router';
@@ -80,8 +80,8 @@ export default function PlotDashboard({
 
   const [photos, setPhotos] = useState<TreePhoto[]>([]);
 
-  const { width } = useWindowDimensions();
-  const isMobile = width < 900;
+  const layout = useResponsiveLayout();
+  const isMobile = !layout.isDesktop;
   const { showActionSheetWithOptions } = useActionSheet();
 
   useEffect(() => {
@@ -350,10 +350,30 @@ export default function PlotDashboard({
   }, [photos.length]);
 
   return (
-    <View style={[styles.overlay, { top: topInset, bottom: bottomInset }]} pointerEvents="box-none">
-      <View style={[styles.panel, isMobile ? styles.panelMobile : styles.panelDesktop]}>
+    <View
+      style={[
+        styles.overlay,
+        {
+          top: topInset,
+          bottom: bottomInset,
+          padding: layout.edgeInset,
+          alignItems: isMobile ? 'stretch' : 'flex-end',
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      <View
+        style={[
+          styles.panel,
+          isMobile ? styles.panelMobile : styles.panelDesktop,
+          { borderRadius: layout.cardRadius },
+        ]}
+      >
         <ScrollView
-          contentContainerStyle={styles.panelContent}
+          contentContainerStyle={[
+            styles.panelContent,
+            { padding: layout.panelPadding, paddingBottom: layout.panelPadding + 12 },
+          ]}
           showsVerticalScrollIndicator={true}
         >
           {user && !user.verified ? (
@@ -372,7 +392,7 @@ export default function PlotDashboard({
           ) : null}
 
           <View style={styles.headerRow}>
-            <View>
+            <View style={styles.headerCopy}>
               <AppText style={styles.eyebrow}>Add Tree</AppText>
               <AppText style={styles.title}>Tree Details</AppText>
               <AppText style={styles.subtitle}>Complete details, pick a location, then confirm to submit.</AppText>
@@ -696,9 +716,7 @@ const styles = StyleSheet.create({
     right: 0,
     left: 0,
     zIndex: 220,
-    alignItems: 'flex-end',
     justifyContent: 'center',
-    padding: 14,
   },
 
   panel: {
@@ -717,7 +735,7 @@ const styles = StyleSheet.create({
   panelDesktop: {
     width: '42%',
     maxWidth: 560,
-    minWidth: 430,
+    minWidth: 0,
   },
 
   panelMobile: {
@@ -725,7 +743,6 @@ const styles = StyleSheet.create({
   },
 
   panelContent: {
-    padding: 18,
     paddingBottom: 30,
   },
 
@@ -733,14 +750,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 10,
     marginBottom: 10,
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
   },
 
   eyebrow: {
     ...Theme.Typography.caption,
     color: Theme.Colours.secondary,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0,
     marginBottom: 2,
   },
 
@@ -837,6 +859,7 @@ const styles = StyleSheet.create({
 
   dynamicListRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'stretch',
     gap: 8,
   },
@@ -847,19 +870,21 @@ const styles = StyleSheet.create({
 
   dynamicListInputContainer: {
     flex: 1,
+    flexBasis: 180,
+    minWidth: 0,
     marginBottom: 8,
   },
 
   removeActionWrap: {
     width: 108,
+    flexShrink: 0,
     alignSelf: 'stretch',
     marginBottom: 8,
   },
 
   removeActionButton: {
     flex: 1,
-    minHeight: 0,
-    height: '100%',
+    minHeight: 54,
     marginBottom: 0,
     justifyContent: 'center',
     borderRadius: 12,
@@ -886,11 +911,14 @@ const styles = StyleSheet.create({
 
   metricsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
 
   metricField: {
     flex: 1,
+    flexBasis: 160,
+    minWidth: 0,
   },
 
   errorText: {
@@ -920,11 +948,14 @@ const styles = StyleSheet.create({
   locationActionRow: {
     marginTop: 10,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
 
   locationButton: {
     flex: 1,
+    flexBasis: 160,
+    minWidth: 0,
     marginBottom: 0,
   },
 
@@ -1065,6 +1096,7 @@ const styles = StyleSheet.create({
 
   inputUnitContainer: {
     flex: 1,
+    minWidth: 0,
     marginBottom: 0,
   },
 

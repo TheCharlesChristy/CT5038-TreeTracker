@@ -1,7 +1,9 @@
-import { StyleSheet, View, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
 import { AppText } from '@/components/base/AppText';
-import { Theme } from '@/styles';
+import { Layout, Theme } from '@/styles';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 type FloatingActionBarProps = {
   searchActive: boolean;
@@ -24,13 +26,22 @@ export function FloatingActionBar({
   onAddTreePress,
   onDashboardPress,
 }: FloatingActionBarProps) {
-  const { width } = useWindowDimensions();
-  const compact = width < 500;
+  const layout = useResponsiveLayout();
+  const compact = layout.width < 500;
+  const androidFabStyle = Platform.OS === 'android'
+    ? [styles.fabAndroid, Layout.androidFlatSurface]
+    : null;
 
   return (
-    <View style={[styles.container, { bottom: bottomOffset }]}>
+    <View style={[styles.container, { bottom: bottomOffset, left: layout.edgeInset, right: layout.edgeInset }]}>
       <TouchableOpacity
-        style={[styles.fab, compact && styles.fabCompact, searchActive && styles.fabActive]}
+        style={[
+          styles.fab,
+          compact && styles.fabCompact,
+          searchActive && styles.fabActive,
+          androidFabStyle,
+          searchActive && Platform.OS === 'android' && styles.fabAndroidActive,
+        ]}
         onPress={onSearchPress}
         activeOpacity={0.8}
       >
@@ -40,7 +51,13 @@ export function FloatingActionBar({
 
       {!isGuest ? (
         <TouchableOpacity
-          style={[styles.fab, compact && styles.fabCompact, addActive && styles.fabActive]}
+          style={[
+            styles.fab,
+            compact && styles.fabCompact,
+            addActive && styles.fabActive,
+            androidFabStyle,
+            addActive && Platform.OS === 'android' && styles.fabAndroidActive,
+          ]}
           onPress={onAddTreePress}
           activeOpacity={0.8}
         >
@@ -51,7 +68,13 @@ export function FloatingActionBar({
 
       {!isGuest ? (
         <TouchableOpacity
-          style={[styles.fab, compact && styles.fabCompact, dashboardActive && styles.fabActive]}
+          style={[
+            styles.fab,
+            compact && styles.fabCompact,
+            dashboardActive && styles.fabActive,
+            androidFabStyle,
+            dashboardActive && Platform.OS === 'android' && styles.fabAndroidActive,
+          ]}
           onPress={onDashboardPress}
           activeOpacity={0.8}
         >
@@ -99,6 +122,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(12, 44, 20, 0.82)',
     borderColor: 'rgba(255, 255, 255, 0.55)',
     borderTopColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  fabAndroid: {
+    backgroundColor: Theme.Colours.primary,
+    borderColor: '#DCEADC',
+    borderTopColor: '#EEF6EE',
+    overflow: 'hidden',
+  },
+  fabAndroidActive: {
+    backgroundColor: '#12391D',
   },
   fabLabel: {
     fontSize: 11,

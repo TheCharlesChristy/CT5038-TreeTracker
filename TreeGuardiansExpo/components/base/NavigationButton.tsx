@@ -1,8 +1,9 @@
-import { TouchableOpacity, StyleSheet, View, GestureResponderEvent } from 'react-native';
+import { Platform, StyleSheet, View, GestureResponderEvent } from 'react-native';
 import { ReactNode } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from './AppText';
-import { Theme } from '@/styles';
+import { AppTouchableOpacity as TouchableOpacity } from './AppTouchableOpacity';
+import { Layout, Theme } from '@/styles';
 
 interface NavigationButtonProps {
   onPress: (event: GestureResponderEvent) => void;
@@ -22,7 +23,11 @@ export const NavigationButton = ({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={styles.button}
+      style={[
+        styles.button,
+        Platform.OS === 'android' && styles.buttonAndroid,
+        Platform.OS === 'android' && Layout.androidFlatSurface,
+      ]}
       activeOpacity={0.80}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (typeof children === 'string' ? children : 'Back to map')}
@@ -53,6 +58,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  buttonAndroid: {
+    backgroundColor: Theme.Colours.primary,
+    borderColor: '#CFE3CF',
+    borderTopColor: '#EEF7EE',
+    overflow: 'hidden',
+  },
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -61,6 +72,6 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
 });

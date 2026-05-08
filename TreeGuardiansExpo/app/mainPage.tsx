@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
-  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
@@ -13,6 +12,7 @@ import PlotDashboard from '@/components/base/AddTreeDashboard';
 import TreeDetailsDashboard from '@/components/base/TreeDashboard';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
+import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SearchTreesPanel } from '@/components/map/SearchTreesPanel';
@@ -22,16 +22,18 @@ import { FloatingActionBar } from '@/components/map/FloatingActionBar';
 import { TreeMarkerIcon } from '@/components/map/TreeMarkerIcon';
 import { CircularCountdown } from '@/components/base/CircularCountdown';
 import { Tree } from '@/objects/TreeDetails';
-import { Theme } from '@/styles';
+import { Layout, Theme } from '@/styles';
 import { useTreeMapState } from '../hooks/useTreeMapState';
 import { useMyTreesFilterModel } from '../hooks/useMyTreesFilterModel';
 import { AppUserRole, getCurrentUser, logoutUser, normalizeUserRole } from '@/utilities/authHelper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FaviconHead } from '@/components/base/FaviconHead';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 export default function MainPage() {
   const params = useLocalSearchParams<{ openMyTrees?: string }>();
-  const { width: windowWidth } = useWindowDimensions();
+  const layout = useResponsiveLayout();
+  const windowWidth = layout.width;
   const insets = useSafeAreaInsets();
   const [loggedInUserId, setLoggedInUserId] = useState<number | null>(null);
   const [loggedInUsername, setLoggedInUsername] = useState<string | null>(null);
@@ -128,10 +130,10 @@ export default function MainPage() {
   }, [selectedTree?.id]);
 
   const visibleTrees = mapTrees;
-  const navOverlayInset = insets.top + (windowWidth < 760 ? 84 : 92);
-  const actionBarBottomInset = 24 + insets.bottom;
+  const navOverlayInset = insets.top + (layout.isPhone ? 82 : 92);
+  const actionBarBottomInset = (layout.isCompact ? 16 : 24) + insets.bottom;
   const actionBarHeight = 56;
-  const panelBottomInset = actionBarBottomInset + actionBarHeight + 14;
+  const panelBottomInset = actionBarBottomInset + actionBarHeight + layout.edgeInset;
   const refreshDurationSeconds = Math.max(1, Math.round(refreshIntervalMs / 1000));
   const activeFilterLabels = [
     searchQuery.trim() ? `Query: ${searchQuery.trim()}` : null,
@@ -224,7 +226,17 @@ export default function MainPage() {
           />
 
           {hasSearchFilters ? (
-            <View style={styles.activeFiltersCard}>
+            <View
+              style={[
+                styles.activeFiltersCard,
+                { top: navOverlayInset },
+                layout.isPhone && {
+                  left: layout.edgeInset,
+                  right: layout.edgeInset,
+                  maxWidth: undefined,
+                },
+              ]}
+            >
               <View style={styles.activeFiltersHeader}>
                 <MaterialCommunityIcons name="filter-variant" size={14} color="#E9F3EA" />
                 <AppText style={styles.activeFiltersTitle}>Active Filters</AppText>
@@ -243,8 +255,11 @@ export default function MainPage() {
               style={[
                 styles.cursorCoordinatePill,
                 {
-                  left: Math.min(plotPointer.screenX + 14, windowWidth - 200),
-                  top: Math.max(plotPointer.screenY - 56, 10),
+                  left: Math.max(
+                    layout.edgeInset,
+                    Math.min(plotPointer.screenX + layout.edgeInset, Math.max(layout.edgeInset, windowWidth - 200)),
+                  ),
+                  top: Math.max(plotPointer.screenY - 56, navOverlayInset),
                 },
               ]}
             >
@@ -259,7 +274,17 @@ export default function MainPage() {
 
           {mode === 'add' && isSelectingManualLocation ? (
             <TouchableOpacity
-              style={styles.exitMapSelectionButton}
+              style={[
+                styles.exitMapSelectionButton,
+                {
+                  bottom: actionBarBottomInset,
+                  left: layout.edgeInset,
+                  right: layout.edgeInset,
+                  borderRadius: layout.controlRadius,
+                },
+                Platform.OS === 'android' && styles.exitMapSelectionButtonAndroid,
+                Platform.OS === 'android' && Layout.androidFlatSurface,
+              ]}
               activeOpacity={0.85}
               onPress={handleCancelManualPlacement}
             >
@@ -363,7 +388,7 @@ export default function MainPage() {
           ) : null}
 
           {isLoadingTrees ? (
-            <View style={styles.loadingPill}>
+            <View style={[styles.loadingPill, { bottom: panelBottomInset, left: layout.edgeInset }]}>
               <ActivityIndicator color={Theme.Colours.white} size="small" />
               <AppText style={styles.loadingText}>Syncing trees...</AppText>
             </View>
@@ -375,7 +400,7 @@ export default function MainPage() {
                 styles.refreshTimer,
                 {
                   left: insets.left + 4,
-                  bottom: insets.bottom + 4,
+                  bottom: panelBottomInset,
                 },
               ]}
             >
@@ -441,8 +466,6 @@ const styles = StyleSheet.create({
 
   exitMapSelectionButton: {
     position: 'absolute',
-    left: 20,
-    right: 20,
     bottom: 28,
     zIndex: 240,
     minHeight: 56,
@@ -465,11 +488,18 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 
+  exitMapSelectionButtonAndroid: {
+    backgroundColor: '#9C1B1B',
+    borderColor: '#F0CACA',
+    borderTopColor: '#FAE5E5',
+    overflow: 'hidden',
+  },
+
   exitMapSelectionText: {
     color: '#FFF6F6',
     fontSize: 15,
     fontFamily: 'Poppins_600SemiBold',
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
 
   dimOverlay: {

@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppButton } from '@/components/base/AppButton';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 type ManualPlacementPanelProps = {
   isWideLayout: boolean;
@@ -14,8 +15,18 @@ export function ManualPlacementPanel({
   coordinateText,
   onCancel,
 }: ManualPlacementPanelProps) {
+  const layout = useResponsiveLayout();
+
   return (
-    <View style={[styles.manualPlacementPanel, isWideLayout ? styles.manualPlacementPanelWide : styles.manualPlacementPanelBottom]}>
+    <View
+      style={[
+        styles.manualPlacementPanel,
+        { borderRadius: layout.cardRadius, padding: layout.panelPadding },
+        isWideLayout
+          ? [styles.manualPlacementPanelWide, { right: layout.edgeInset }]
+          : [styles.manualPlacementPanelBottom, { left: layout.edgeInset, right: layout.edgeInset }],
+      ]}
+    >
       <AppText style={styles.manualPlacementTitle}>Plot Tree On Map</AppText>
       <AppText style={styles.manualPlacementBody}>
         Move the cursor and click to pin the tree location.
@@ -41,7 +52,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 210,
     borderRadius: 16,
-    padding: 14,
     backgroundColor: 'rgba(253, 255, 253, 0.95)',
     borderWidth: 1,
     borderColor: '#D6E5D7',
@@ -53,12 +63,10 @@ const styles = StyleSheet.create({
   },
   manualPlacementPanelWide: {
     top: 84,
-    right: 16,
-    width: 320,
+    width: '90%',
+    maxWidth: 320,
   },
   manualPlacementPanelBottom: {
-    left: 16,
-    right: 16,
     bottom: 104,
   },
   manualPlacementTitle: {

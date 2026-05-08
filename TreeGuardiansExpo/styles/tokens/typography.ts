@@ -3,7 +3,7 @@ export const Typography = {
     fontSize: 36,
     fontWeight: '600' as const,
     lineHeight: 44,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
     fontFamily: 'Poppins_600SemiBold',
   },
   subtitle: {

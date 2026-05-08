@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Platform, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './AppText';
+import { AppTouchableOpacity as TouchableOpacity } from './AppTouchableOpacity';
 import { Theme } from '@/styles/theme';
+import { Layout } from '@/styles/layout';
 import { getCurrentUser, logoutUser } from '@/utilities/authHelper';
 
 const BASE_NAV_ITEMS = [
@@ -112,8 +114,8 @@ export const NavBar = () => {
                 <TouchableOpacity
                   key={item.label}
                   onPress={() => handleNavigate(item.route)}
-                  style={styles.menuItem}
-                  activeOpacity={0.82}
+                style={styles.menuItem}
+                activeOpacity={0.82}
                 >
                   <AppText style={styles.menuItemText}>{item.label}</AppText>
                 </TouchableOpacity>
@@ -123,7 +125,11 @@ export const NavBar = () => {
                 onPress={() => {
                   void handleAuthAction();
                 }}
-                style={styles.menuAuthButton}
+                style={[
+                  styles.menuAuthButton,
+                  Platform.OS === 'android' && styles.primaryNavActionAndroid,
+                  Platform.OS === 'android' && Layout.androidFlatSurface,
+                ]}
                 activeOpacity={0.84}
               >
                 <View style={styles.signInContent}>
@@ -161,7 +167,11 @@ export const NavBar = () => {
               onPress={() => {
                 void handleAuthAction();
               }}
-              style={styles.signInButton}
+              style={[
+                styles.signInButton,
+                Platform.OS === 'android' && styles.primaryNavActionAndroid,
+                Platform.OS === 'android' && Layout.androidFlatSurface,
+              ]}
               activeOpacity={0.8}
             >
               <View style={styles.signInContent}>
@@ -210,6 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: Theme.Spacing.medium,
+    flexShrink: 0,
   },
   logo: {
     width: 24,
@@ -236,6 +247,7 @@ const styles = StyleSheet.create({
   },
   linksWrapper: {
     flex: 1,
+    minWidth: 0,
   },
   linksRow: {
     alignItems: 'center',
@@ -263,6 +275,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 2,
+  },
+  primaryNavActionAndroid: {
+    backgroundColor: Theme.Colours.primary,
+    borderColor: '#CFE3CF',
+    borderTopColor: '#EEF7EE',
+    overflow: 'hidden',
   },
   signInContent: {
     flexDirection: 'row',
@@ -293,6 +311,7 @@ const styles = StyleSheet.create({
     top: 50,
     right: 0,
     minWidth: 210,
+    maxWidth: 280,
     padding: 8,
     gap: 6,
     borderRadius: Theme.Radius.card,

@@ -520,10 +520,12 @@ const styles = StyleSheet.create({
 	// Stat row
 	statRow: {
 		flexDirection: 'row',
+		flexWrap: 'wrap',
 		gap: Theme.Spacing.small,
 	},
 	statCard: {
 		flex: 1,
+		minWidth: 130,
 		backgroundColor: 'rgba(255, 255, 255, 0.90)',
 		borderRadius: Theme.Radius.medium,
 		borderWidth: 1,
@@ -647,6 +649,7 @@ const styles = StyleSheet.create({
 	},
 	contributorBarTrack: {
 		flex: 1,
+		minWidth: 0,
 		height: 10,
 		backgroundColor: '#F0F5F0',
 		borderRadius: 5,
@@ -674,6 +677,8 @@ const styles = StyleSheet.create({
 	},
 	impactCard: {
 		width: '47%',
+		minWidth: 130,
+		flexGrow: 1,
 		backgroundColor: 'rgba(255, 255, 255, 0.88)',
 		borderRadius: Theme.Radius.small,
 		borderWidth: 1,

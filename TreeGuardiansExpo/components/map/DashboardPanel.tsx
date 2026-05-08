@@ -1,13 +1,15 @@
-import { ScrollView, StyleSheet, View, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, ActivityIndicator, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { AppButton } from '@/components/base/AppButton';
+import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
 import { AppText } from '@/components/base/AppText';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Theme } from '@/styles';
+import { Layout, Theme } from '@/styles';
 import type { AppUserRole } from '@/utilities/authHelper';
 import React, { useState, useMemo } from 'react';
 import { fetchCharltonKingsWeather, WeatherData, DailyForecast } from '@/lib/weatherApi';
 import { fetchRecentTreeActivity, LocalActivityItem } from '@/lib/activityApi';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 type PopupType = 'weather' | 'activity' | null;
 
@@ -32,7 +34,15 @@ type GridButtonProps = {
 
 function GridButton({ icon, label, onPress }: GridButtonProps) {
   return (
-    <TouchableOpacity style={styles.gridButton} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity
+      style={[
+        styles.gridButton,
+        Platform.OS === 'android' && styles.gridButtonAndroid,
+        Platform.OS === 'android' && Layout.androidFlatSurface,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
       <View style={styles.gridButtonIconCircle}>
         <MaterialCommunityIcons name={icon} size={26} color="#FFFFFF" />
       </View>
@@ -92,6 +102,7 @@ export function DashboardPanel({
   bottomInset = 104,
 }: DashboardPanelProps) {
   const [activePopup, setActivePopup] = useState<PopupType>(null);
+  const layout = useResponsiveLayout();
 
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -144,8 +155,8 @@ export function DashboardPanel({
   };
 
   return (
-    <View style={[styles.dashboardWrap, { top: topInset, bottom: bottomInset }]}>
-      <View style={styles.dashboardPanel}>
+    <View style={[styles.dashboardWrap, { top: topInset, bottom: bottomInset, padding: layout.edgeInset }]}>
+      <View style={[styles.dashboardPanel, { borderRadius: layout.cardRadius, padding: layout.panelPadding }]}>
         <View style={styles.panelHeaderRow}>
           <AppText style={styles.panelTitle}>Your Dashboard</AppText>
           <AppButton
@@ -203,7 +214,12 @@ export function DashboardPanel({
           </View>
 
           <TouchableOpacity
-            style={[styles.logoutRow, isLoggingOut && styles.logoutRowDisabled]}
+            style={[
+              styles.logoutRow,
+              Platform.OS === 'android' && styles.logoutRowAndroid,
+              Platform.OS === 'android' && Layout.androidFlatSurface,
+              isLoggingOut && styles.logoutRowDisabled,
+            ]}
             onPress={() => { void onLogout(); }}
             disabled={isLoggingOut}
             activeOpacity={0.8}
@@ -238,8 +254,8 @@ export function DashboardPanel({
             animationType="fade"
             onRequestClose={closePopup}
           >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
+          <View style={[styles.modalOverlay, { padding: layout.edgeInset }]}>
+            <View style={[styles.modalCard, { borderRadius: layout.cardRadius, padding: layout.panelPadding }]}>
 
               <View style={styles.modalHeader}>
                 <AppText style={styles.panelTitle}>{popupTitle}</AppText>
@@ -374,6 +390,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
     marginBottom: 14,
   },
 
@@ -423,11 +440,14 @@ const styles = StyleSheet.create({
 
   weatherDetailRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginTop: 4,
   },
 
   weatherDetailChip: {
+    flex: 1,
+    minWidth: 112,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -544,6 +564,7 @@ const styles = StyleSheet.create({
 
   activityCardBody: {
     flex: 1,
+    minWidth: 0,
   },
 
   activityTitle: {
@@ -608,11 +629,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
     marginBottom: 12,
   },
   panelTitle: {
     ...Theme.Typography.subtitle,
     color: Theme.Colours.textPrimary,
+    flex: 1,
+    minWidth: 0,
   },
   dashboardSubtitle: {
     ...Theme.Typography.caption,
@@ -644,6 +668,8 @@ const styles = StyleSheet.create({
 
   gridButton: {
     width: '48%',
+    minWidth: 112,
+    flexGrow: 1,
     aspectRatio: 1,
     borderRadius: 18,
     overflow: 'hidden',
@@ -660,6 +686,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 14,
     elevation: 10,
+  },
+
+  gridButtonAndroid: {
+    backgroundColor: Theme.Colours.primary,
+    borderColor: '#CFE6D0',
+    borderTopColor: '#F0F8F0',
   },
 
   gridButtonIconCircle: {
@@ -680,7 +712,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     lineHeight: 16,
-    letterSpacing: 0.2,
+    letterSpacing: 0,
     textShadowColor: 'rgba(0, 0, 0, 0.40)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -705,6 +737,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  logoutRowAndroid: {
+    backgroundColor: '#FCEAEA',
+    borderColor: '#E7BCBC',
+    borderTopColor: '#F9DCDC',
+  },
   logoutRowDisabled: {
     opacity: 0.50,
   },
@@ -712,15 +749,17 @@ const styles = StyleSheet.create({
     color: '#A53333',
     fontWeight: '700',
     fontSize: 14,
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   dashboardStatsRow: {
     marginTop: 8,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   statCardCompact: {
     flex: 1,
+    minWidth: 86,
     borderRadius: 10,
     backgroundColor: Theme.Colours.white,
     borderWidth: 1,
@@ -736,5 +775,6 @@ const styles = StyleSheet.create({
   statLabelCompact: {
     ...Theme.Typography.caption,
     color: Theme.Colours.textMuted,
+    textAlign: 'center',
   },
 });
