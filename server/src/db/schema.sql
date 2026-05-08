@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     id bigint unsigned AUTO_INCREMENT PRIMARY KEY,
     user_id bigint unsigned NOT NULL,
     session_token char(64) NOT NULL UNIQUE,
-    expires_at TIMESTAMP NOT NULL,
+    expires_at DATETIME NOT NULL,
     CONSTRAINT fk_sessions_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
     user_id bigint unsigned NOT NULL,
     token char(64) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NOT NULL,
+    expires_at DATETIME NOT NULL,
     CONSTRAINT fk_verification_user FOREIGN KEY (user_id)
     REFERENCES users (id) ON DELETE CASCADE
 ) engine = InnoDB;
