@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 500,
     maxWidth: 520,
-    minWidth: 300,
+    minWidth: 0,
   },
   formCard: {
     flex: 1,
@@ -510,6 +510,7 @@ const styles = StyleSheet.create({
   formCardMobile: {
     borderRadius: 16,
     padding: Theme.Spacing.large,
+    minHeight: 0,
   },
   homeLink: {
     alignSelf: 'flex-start',
@@ -527,7 +528,7 @@ const styles = StyleSheet.create({
     color: '#1B5E20',
     fontSize: 34,
     lineHeight: 40,
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   titleMobile: {
     fontSize: 28,
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
     color: '#16391A',
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0,
   },
   inputContainer: {
     marginBottom: Theme.Spacing.extraSmall,
@@ -612,6 +613,7 @@ const styles = StyleSheet.create({
   },
   consentText: {
     flex: 1,
+    minWidth: 0,
     color: '#2D3A2D',
     lineHeight: 19,
   },
@@ -712,7 +714,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 500,
     maxWidth: 520,
-    minWidth: 300,
+    minWidth: 0,
   },
   previewCard: {
     flex: 1,
@@ -790,6 +792,7 @@ const styles = StyleSheet.create({
   },
   previewFeatureCopy: {
     flex: 1,
+    minWidth: 0,
   },
   previewFeatureTitle: {
     color: '#F7FBF7',
@@ -807,7 +810,8 @@ const styles = StyleSheet.create({
     marginBottom: Theme.Spacing.large,
   },
   previewStatCard: {
-    minWidth: 160,
+    minWidth: 0,
+    flexBasis: 160,
     flex: 1,
     marginHorizontal: 6,
     marginBottom: 12,

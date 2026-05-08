@@ -1,10 +1,10 @@
 import React from 'react';
-import { Text, StyleSheet, TextStyle, StyleProp } from 'react-native';
+import { Text, StyleSheet, TextStyle, StyleProp, TextProps } from 'react-native';
 import { Theme } from '@/styles/theme';
 
 type Variant = 'title' | 'subtitle' | 'tagline' | 'body' | 'caption';
 
-interface AppTextProps {
+interface AppTextProps extends TextProps {
   children: React.ReactNode;
   variant?: Variant;
   style?: StyleProp<TextStyle>;
@@ -14,9 +14,10 @@ export const AppText = ({
   children,
   variant = 'body',
   style,
+  ...props
 }: AppTextProps) => {
   return (
-    <Text style={[styles[variant], style]}>
+    <Text {...props} style={[styles[variant], style]}>
       {children}
     </Text>
   );

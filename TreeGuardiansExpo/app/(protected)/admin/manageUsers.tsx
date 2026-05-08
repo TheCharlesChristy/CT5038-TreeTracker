@@ -5,12 +5,12 @@ import {
 	ActivityIndicator,
 	ScrollView,
 	TextInput,
-	TouchableOpacity,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { AppContainer } from '@/components/base/AppContainer';
 import { AppText } from '@/components/base/AppText';
 import { AppButton } from '@/components/base/AppButton';
+import { AppTouchableOpacity as TouchableOpacity } from '@/components/base/AppTouchableOpacity';
 import { NavigationButton } from '@/components/base/NavigationButton';
 import { StatusMessageBox, StatusMessage } from '@/components/base/StatusMessageBox';
 import { Theme } from '@/styles/theme';
@@ -44,7 +44,7 @@ type ExpandState = {
 	treeSearch: string;
 };
 
-const ROLE_OPTIONS: Array<{ value: ManagedUser['role']; label: string }> = [
+const ROLE_OPTIONS: { value: ManagedUser['role']; label: string }[] = [
 	{ value: 'registered_user', label: 'User' },
 	{ value: 'guardian', label: 'Guardian' },
 	{ value: 'admin', label: 'Admin' },
@@ -590,22 +590,28 @@ const styles = StyleSheet.create({
 	},
 	cardHeader: {
 		flexDirection: 'row',
+		flexWrap: 'wrap',
 		alignItems: 'center',
 		justifyContent: 'space-between',
+		gap: Theme.Spacing.small,
 		padding: Theme.Spacing.medium,
 	},
 	cardHeaderLeft: {
 		flex: 1,
+		minWidth: 0,
 		gap: 2,
 	},
 	cardHeaderRight: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		gap: Theme.Spacing.small,
+		flexShrink: 0,
+		maxWidth: '100%',
 	},
 	userName: {
 		color: Theme.Colours.textPrimary,
 		fontFamily: 'Poppins_600SemiBold',
+		flexShrink: 1,
 	},
 	userMeta: {
 		color: Theme.Colours.textMuted,
@@ -663,9 +669,13 @@ const styles = StyleSheet.create({
 	},
 	pickerTriggerText: {
 		color: Theme.Colours.textPrimary,
+		flex: 1,
+		minWidth: 0,
 	},
 	pickerTriggerPlaceholder: {
 		color: Theme.Colours.textMuted,
+		flex: 1,
+		minWidth: 0,
 	},
 	pickerChevron: {
 		color: Theme.Colours.textMuted,
@@ -707,8 +717,10 @@ const styles = StyleSheet.create({
 	},
 	treeTag: {
 		flexDirection: 'row',
+		flexWrap: 'wrap',
 		alignItems: 'center',
 		justifyContent: 'space-between',
+		gap: Theme.Spacing.small,
 		borderWidth: 1,
 		borderColor: '#D7E4D7',
 		borderRadius: Theme.Radius.small,
@@ -719,10 +731,12 @@ const styles = StyleSheet.create({
 	treeTagText: {
 		color: Theme.Colours.textPrimary,
 		flex: 1,
+		minWidth: 0,
 	},
 	removeTreeButton: {
 		paddingHorizontal: Theme.Spacing.small,
 		paddingVertical: 4,
+		flexShrink: 0,
 	},
 	removeTreeText: {
 		color: '#B91C1C',
@@ -782,6 +796,7 @@ const styles = StyleSheet.create({
 	},
 	activityBody: {
 		flex: 1,
+		minWidth: 0,
 		gap: 2,
 	},
 	activityLabel: {

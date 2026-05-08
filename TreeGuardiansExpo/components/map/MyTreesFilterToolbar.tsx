@@ -1,9 +1,9 @@
 import type { ComponentProps } from 'react';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText } from '@/components/base/AppText';
-import { Theme } from '@/styles';
+import { Layout, Theme } from '@/styles';
 import {
   MY_TREES_HEALTH_OPTIONS,
   MY_TREES_SORT_OPTIONS,
@@ -62,7 +62,12 @@ function FilterDropdown<T extends string>({
   return (
     <View style={[styles.dropdownShell, isOpen && styles.dropdownShellOpen]}>
       <Pressable
-        style={[styles.dropdownTrigger, { borderColor: `${accent}66` }]}
+        style={[
+          styles.dropdownTrigger,
+          Platform.OS === 'android' && styles.dropdownTriggerAndroid,
+          Platform.OS === 'android' && Layout.androidFlatSurface,
+          { borderColor: `${accent}66` },
+        ]}
         onPress={() => setIsOpen((current) => !current)}
       >
         <View style={styles.dropdownCopy}>
@@ -240,12 +245,14 @@ export function MyTreesFilterToolbar({
 const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Theme.Spacing.small,
     marginBottom: Theme.Spacing.small,
   },
   statCard: {
     ...CARD_GLASS,
     flex: 1,
+    minWidth: 84,
     padding: Theme.Spacing.small,
     alignItems: 'center',
   },
@@ -326,14 +333,21 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
+  dropdownTriggerAndroid: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CFE1CF',
+    overflow: 'hidden',
+  },
   dropdownCopy: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
     flexShrink: 1,
+    minWidth: 0,
   },
   dropdownTextStack: {
     flexShrink: 1,
+    minWidth: 0,
   },
   dropdownLabel: {
     color: Theme.Colours.textMuted,
@@ -345,6 +359,7 @@ const styles = StyleSheet.create({
     color: Theme.Colours.textPrimary,
     fontSize: 13,
     fontFamily: 'Poppins_600SemiBold',
+    flexShrink: 1,
   },
   dropdownMenu: {
     position: 'absolute',
@@ -380,6 +395,7 @@ const styles = StyleSheet.create({
   dropdownOptionText: {
     color: Theme.Colours.textPrimary,
     fontSize: 13,
+    flexShrink: 1,
   },
   dropdownOptionTextActive: {
     color: Theme.Colours.primary,
