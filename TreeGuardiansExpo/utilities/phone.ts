@@ -1,4 +1,3 @@
-// Optional phone validation, removes any white space inbetween the numbers, special characters like (), - but keeps the trailing + if present
 export function normalizePhone(phone: string): string {
   const trimmedPhone = phone.trim();
 
@@ -13,7 +12,7 @@ export function normalizePhone(phone: string): string {
 
 export function isValidPhone(phone: string): boolean {
   if (!phone) {
-    return true; // optional field
+    return true;
   }
 
   return /^\+?\d{7,15}$/.test(phone);

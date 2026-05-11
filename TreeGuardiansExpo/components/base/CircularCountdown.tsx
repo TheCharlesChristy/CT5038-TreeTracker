@@ -3,25 +3,25 @@ import { StyleSheet, View, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 interface CircularCountdownProps {
-  /** Total duration in seconds */
+  /** Countdown duration in seconds. */
   duration: number;
-  /** Diameter of the circle in px */
+  /** Circle diameter in pixels. */
   size?: number;
-  /** Stroke width in px */
+  /** Ring stroke width in pixels. */
   strokeWidth?: number;
-  /** Colour of the countdown ring */
+  /** Active ring colour. */
   color?: string;
-  /** Colour of the background track */
+  /** Background track colour. */
   trackColor?: string;
-  /** When false, hides the numeric label in the center */
+  /** Hides the centre number when false. */
   showLabel?: boolean;
-  /** When true, only the background track is shown */
+  /** Shows only the background track when true. */
   trackOnly?: boolean;
-  /** Called when the countdown reaches zero */
+  /** Called once when progress reaches zero. */
   onComplete?: () => void;
 }
 
-const FRAME_MS = 1000 / 60; // ~60 fps
+const FRAME_MS = 1000 / 60;
 
 export function CircularCountdown({
   duration,
@@ -36,7 +36,7 @@ export function CircularCountdown({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const [progress, setProgress] = useState(1); // 1 = full, 0 = empty
+  const [progress, setProgress] = useState(1);
   const startTime = useRef(Date.now());
   const completed = useRef(false);
 

@@ -1,158 +1,198 @@
-# Tree Tracker Node Backend
+# Backend
 
-This server is the backend runtime that loads `server/.env`, initializes the database middleware, and optionally starts Expo for local development.
+The backend loads environment values, initializes MySQL, exposes `/api/*`, stores uploads, and optionally serves or prepares the Expo web export.
 
-The canonical server requirements are in `ServerRequirements.md` at the repository root.
+## Run
 
-## Database Lock Rules
+```bash
+npm install
+npm start
+```
 
-- DB client creation is runtime-locked: direct `mysql2` client factories (`createPool`, `createConnection`) are blocked outside `server/src/db/**`.
-- Second-layer runtime lock guards `query`/`execute` on created clients, so leaked client objects cannot run SQL from outside middleware.
-- Application code outside `server/src/db/**` must use exported database endpoint groups from `server/src/db/index.js`.
-- Direct SQL access attempts outside middleware throw `DB_LOCK_VIOLATION`.
+Tests:
 
-### Endpoint Groups
+```bash
+npm test
+npm run test:integration
+```
 
-- Table groups: `users`, `userPasswords`, `admins`, `userSessions`, `trees`, `treeCreationData`, `treeData`, `guardians`, `photos`, `treePhotos`, `comments`, `commentPhotos`, `commentsTree`, `commentReplies`, `wildlifeObservations`, `diseaseObservations`, `seenObservations`.
-- Workflow groups: `workflows.auth`, `workflows.trees`, `workflows.photos`, `workflows.comments`, `workflows.observations`, `workflows.users`.
-
-The lock is enforced in software by `server/src/db/runtime-lock.js`, and verified by the backend lock tests in `server/test/db.lock.test.js`.
+`test:integration` requires a reachable MySQL server and `RUN_DB_TESTS=true`.
 
 ## Boot Flow
 
-- Load `server/.env` via `server/bootstrap.js`, without overwriting already-set process env values.
-- Parse env configuration via `server/src/config.js`.
-- Run `await db.init(config.db)`.
-- Start HTTP health endpoints (`/health`, `/db/health`).
-- In development (`START_EXPO=true` and non-production), spawn `npx expo start` in `EXPO_PROJECT_PATH`.
-- In local Docker development, unmatched HTTP routes are proxied to Expo so `http://localhost:4000/` behaves like the Expo dev entrypoint while `/health` and `/db/health` stay on the backend.
-- In production or Plesk (`START_EXPO=false`), unmatched `GET`/`HEAD` routes can serve the exported Expo web build from `EXPO_WEB_DIST_PATH` so `https://your-site/` opens the Expo app instead of returning backend `404`.
-- On `SIGINT`/`SIGTERM`, stop Expo child, stop HTTP server, then close DB pool.
+1. `server/bootstrap.js` loads `server/.env` without overwriting existing process env values.
+2. `server/src/config.js` validates runtime config.
+3. `server/src/main.js` prepares Expo web output when enabled, initializes DB, seeds dev users when enabled, and starts HTTP.
+4. `server/src/http.js` mounts health routes, optional DB testbench routes, `/api`, `/uploads`, Expo proxying, and static web fallback.
+5. `SIGINT` and `SIGTERM` stop Expo, HTTP, and DB in order.
 
-## Plesk Deployment For Expo Web
+## HTTP Routes
 
-Use Plesk to run the Node server from `server/`, and let that server publish the Expo web app at the site root.
+All API routes are mounted under `/api`.
 
-### Option 1: Plesk Startup Only
+| Route | Method | Auth | Effect |
+| --- | --- | --- | --- |
+| `/health` | `GET` | no | Returns process health. |
+| `/db/health` | `GET` | no | Returns DB readiness. |
+| `/api/` | `GET` | no | Returns API version text. |
+| `/api/auth/register`, `/api/register` | `POST` | no | Creates user, password, session, and optional email verification token. |
+| `/api/auth/login`, `/api/login` | `POST` | no | Creates access and refresh tokens. |
+| `/api/auth/logout`, `/api/logout` | `POST` | refresh token body | Deletes a refresh token. |
+| `/api/auth/verify-email` | `GET` | token query | Marks email verified. |
+| `/api/auth/resend-verification` | `POST` | bearer token | Sends a new verification email. |
+| `/api/auth/forgot-password` | `POST` | no | Sends a password reset link when the email exists. |
+| `/api/auth/reset-password` | `POST` | action token body | Replaces the password hash. |
+| `/api/users/me`, `/api/me` | `GET` | bearer token | Returns the current user. |
+| `/api/account/username` | `PUT` | bearer token | Updates username. |
+| `/api/account/email` | `PUT` | bearer token | Updates email and revokes verification. |
+| `/api/account/password` | `PUT` | bearer token | Changes password after current-password check. |
+| `/api/account/delete` | `DELETE` | bearer token | Deletes the current account after password check. |
+| `/api/trees`, `/api/add-tree-data` | `POST` | verified bearer token | Adds a tree inside the Charlton Kings boundary. |
+| `/api/trees`, `/api/get-trees` | `GET` | no | Lists trees with latest data, observations, photos, creator, and guardians. |
+| `/api/trees/recent` | `GET` | no | Lists recent tree creations. |
+| `/api/trees/:treeId`, `/api/get-tree-details` | `GET` | no | Returns one tree and its latest data row. |
+| `/api/trees/:treeId` | `PATCH` | bearer token | Updates tree data and optional notes. |
+| `/api/trees/:treeId` | `DELETE` | admin bearer token | Deletes a tree. |
+| `/api/trees/:treeId/photos`, `/api/upload-photos` | `POST` | bearer token | Uploads or attaches tree photos. |
+| `/api/trees/:treeId/photos/:photoId` | `DELETE` | admin bearer token | Removes a tree photo link and deletes orphaned photo rows/files. |
+| `/api/trees/:treeId/comment-photos` | `POST` | bearer token | Uploads draft photos for comments. |
+| `/api/trees/:treeId/comments` | `POST` | bearer token | Adds a text and/or photo comment. |
+| `/api/trees/:treeId/comment-replies` | `POST` | bearer token | Adds a reply using `parentCommentId` in JSON. |
+| `/api/trees/:treeId/comments/:parentCommentId/replies` | `POST` | bearer token | Adds a reply using the nested route. |
+| `/api/trees/:treeId/feed` | `GET` | no | Lists comments, replies, wildlife, disease, and seen observations. |
+| `/api/comments/recent` | `GET` | no | Lists recent tree comments. |
+| `/api/comments/:commentId` | `DELETE` | admin bearer token | Deletes a tree comment or reply. |
+| `/api/admin/users` | `GET` | admin bearer token | Lists users with roles and guardian tree IDs. |
+| `/api/admin/users/:userId/role` | `PATCH` | admin bearer token | Sets `registered_user`, `guardian`, or `admin`. |
+| `/api/admin/users/:userId/guardian-trees` | `POST` | admin bearer token | Assigns a guardian to a tree. |
+| `/api/admin/users/:userId/guardian-trees/:treeId` | `DELETE` | admin bearer token | Removes guardian assignment. |
+| `/api/admin/users/:userId/activity` | `GET` | admin bearer token | Returns recent comments and created trees. |
+| `/api/admin/users/:userId` | `DELETE` | admin bearer token | Deletes another user. |
+| `/api/analytics` | `GET` | admin bearer token | Returns tree, user, and impact totals. |
+| `/api/analytics/activity` | `GET` | admin bearer token | Returns daily tree/comment/user/login counts for 1 to 90 days. |
+| `/api/analytics/users` | `GET` | admin bearer token | Returns role counts and top contributors. |
 
-Use this if Plesk can just start a Node app and you do not want a separate deploy script.
+JSON requests must use `Content-Type: application/json` or a JSON-compatible media type. JSON bodies are limited to 1 MB. Uploads accept JPEG, PNG, WEBP, and GIF files up to 10 MB each, with at most 12 files per request.
 
-1. Copy `server/.env.example` to `server/.env` on the server and set the production values there.
+## Common Requests
 
-2. In Plesk, configure the Node app to run from `server/` with startup file `bootstrap.js` or `app.js`.
+Authenticated routes expect:
 
-3. Press deploy in Plesk. On startup, the backend will:
-
-- install Expo dependencies in `TreeGuardiansExpo/` if `node_modules/` is missing
-- run `npm run export:web`
-- create the configured database if it is missing and `DB_ALLOW_CREATE_DATABASE=true`
-- apply schema migrations
-
-Then the backend will serve the generated `TreeGuardiansExpo/dist/` build from `/`.
-
-### Option 2: Plesk Deploy Script
-
-Use this if you want Plesk to prepare the build before the Node app starts.
-
-1. Copy `server/.env.example` to `server/.env` on the server and set the production values there.
-
-2. In Plesk, configure the Node app to run from `server/` with startup file `bootstrap.js` or `app.js`.
-
-3. Set the deployment command to:
-
-```bash
-bash ./scripts/plesk-deploy.sh
+```http
+Authorization: Bearer <accessToken>
 ```
 
-4. Press deploy in Plesk. The deploy script will:
-
-- install Expo dependencies in `TreeGuardiansExpo/`
-- install backend dependencies in `server/`
-- run `npm run export:web`
-
-Then the backend startup will load `server/.env`, create the configured database if required, apply schema migrations, and serve the generated `TreeGuardiansExpo/dist/` build from `/`.
-
-With that setup:
-
-- `/` serves the Expo web app.
-- Expo assets under `/_expo/*` are served directly.
-- Backend endpoints like `/health` and `/db/health` still work from the same Node process.
-
-If you want the backend to rebuild the Expo web bundle again on every startup instead of relying on the deploy script, set `EXPO_AUTO_PREPARE=true`.
-
-## `.env` Usage
-
-- Commit `server/.env.example`; do not commit `server/.env`.
-- Keep a different untracked `server/.env` file in each environment, including Plesk and local Docker.
-- Existing process env values take precedence over `server/.env`, so Plesk or Docker can still override individual settings when needed.
-- Local Docker commands in `scripts/` now expect `server/.env` to exist before they start.
-
-## How To Add A DB Endpoint
-
-1. Add validation first in `server/src/db/validation.js` if needed.
-2. Add endpoint function under the right table group in `server/src/db/index.js`.
-3. Keep SQL in middleware only and use prepared statements (`?` placeholders).
-4. For multi-table writes, implement via `transaction(async (tx) => ...)`.
-5. Add or update tests in `server/test/`.
-
-## Manual DB Test Bench API (Development)
-
-By default, DB testbench routes are disabled.
-
-Enable explicitly with `DB_TEST_BENCH_ENABLED=true` (never enabled automatically in production). For secure usage, set `DB_TEST_BENCH_TOKEN` and pass it either as:
-
-- `Authorization: Bearer <token>`
-- `x-testbench-token: <token>`
-
-When enabled, the server exposes:
-
-- `GET /db/testbench/endpoints` returns all callable middleware endpoints.
-- `POST /db/testbench/invoke` executes any endpoint by name.
-
-`POST /db/testbench/invoke` requires `Content-Type: application/json` and body format:
+Create a tree with a verified account:
 
 ```json
 {
-	"endpoint": "users.list",
-	"args": [{ "limit": 10, "offset": 0 }]
+  "latitude": 51.8865,
+  "longitude": -2.0475,
+  "species": "English Oak",
+  "health": "good",
+  "notes": "Recently planted.",
+  "wildlifeList": ["birds"],
+  "diseaseList": []
 }
 ```
 
-Read-only database inspection helpers are available under the `debug.*` endpoint group:
+`POST /api/trees` requires coordinates inside the Charlton Kings boundary and returns `{ "success": true, "tree_id": 123 }`.
 
-- `debug.listTables()`
-- `debug.countRows(tableName)`
-- `debug.listRows(tableName, { limit, offset, order })`
-- `debug.previewAll({ limit, order })`
+Attach photos to a tree with multipart field `photos`.
 
-## Docker Usage
+Add a comment after uploading draft comment photos:
 
-Build the production server image:
-
-```bash
-docker build -t tree-tracker-server -f server/Dockerfile --target production .
+```json
+{
+  "content": "Canopy looks healthy.",
+  "photoIds": [12, 13]
+}
 ```
 
-Run the local development stack with MySQL and the Android emulator via Compose:
+`POST /api/trees/:treeId/comments` requires non-empty `content`, at least one `photoIds` entry, or both.
 
-```bash
-docker compose -f docker-compose.server.yml up --build server android-emulator
+## Error Shape
+
+Errors return JSON:
+
+```json
+{ "error": "Message", "code": "ValidationError" }
 ```
 
-The `server` service runs the Node backend and launches Expo from the mounted `TreeGuardiansExpo/` project. The `android-emulator` service installs the Android SDK, creates an emulator, exposes VNC on `localhost:5900`, and exposes noVNC on `http://localhost:6080/vnc.html`. Inside the emulator, both `localhost:4000` and `localhost:8081` are wired back to the server container through `adb reverse`.
+`HTTP_VERBOSE_ERRORS=1` adds request, body, and cause-chain debug fields. Defaults are verbose in development and terse in production.
 
-Before running Docker locally, copy `server/.env.example` to `server/.env` and keep Docker-specific values there.
+## Environment
 
-For the normal local development workflow, run:
+| Option | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `NODE_ENV` | string | `development` | Selects production defaults and error verbosity. |
+| `PORT` | integer | `4000` | HTTP listen port. |
+| `JWT_SECRET` | string | required | Signs auth and action tokens. |
+| `DB_HOST` | string | required | MySQL host. |
+| `DB_PORT` | integer | `3306` | MySQL port. |
+| `DB_USER` | string | required | MySQL user. |
+| `DB_PASSWORD` | string | required | MySQL password. |
+| `DB_DATABASE` | string | required | MySQL database name. |
+| `DB_CONNECTION_LIMIT` | integer | `10` | MySQL pool size. |
+| `DB_SLOW_QUERY_MS` | integer | `200` | Logs queries at or above this duration. |
+| `DB_ALLOW_CREATE_DATABASE` | boolean | `true` | Creates the database during boot when missing. |
+| `DB_SCHEMA_PATH` | path | `server/src/db/schema.sql` | SQL schema file used for snapshot migrations. |
+| `FRONTEND_URL` | URL | none | Base URL for verification and reset email links. |
+| `UPLOAD_PUBLIC_BASE_URL` | URL | request origin | Public base for uploaded file URLs. |
+| `LOG_LEVEL` | `debug`, `info`, `warn`, `error` | `debug` in development, `info` in production | Minimum structured log level. |
+| `HTTP_VERBOSE_ERRORS` | `0` or `1` | by `NODE_ENV` | Forces verbose or terse error JSON. |
+| `SEED_DEV_USERS` | boolean | `false` | Creates or updates `admin` and `guardian` dev users. |
+| `SEED_DEV_USERS_PASSWORD` | string | required when seeding | Password assigned to seeded dev users. |
+| `START_EXPO` | boolean | `true` unless production | Starts `npx expo start` from the backend process. |
+| `EXPO_PROJECT_PATH` | path | repo `TreeGuardiansExpo` | Expo project path. |
+| `EXPO_DEV_SERVER_PORT` | integer | `8081` | Expo dev server port. |
+| `EXPO_PROXY_ENABLED` | boolean | `START_EXPO` | Proxies unmatched backend routes to Expo. |
+| `EXPO_STATIC_ENABLED` | boolean | `!START_EXPO` | Serves static Expo web output for unmatched `GET`/`HEAD` routes. |
+| `EXPO_WEB_DIST_PATH` | path | `EXPO_PROJECT_PATH/dist` | Static web root. |
+| `EXPO_AUTO_PREPARE` | boolean | `!START_EXPO` | Installs Expo dependencies if missing and runs `npm run export:web`. |
+| `EXPO_DEVTOOLS_LISTEN_ADDRESS` | IP | `0.0.0.0` | Bind address passed to spawned Expo. |
+| `EXPO_FATAL_ON_EXIT` | boolean | `false` | Marks backend process failed if spawned Expo exits non-zero. |
+| `DB_TEST_BENCH_ENABLED` | boolean | `false`; forced `false` in production | Enables DB endpoint invocation routes. |
+| `DB_TEST_BENCH_TOKEN` | string | none | Required token when the DB testbench is enabled. |
+| `SMTP_HOST` | string | none | SMTP host for outbound email. |
+| `SMTP_PORT` | integer | none | SMTP port. |
+| `SMTP_USER` | string | none | SMTP username. |
+| `SMTP_PASS` | string | none | SMTP password. |
+| `SMTP_FROM` | email | none | Sender address. |
 
-```bash
-./scripts/start_local_server.sh
+## DB Middleware
+
+Application code should use `server/src/db/index.js`, not raw MySQL clients.
+
+`server/src/db/runtime-lock.js` blocks `mysql2` client factories outside `server/src/db/**` and blocks `query`/`execute` unless called inside DB middleware access context. Violations throw `DB_LOCK_VIOLATION`.
+
+Exported groups:
+
+- Account: `users`, `userPasswords`, `admins`, `guardianUsers`, `userSessions`, `emailVerificationTokens`.
+- Trees: `trees`, `treeCreationData`, `treeData`, `guardians`.
+- Content: `photos`, `treePhotos`, `comments`, `commentPhotos`, `commentsTree`, `commentReplies`, `wildlifeObservations`, `diseaseObservations`, `seenObservations`.
+- Workflows: `workflows.auth`, `workflows.trees`, `workflows.photos`, `workflows.comments`, `workflows.observations`, `workflows.users`, `workflows.analytics`.
+- Debug: `debug.listTables`, `debug.countRows`, `debug.listRows`, `debug.previewAll`.
+
+All public DB methods validate inputs and throw `ValidationError`, `NotFoundError`, `ConflictError`, `AuthError`, or `DbError` where applicable.
+
+## DB Testbench
+
+Enable only in development:
+
+```env
+DB_TEST_BENCH_ENABLED=true
+DB_TEST_BENCH_TOKEN=strong-local-token
 ```
 
-That starts the full development stack in the foreground. The server container watches backend files, Expo reloads frontend changes, the Android container opens Expo inside the emulator automatically, and the script tears everything down when you press `Ctrl+C`. Runtime logs are mirrored into the repository `logs/` directory for each container.
+Authenticate with `Authorization: Bearer <token>` or `x-testbench-token: <token>`.
 
-Run backend lock checks and tests inside containers (unit + integration):
+- `GET /db/testbench/endpoints` lists callable DB endpoints.
+- `POST /db/testbench/invoke` calls an endpoint with JSON body:
 
-```bash
-docker compose -f docker-compose.server.yml --profile test up --build --abort-on-container-exit --exit-code-from server-test server-test
+```json
+{
+  "endpoint": "users.list",
+  "args": [{ "limit": 10, "offset": 0 }]
+}
 ```

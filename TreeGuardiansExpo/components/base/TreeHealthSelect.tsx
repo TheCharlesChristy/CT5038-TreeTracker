@@ -18,7 +18,7 @@ export type SelectOption<T extends string> = {
   textColor: string;
 };
 
-/** Good / OK / Bad only - use when adding a tree (see `AddTreeDashboard`). */
+/** Good, OK, and Bad options for new tree submissions. */
 export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'good',
@@ -49,7 +49,7 @@ export const TREE_HEALTH_FORM_OPTIONS: SelectOption<TreeHealth>[] = [
   },
 ];
 
-/** Full tree health range - use when displaying or editing existing tree details. */
+/** Full health range for existing tree details. */
 export const TREE_HEALTH_OPTIONS: SelectOption<TreeHealth>[] = [
   {
     value: 'excellent',
@@ -116,7 +116,7 @@ type BaseProps<T extends string> = {
   options: SelectOption<T>[];
   prefixLabel?: string;
   compact?: boolean;
-  /** When current `value` is not in `options`, use this for trigger styling (e.g. legacy API health). */
+  /** Supplies trigger styling when value is absent from options. */
   getFallbackMeta?: (value: T) => SelectOption<T> | undefined;
 };
 
@@ -124,7 +124,7 @@ type TreeHealthSelectProps = {
   value?: TreeHealth;
   onChange: (value: TreeHealth) => void;
   compact?: boolean;
-  /** Defaults to full list; use `TREE_HEALTH_FORM_OPTIONS` when adding a tree (Good / OK / Bad only). */
+  /** Defaults to full range; pass `TREE_HEALTH_FORM_OPTIONS` for new tree submissions. */
   options?: SelectOption<TreeHealth>[];
 };
 

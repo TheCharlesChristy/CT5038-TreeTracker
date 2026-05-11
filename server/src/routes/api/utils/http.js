@@ -35,7 +35,7 @@ function getUploadPublicBase(req, explicitBase) {
 }
 
 function requireJson(req) {
-  // Accept application/json and common aliases (charset, +json types).
+  // Accept application/json plus charset and +json variants.
   if (!req.is("application/json") && !req.is("json")) {
     const error = new Error("Content-Type must be application/json");
     error.name = "UnsupportedMediaTypeError";

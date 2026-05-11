@@ -2175,25 +2175,25 @@ export default function TreeDetailsDashboard({
                 <View style={styles.editEstimateBox}>
                   <AppText style={styles.editEstimateTitle}>Estimated Environmental Impact</AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Avoided Runoff: {editEstimatedStats.avoidedRunoff ?? '—'} m³
+                    Avoided Runoff: {editEstimatedStats.avoidedRunoff ?? '-'} m³
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    CO₂ Stored: {editEstimatedStats.carbonDioxideStored ?? '—'} kg
+                    CO₂ Stored: {editEstimatedStats.carbonDioxideStored ?? '-'} kg
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    CO₂ Removed: {editEstimatedStats.carbonDioxideRemoved ?? '—'} kg
+                    CO₂ Removed: {editEstimatedStats.carbonDioxideRemoved ?? '-'} kg
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Water Intercepted: {editEstimatedStats.waterIntercepted ?? '—'} m³
+                    Water Intercepted: {editEstimatedStats.waterIntercepted ?? '-'} m³
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Air Quality Gain: {editEstimatedStats.airQualityImprovement ?? '—'} g/year
+                    Air Quality Gain: {editEstimatedStats.airQualityImprovement ?? '-'} g/year
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Leaf Area: {editEstimatedStats.leafArea ?? '—'} m²
+                    Leaf Area: {editEstimatedStats.leafArea ?? '-'} m²
                   </AppText>
                   <AppText style={styles.editEstimateItem}>
-                    Evapotranspiration: {editEstimatedStats.evapotranspiration ?? '—'} m³
+                    Evapotranspiration: {editEstimatedStats.evapotranspiration ?? '-'} m³
                   </AppText>
                 </View>
               </View>

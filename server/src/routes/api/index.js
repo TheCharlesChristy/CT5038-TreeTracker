@@ -11,8 +11,7 @@ function createApiRouter(deps) {
   const router = express.Router();
 
   router.use(createApiRootRoute(deps));
-  // Multipart /trees/:treeId/photos and /comment-photos must resolve reliably; mount uploads
-  // before trees so those POST routes are hit first (avoids 404 if trees router stack differs).
+  // Upload routes must precede tree routes because they share /trees/:treeId prefixes.
   router.use(createUploadsRoute(deps));
   router.use(createTreesRoute(deps));
   router.use(createAuthRoute(deps));

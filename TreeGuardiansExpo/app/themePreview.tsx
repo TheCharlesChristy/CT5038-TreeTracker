@@ -19,13 +19,10 @@ export default function ThemePreview() {
       <Stack.Screen options={{ title: 'Theme Preview | TreeGuardians' }} />
       <FaviconHead title="Theme Preview | TreeGuardians" />
       <AppContainer style={styles.container} scrollable>
-      {/* Top Left Back */}
       <NavigationButton onPress={() => router.back()} />
       
-      {/* TITLE */}
       <AppText variant="title">TreeGuardians Design System</AppText>
 
-      {/* COLORS */}
       <Section title="Colours">
         {Object.entries(Theme.Colours).map(([key, value]) => (
           <View key={key} style={styles.colorRow}>
@@ -35,7 +32,6 @@ export default function ThemePreview() {
         ))}
       </Section>
 
-      {/* TYPOGRAPHY */}
       <Section title="Typography">
         <AppText style={{
             ...Theme.Typography.title,
@@ -58,7 +54,6 @@ export default function ThemePreview() {
         </AppText>
       </Section>
 
-      {/* SPACING */}
       <Section title="Spacing">
         {Object.entries(Theme.Spacing).map(([key, value]) => (
           <View key={key} style={{ marginBottom: 10 }}>
@@ -74,7 +69,6 @@ export default function ThemePreview() {
         ))}
       </Section>
 
-      {/* BUTTONS */}
       <Section title="Buttons">
         <AppButton title="Accent Button" variant="accent" onPress={() => {}} />
         <View style={{ height: 10 }} />
@@ -85,7 +79,6 @@ export default function ThemePreview() {
         <AppButton title="Outline Button" variant="outline" onPress={() => {}} />
       </Section>
 
-      {/* INPUT */}
       <Section title="Inputs">
         <AppInput placeholder="Example Input" />
       </Section>
@@ -93,8 +86,6 @@ export default function ThemePreview() {
     </>
   );
 }
-
-/* ---------------- Section Component ---------------- */
 
 const Section = ({ title, children }: SectionProps) => (
   <View style={styles.section}>
@@ -106,8 +97,6 @@ const Section = ({ title, children }: SectionProps) => (
     </View>
   </View>
 );
-
-/* ---------------- Styles ---------------- */
 
 const styles = StyleSheet.create({
   container: {

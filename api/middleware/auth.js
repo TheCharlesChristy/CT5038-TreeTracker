@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
 
-// General token authentication for logged-in users
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -12,7 +11,6 @@ function authenticateToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Optional: enforce token type
     if (decoded.type && decoded.type !== "auth") {
       return res.status(403).json({ error: "Invalid token type" });
     }
@@ -25,7 +23,6 @@ function authenticateToken(req, res, next) {
   }
 }
 
-// Password reset token verification
 function verifyResetToken(req, res, next) {
   const { token } = req.body;
 
@@ -36,12 +33,11 @@ function verifyResetToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Ensure it's a reset token
     if (decoded.type !== "reset") {
       return res.status(403).json({ error: "Invalid reset token" });
     }
 
-    req.user = decoded; // contains userId
+    req.user = decoded;
     next();
   } catch (error) {
     console.error("Reset token error:", error);

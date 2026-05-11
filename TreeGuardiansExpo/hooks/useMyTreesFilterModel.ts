@@ -12,7 +12,7 @@ export type TreeWithOwnership = Tree & {
 
 export type MyTreesSortKey = 'date_desc' | 'date_asc' | 'species_az' | 'health';
 export type MyTreesRoleFilter = 'all' | 'created' | 'guardian';
-/** Filter list: All health, or one of three simplified buckets. */
+/** Health filter buckets used by the My Trees overlay. */
 export type MyTreesHealthFilter = 'all' | 'good' | 'ok' | 'bad';
 
 export const MY_TREES_SORT_OPTIONS: { key: MyTreesSortKey; label: string }[] = [
@@ -29,7 +29,7 @@ export const MY_TREES_HEALTH_OPTIONS: { key: MyTreesHealthFilter; label: string 
   { key: 'bad', label: 'Bad' },
 ];
 
-/** Coarse group for the simplified Good / Ok / Bad filter (matches API health + disease). */
+/** Maps API health and disease fields into Good, Ok, or Bad list groups. */
 export function myTreesHealthListGroup(tree: TreeWithOwnership): 'good' | 'ok' | 'bad' {
   const key = myTreesHealthKey(tree);
   if (key === 'excellent' || key === 'good') return 'good';

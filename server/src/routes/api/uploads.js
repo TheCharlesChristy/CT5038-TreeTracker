@@ -353,9 +353,7 @@ function normalizeCommentPhotoIds(body) {
     .slice(0, 12);
 }
 
-/**
- * JSON reply endpoints live here so they match the same router as comment-photos (mounted first in api/index).
- */
+/** Registers JSON comment-reply routes on the upload router so shared prefixes resolve before tree routes. */
 function registerTreeCommentReplyJsonRoutes(router, { db }) {
   router.post(
     "/trees/:treeId/comment-replies",
@@ -434,7 +432,7 @@ function registerTreeCommentReplyJsonRoutes(router, { db }) {
   );
 }
 
-/** Registers POST /trees/:treeId/photos and POST /trees/:treeId/comment-photos (used by createUploadsRoute). */
+/** Registers multipart tree-photo and draft comment-photo upload routes. */
 function registerTreeScopedMultipartRoutes(router, deps) {
   const { upload, uploadHandler, commentPhotoUploadHandler } = createTreeScopedUploadFactories(deps);
 

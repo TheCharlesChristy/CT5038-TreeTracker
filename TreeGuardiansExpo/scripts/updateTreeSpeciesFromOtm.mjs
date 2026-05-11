@@ -128,9 +128,7 @@ async function fetchSpeciesFromApi(baseUrl, instance) {
           scientific_name: normalizeWhitespace(row.scientific_name),
         })),
       };
-    } catch {
-      // try next candidate
-    }
+    } catch {}
   }
 
   throw new Error(

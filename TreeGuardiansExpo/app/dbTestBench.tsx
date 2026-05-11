@@ -570,7 +570,6 @@ const EXPLICIT_SCHEMAS: Record<string, EndpointSchema> = {
   },
 };
 
-// Helper to avoid circular reference in object literal for workflows.auth.createSession.
 function EXPLICIT_SCHEMAS_PLACEHOLDER(): FormField[] {
   return [
     field('userId', 'User ID', 'number', 0, 'userId', { required: true }),

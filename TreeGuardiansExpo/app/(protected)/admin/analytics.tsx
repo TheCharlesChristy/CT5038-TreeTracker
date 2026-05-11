@@ -18,8 +18,6 @@ import {
 	UserAnalyticsResponse,
 } from '@/lib/adminApi';
 
-// ─── Shared activity line chart ─────────────────────────────────────────────
-
 type ActivityChartPoint = { day: string; label: string; value: number };
 type TimeSeries = { label: string; colour: string; data: ActivityChartPoint[] };
 
@@ -170,8 +168,6 @@ function TimeSeriesLineChart({
 	);
 }
 
-// ─── Contributor list ────────────────────────────────────────────────────────
-
 function ContributorList({
 	items,
 	label,
@@ -209,8 +205,6 @@ function ContributorList({
 		</View>
 	);
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatImpactValue(value: number, unit: string): string {
 	if (value === 0) return `0 ${unit}`;
@@ -253,8 +247,6 @@ function lastNDaysLabels(data: { day: string; count: number }[], n: number): Act
 
 	return result;
 }
-
-// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
 	const { user, isLoading } = useSessionUser();
@@ -327,7 +319,6 @@ export default function AnalyticsPage() {
 			<FaviconHead title="Analytics | TreeGuardians" />
 			<AppContainer>
 				<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-					{/* Header island */}
 					<View style={styles.headerIsland}>
 						<View style={styles.topBar}>
 							<NavigationButton onPress={() => router.push('/mainPage')} color="#FFFFFF">
@@ -351,7 +342,6 @@ export default function AnalyticsPage() {
 						</View>
 					) : (
 						<>
-							{/* ── Key Stats ─────────────────────────────────────────── */}
 							{overview ? (
 								<View style={styles.section}>
 									<AppText style={styles.sectionTitle}>Key Statistics</AppText>
@@ -368,9 +358,8 @@ export default function AnalyticsPage() {
 								</View>
 							) : null}
 
-						{/* ── Activity Trend ────────────────────────────────────── */}
 						<View style={styles.section}>
-							<AppText style={styles.sectionTitle}>Activity — last 14 days</AppText>
+							<AppText style={styles.sectionTitle}>Activity - last 14 days</AppText>
 
 							<View style={[styles.glassCard, styles.chartCard]}>
 								<TimeSeriesLineChart
@@ -393,7 +382,6 @@ export default function AnalyticsPage() {
 							</View>
 						</View>
 
-						{/* ── User Analytics ────────────────────────────────────── */}
 						{userAnalytics ? (
 							<View style={styles.section}>
 								<AppText style={styles.sectionTitle}>User Analytics</AppText>
@@ -416,7 +404,6 @@ export default function AnalyticsPage() {
 							</View>
 						) : null}
 
-						{/* ── Environmental Impact ──────────────────────────────── */}
 						{overview ? (
 							<View style={styles.section}>
 								<AppText style={styles.sectionTitle}>Environmental Impact</AppText>
@@ -462,7 +449,6 @@ const styles = StyleSheet.create({
 		paddingHorizontal: Theme.Spacing.medium,
 	},
 
-	// Header island — floating glass
 	headerIsland: {
 		backgroundColor: 'rgba(18, 72, 32, 0.88)',
 		borderRadius: Theme.Radius.medium,
@@ -506,7 +492,6 @@ const styles = StyleSheet.create({
 		gap: Theme.Spacing.small,
 	},
 
-	// Section layout
 	section: {
 		marginBottom: Theme.Spacing.large,
 	},
@@ -517,7 +502,6 @@ const styles = StyleSheet.create({
 		marginBottom: Theme.Spacing.small,
 	},
 
-	// Stat row
 	statRow: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
@@ -549,7 +533,6 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 	},
 
-	// Glass card
 	glassCard: {
 		backgroundColor: 'rgba(255, 255, 255, 0.88)',
 		borderRadius: Theme.Radius.medium,
@@ -570,7 +553,6 @@ const styles = StyleSheet.create({
 		marginBottom: 4,
 	},
 
-	// Activity line chart
 	chartCard: {
 		height: 260,
 		padding: 0,
@@ -627,7 +609,6 @@ const styles = StyleSheet.create({
 		fontStyle: 'italic',
 	},
 
-	// Contributors
 	contributorRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -669,7 +650,6 @@ const styles = StyleSheet.create({
 		flexShrink: 0,
 	},
 
-	// Impact grid
 	impactGrid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
@@ -706,7 +686,6 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	},
 
-	// Error
 	errorCard: {
 		borderWidth: 1,
 		borderColor: '#FECACA',

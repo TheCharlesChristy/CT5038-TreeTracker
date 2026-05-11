@@ -5,10 +5,7 @@ import { FaviconHead } from '@/components/base/FaviconHead';
 import { AppText } from '@/components/base/AppText';
 import { Theme } from '@/styles/theme';
 
-/**
- * My Trees is shown as a map overlay on mainPage. This route remains for
- * bookmarks and deep links; it forwards to the map with the overlay open.
- */
+/** Preserves /myTrees deep links by opening the My Trees map overlay. */
 export default function MyTreesRedirect() {
   useEffect(() => {
     router.replace({ pathname: '/mainPage', params: { openMyTrees: '1' } });

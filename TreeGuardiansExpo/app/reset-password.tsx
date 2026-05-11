@@ -86,7 +86,7 @@ export default function ResetPasswordScreen() {
       const msg =
         err instanceof Error ? `${err.name}: ${err.message}` : String(err);
 
-      setMessage(`Network error — ${msg}`);
+      setMessage(`Network error - ${msg}`);
       setError(true);
     } finally {
       setLoading(false);
@@ -106,7 +106,6 @@ export default function ResetPasswordScreen() {
         <View style={[styles.formColumn, !isMobileLayout && styles.formColumnCentered]}>
           <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
 
-            {/* Back link */}
             <View style={styles.topRow}>
               <Pressable onPress={() => router.push('/login')} style={styles.backLink}>
                 <AppText variant="caption" style={styles.backLinkText}>
@@ -115,12 +114,10 @@ export default function ResetPasswordScreen() {
               </Pressable>
             </View>
 
-            {/* Title */}
             <AppText variant="title" style={[styles.title, isMobileLayout && styles.titleMobile]}>
               Set a new password
             </AppText>
 
-            {/* Subtitle */}
             <AppText variant="body" style={styles.subtitle}>
               Enter your new password below.
             </AppText>
@@ -171,7 +168,6 @@ export default function ResetPasswordScreen() {
                 buttonStyle={styles.submitButtonInner}
               />
 
-              {/* Inline message */}
               {!!message && (
                 <View style={styles.messageBox}>
                   <AppText
@@ -186,7 +182,6 @@ export default function ResetPasswordScreen() {
                 </View>
               )}
 
-              {/* Back to login button */}
               {success && (
                 <AppButton
                   title="Back to Login"

@@ -1,11 +1,5 @@
 #!/usr/bin/env node
-/**
- * Bundles Leaflet CSS and JS from node_modules into a JSON file
- * so the mobile WebView can load them locally instead of from a CDN.
- *
- * Run via: node scripts/bundleLeaflet.js
- * Also runs automatically after `npm install` via the postinstall hook.
- */
+/** Bundles Leaflet CSS and JS for the native WebView map. */
 
 const fs = require('fs');
 const path = require('path');

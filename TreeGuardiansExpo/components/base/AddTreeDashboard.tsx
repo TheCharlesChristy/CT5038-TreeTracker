@@ -131,7 +131,6 @@ export default function PlotDashboard({
   const validate = () => {
     let valid = true;
 
-    // Species validation
     if (!species.trim()) {
       setSpeciesError('Please select a tree species.');
       valid = false;
@@ -581,25 +580,25 @@ export default function PlotDashboard({
             <View style={styles.estimateBox}>
               <AppText style={styles.estimateTitle}>Estimated Environmental Impact</AppText>
               <AppText style={styles.estimateItem}>
-                Avoided Runoff: {estimatedStats.avoidedRunoff ?? '—'} m³
+                Avoided Runoff: {estimatedStats.avoidedRunoff ?? '-'} m³
               </AppText>
               <AppText style={styles.estimateItem}>
-                CO₂ Stored: {estimatedStats.carbonDioxideStored ?? '—'} kg
+                CO₂ Stored: {estimatedStats.carbonDioxideStored ?? '-'} kg
               </AppText>
               <AppText style={styles.estimateItem}>
-                CO₂ Removed: {estimatedStats.carbonDioxideRemoved ?? '—'} kg
+                CO₂ Removed: {estimatedStats.carbonDioxideRemoved ?? '-'} kg
               </AppText>
               <AppText style={styles.estimateItem}>
-                Water Intercepted: {estimatedStats.waterIntercepted ?? '—'} m³
+                Water Intercepted: {estimatedStats.waterIntercepted ?? '-'} m³
               </AppText>
               <AppText style={styles.estimateItem}>
-                Air Quality Gain: {estimatedStats.airQualityImprovement ?? '—'} g/year
+                Air Quality Gain: {estimatedStats.airQualityImprovement ?? '-'} g/year
               </AppText>
               <AppText style={styles.estimateItem}>
-                Leaf Area: {estimatedStats.leafArea ?? '—'} m²
+                Leaf Area: {estimatedStats.leafArea ?? '-'} m²
               </AppText>
               <AppText style={styles.estimateItem}>
-                Evapotranspiration: {estimatedStats.evapotranspiration ?? '—'} m³
+                Evapotranspiration: {estimatedStats.evapotranspiration ?? '-'} m³
               </AppText>
             </View>
           </View>

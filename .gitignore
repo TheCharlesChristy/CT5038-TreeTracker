@@ -12,3 +12,4 @@ pre-commit.log
 logs/*.log
 !logs/.gitkeep
 .vscode/*
+*.docx

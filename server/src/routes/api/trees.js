@@ -379,7 +379,6 @@ function createTreesRoute({ db }) {
 
     const limit = parsePositiveInt(req.query.limit || 6, "limit");
 
-    // Fetch recent creation records
     const recent = await db.treeCreationData.list({
       limit,
       offset: 0,

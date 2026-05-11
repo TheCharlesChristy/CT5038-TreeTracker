@@ -63,7 +63,7 @@ export default function ForgotPasswordScreen() {
 
     } catch (error) {
       const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      setStatus({ title: 'Connection Error', message: `Network or client error — ${message}`, variant: 'error', createdAt: Date.now() });
+      setStatus({ title: 'Connection Error', message: `Network or client error - ${message}`, variant: 'error', createdAt: Date.now() });
     } finally {
       setLoading(false);
     }
