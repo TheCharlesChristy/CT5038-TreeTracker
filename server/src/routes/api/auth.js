@@ -1,7 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const { asyncHandler } = require("../middleware/async-handler");
-const { createLogger } = require("../../logging");
+const { createLogger, serializeError } = require("../../logging");
 const { requireJson } = require("./utils/http");
 const { hashPassword, randomHex64, signJwt, verifyPassword } = require("./utils/security");
 const { requireJwtSecret, resolveUserRole, requireAuthenticatedUser } = require("./utils/auth");
@@ -13,16 +13,92 @@ function getRouteLogger(req, extra = {}) {
   return req?.log?.scope ? req.log.scope("routes.api.auth", extra) : logger.child(extra);
 }
 
+class AuthConfigurationError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = "AuthConfigurationError";
+    this.code = "AUTH_CONFIG_INVALID";
+    this.statusCode = 503;
+    this.details = details;
+  }
+}
+
+function shouldReturnVerboseErrors() {
+  if (process.env.HTTP_VERBOSE_ERRORS === "1") {
+    return true;
+  }
+
+  if (process.env.HTTP_VERBOSE_ERRORS === "0") {
+    return false;
+  }
+
+  return process.env.NODE_ENV === "development";
+}
+
+function buildRouteErrorPayload(error, fallbackMessage, req, options = {}) {
+  const statusCode = error?.statusCode || 500;
+  const payload = {
+    error: fallbackMessage,
+    code: error?.name || error?.code || "InternalError",
+    requestId: req?.requestId || null
+  };
+
+  if (options.publicMessage && error?.message) {
+    payload.message = error.message;
+  }
+
+  if (options.publicDetails && error?.details) {
+    payload.details = error.details;
+  }
+
+  if (shouldReturnVerboseErrors()) {
+    payload.debug = {
+      message: error?.message || null,
+      details: error?.details || null
+    };
+
+    if (error?.cause) {
+      payload.debug.cause = {
+        name: error.cause.name || null,
+        code: error.cause.code || null,
+        command: error.cause.command || null,
+        responseCode: error.cause.responseCode || null,
+        response: error.cause.response || null,
+        message: error.cause.message || null
+      };
+    }
+  }
+
+  return {
+    statusCode,
+    payload
+  };
+}
+
 function createAuthRoute({ db, frontendUrl }) {
   const router = express.Router();
   
   function getFrontendUrl() {           
-    if (!frontendUrl) throw new Error("FRONTEND_URL not configured");
-    return frontendUrl.replace(/\/+$/, "");
+    const resolvedFrontendUrl = String(frontendUrl || process.env.FRONTEND_URL || "").trim();
+    if (!resolvedFrontendUrl) {
+      throw new AuthConfigurationError("FRONTEND_URL not configured", {
+        missingVars: ["FRONTEND_URL"]
+      });
+    }
+    return resolvedFrontendUrl.replace(/\/+$/, "");
   }
   
   function signActionToken(payload, expiresIn) {
-    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
+    let jwtSecret;
+    try {
+      jwtSecret = requireJwtSecret();
+    } catch {
+      throw new AuthConfigurationError("JWT_SECRET not configured", {
+        missingVars: ["JWT_SECRET"]
+      });
+    }
+
+    return jwt.sign(payload, jwtSecret, { expiresIn });
   }
 
   function verifyActionToken(token) {
@@ -92,7 +168,9 @@ function createAuthRoute({ db, frontendUrl }) {
         } catch (emailError) {
           routeLog.warn("register.email_send_failed", {
             userId: user.id,
-            error: emailError.message
+            code: emailError.code || null,
+            error: emailError.message,
+            details: emailError.details || null
           });
         }
       }
@@ -279,39 +357,95 @@ function createAuthRoute({ db, frontendUrl }) {
       requireJson(req);
 
       const email = String(req.body.email || "").trim();
+      routeLog.info("forgot.attempt", { email });
+
       if (!email) {
         routeLog.warn("forgot.missing_email");
         return res.status(400).json({ error: "Email required" });
       }
 
+      routeLog.info("forgot.lookup.start", { email });
       const user = await db.users.getByEmail(email);
 
       if (!user) {
         routeLog.info("forgot.user_not_found", { email });
         return res.json({ message: "If account exists, email sent" });
       }
+      routeLog.info("forgot.lookup.success", { userId: user.id });
 
-      const resetToken = signActionToken(
-        { userId: user.id, purpose: "reset-password" },
-        "30m"
-      );
+      let resetUrl;
+      try {
+        routeLog.info("forgot.reset_link.start", { userId: user.id });
+        const resetToken = signActionToken(
+          { userId: user.id, purpose: "reset-password" },
+          "30m"
+        );
 
-      const resetUrl = `${getFrontendUrl()}/reset-password?token=${resetToken}`;
+        resetUrl = `${getFrontendUrl()}/reset-password?token=${resetToken}`;
+        routeLog.info("forgot.reset_link.ready", { userId: user.id });
+      } catch (linkError) {
+        const { statusCode, payload } = buildRouteErrorPayload(
+          linkError,
+          "Could not create password reset link. Check the server auth configuration.",
+          req,
+          { publicMessage: true, publicDetails: true }
+        );
 
-      await sendEmail({
-        to: email,
-        subject: "Reset your password",
-        html: `<h3>Reset your password</h3>
-               <a href="${resetUrl}">Reset Password</a>`
-      });
+        routeLog.error("forgot.reset_link.failed", {
+          userId: user.id,
+          email,
+          code: linkError.code || null,
+          error: serializeError(linkError),
+          details: linkError.details || null
+        });
+
+        return res.status(statusCode).json(payload);
+      }
+
+      try {
+        await sendEmail({
+          to: email,
+          subject: "Reset your password",
+          html: `<h3>Reset your password</h3>
+                 <a href="${resetUrl}">Reset Password</a>`
+        });
+      } catch (emailError) {
+        const { statusCode, payload } = buildRouteErrorPayload(
+          emailError,
+          "Could not send password reset email. Check the server mail configuration.",
+          req,
+          { publicMessage: true, publicDetails: true }
+        );
+
+        routeLog.error("forgot.email_send_failed", {
+          userId: user.id,
+          email,
+          code: emailError.code || null,
+          error: serializeError(emailError),
+          details: emailError.details || null
+        });
+
+        return res.status(statusCode).json(payload);
+      }
 
       routeLog.info("forgot.email_sent", { userId: user.id });
 
       res.json({ message: "Reset link sent" });
 
     } catch (err) {
-      routeLog.error("forgot.failed", { error: err.message });
-      res.status(500).json({ error: "Internal server error" });
+      const { statusCode, payload } = buildRouteErrorPayload(
+        err,
+        "Could not process forgot password request.",
+        req,
+        { publicMessage: true, publicDetails: true }
+      );
+
+      routeLog.error("forgot.failed", {
+        code: err.code || null,
+        error: serializeError(err),
+        details: err.details || null
+      });
+      res.status(statusCode).json(payload);
     }
   };
 

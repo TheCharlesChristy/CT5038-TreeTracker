@@ -119,6 +119,10 @@ function resolveStaticRoute(staticRoot, pathname) {
 }
 
 function toErrorStatus(error) {
+  if (Number.isInteger(error?.statusCode) && error.statusCode >= 400 && error.statusCode <= 599) {
+    return error.statusCode;
+  }
+
   const code = error?.name || error?.code;
   if (code === "UnsupportedMediaTypeError") return 415;
   if (code === "ValidationError") return 400;
@@ -382,6 +386,8 @@ function createHttpServer({
 
   logger.info("server.configure", {
     port,
+    frontendUrl,
+    frontendUrlConfigured: Boolean(frontendUrl),
     dbTestBenchEnabled,
     expoProxyEnabled,
     expoStaticEnabled,

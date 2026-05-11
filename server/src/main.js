@@ -152,6 +152,7 @@ async function bootstrap({ exitOnShutdown = false, envPath = null } = {}) {
     db,
     dbTestBenchEnabled: config.dbTestBenchEnabled,
     dbTestBenchToken: config.dbTestBenchToken,
+    frontendUrl: config.frontendUrl,
     expoProxyEnabled: config.expoProxyEnabled,
     expoStaticEnabled: config.expoStaticEnabled,
     expoWebDistPath: config.expoWebDistPath,
