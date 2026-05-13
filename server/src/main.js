@@ -123,7 +123,6 @@ async function ensureDefaultDevUsers(defaultPassword) {
 }
 
 async function bootstrap({ exitOnShutdown = false, envPath = null } = {}) {
-  // Load env
   if (envPath) {
     require("dotenv").config({ path: envPath });
   } else {

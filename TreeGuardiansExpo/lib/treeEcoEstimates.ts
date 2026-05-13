@@ -73,14 +73,11 @@ export function estimateTreeEcoStats(input: EstimateInput): EstimateOutput {
     const diameterM = diameterCm / 100;
     const trunkRadiusM = diameterM / 2;
 
-    // Crown radius estimate from species + height
     const crownRadiusM = clamp(heightM * speciesMeta.canopySpreadFactor, 1.2, 12);
     const crownAreaM2 = Math.PI * crownRadiusM * crownRadiusM;
 
-    // leaf area estimate
     const leafArea = crownAreaM2 * speciesMeta.leafDensityFactor;
 
-    // biomass-like rules from trunk size + height
     const stemVolumeIndex = Math.PI * trunkRadiusM * trunkRadiusM * heightM;
 
     const carbonDioxideStored = stemVolumeIndex * 520 * speciesMeta.storageFactor;

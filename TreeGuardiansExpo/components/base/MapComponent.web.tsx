@@ -14,7 +14,6 @@ import {
 } from './MapComponent.types';
 
 const isWithinRegion = (lat: number, lng: number): boolean => {
-  // Ray casting algorithm
   let inside = false;
   const ring = REGION_RING_LEAFLET;
 

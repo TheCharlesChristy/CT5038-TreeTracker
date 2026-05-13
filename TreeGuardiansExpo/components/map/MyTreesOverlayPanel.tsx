@@ -113,7 +113,7 @@ export function MyTreesOverlayPanel({
                   <View style={styles.rowBody}>
                     <View style={styles.rowTitleRow}>
                       <AppText style={styles.rowTitle} numberOfLines={1}>
-                        {tree.species ? `${tree.species} · ` : ''}Tree #{tree.id ?? '—'}
+                        {tree.species ? `${tree.species} · ` : ''}Tree #{tree.id ?? '-'}
                       </AppText>
                       <View
                         style={[

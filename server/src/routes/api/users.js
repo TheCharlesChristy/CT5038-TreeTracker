@@ -120,7 +120,6 @@ function createUsersRoute({ db }) {
       return res.status(400).json({ error: "Valid userId and treeId are required." });
     }
 
-    // Check the target user is verified before assigning them as guardian
     const targetUser = await db.users.getById(userId);
     if (!targetUser) {
       return res.status(404).json({ error: "User not found." });

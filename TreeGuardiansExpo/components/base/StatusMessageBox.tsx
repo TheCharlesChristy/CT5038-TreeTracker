@@ -20,12 +20,12 @@ export type StatusMessage = {
 type StatusMessageBoxProps = {
   status: StatusMessage | null;
   onClose: () => void;
-  /** Seconds before auto-redirect on success (shows countdown). Omit to disable. */
+  /** Seconds shown in the success countdown. */
   redirectDuration?: number;
   countdownLabel?: string;
   closeLabel?: string;
   showCopyButton?: boolean;
-  /** Override the default top position (16px). Use to push below a nav bar. */
+  /** Top offset in pixels. */
   topOffset?: number;
 };
 

@@ -121,7 +121,6 @@ function createAccountRoute({ db, frontendUrl }) {
       return buildSafeUserResponse(userId, tx);
     });
 
-    // Send verification email to the new address
     if (verificationToken) {
       const verifyUrl = `${getFrontendUrl()}/verify-email?token=${verificationToken}`;
 
@@ -266,11 +265,6 @@ function createAccountRoute({ db, frontendUrl }) {
       return;
     }
 
-    // DB-level constraints handle data handling:
-    // - user_passwords + sessions: cascaded
-    // - guardian_trees: cascaded
-    // - tree_creation_data.creator_user_id: set to NULL
-    // - comments.user_id: set to NULL (anonymised)
     routeLog.info("request.success", { userId });
     res.json({ message: "Account deleted successfully" });
   };

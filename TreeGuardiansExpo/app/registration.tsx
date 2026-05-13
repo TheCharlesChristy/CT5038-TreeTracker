@@ -127,7 +127,7 @@ export default function CreateAccount() {
         ? `${error.name}: ${error.message}`
         : String(error);
       console.error('Registration error:', error);
-      setStatus({ title: 'Connection Error', message: `Network or client error — ${message}`, variant: 'error', createdAt: Date.now() });
+      setStatus({ title: 'Connection Error', message: `Network or client error - ${message}`, variant: 'error', createdAt: Date.now() });
     } finally {
       setLoading(false);
     }

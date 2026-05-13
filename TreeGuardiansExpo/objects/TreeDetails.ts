@@ -1,4 +1,4 @@
-// Tree photos
+/** Photo row attached to a tree or comment. */
 export type TreePhoto = {
   id?: number;
   image_url: string;
@@ -8,7 +8,7 @@ export type TreePhoto = {
 
 export type TreeHealthState = 'excellent' | 'good' | 'ok' | 'bad' | 'terrible';
 
-// information filled in dashboard
+/** Tree details collected and displayed by add/edit flows. */
 export type TreeDetails = {
     species?: string,
     wildlife?: string,
@@ -16,7 +16,7 @@ export type TreeDetails = {
     disease?: string,
     diseaseList?: string[],
     photos?: TreePhoto[],
-    notes?: string, // "seen" obervations or additional notes
+    notes?: string,
     diameter?: number,
     height?: number,
     circumference?: number,
@@ -30,11 +30,11 @@ export type TreeDetails = {
     health?: TreeHealthState
 }
 
-// when the tree is successfully placed
+/** Persisted tree with map coordinates and optional ownership metadata. */
 export type Tree = TreeDetails & TreeOwnership & {
     latitude: number;
     longitude: number;
-    id?: number; // optional but useful for referencing
+    id?: number;
 }
 
 export type TreeOwnership = {

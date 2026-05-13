@@ -7,7 +7,7 @@ type Strength = 'weak' | 'fair' | 'good' | 'strong';
 interface StrengthResult {
   level: Strength;
   label: string;
-  score: number;          // 0–4 filled bars
+  score: number;
   color: string;
 }
 
@@ -23,7 +23,6 @@ export function getPasswordStrength(password: string): StrengthResult {
   if (/\d/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
 
-  // Map raw score (0-5) to 4-bar scale
   if (score <= 1) return { level: 'weak',   label: 'Weak',   score: 1, color: '#B3261E' };
   if (score === 2) return { level: 'fair',   label: 'Fair',   score: 2, color: '#F9A825' };
   if (score === 3) return { level: 'good',   label: 'Good',   score: 3, color: '#66BB6A' };

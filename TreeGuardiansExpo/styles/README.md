@@ -1,80 +1,34 @@
-## These are the current sub-themes that you can use:
+# Styles
 
-1. Colours
-    - primary: '#1B5E20' 
-    - secondary: '#6D4C41'    
-    - accent: '#48b54d'  
-    - background: '#F1F8F4'  
+`styles/index.ts` re-exports the app theme, layout helpers, and design tokens.
 
-    - white: '#FFFFFF'
-    - black: '#1C1C1C'
-    - gray: '#5F6368'
+Import shared styles from the package index:
 
-    - success: '#2E7D32'
-    - error: '#C62828'
-    - warning: '#F9A825'
+```ts
+import { Theme, getResponsiveLayoutMetrics } from '@/styles';
+```
 
-2. Spacing
-    - extraSmall: 4
-    - small: 8
-    - medium: 16
-    - large: 24
-    - extraLarge: 32
+## Tokens
 
-3. BorderRadius
-    - extraSmall: 3
-    - small: 6
-    - medium: 10
-    - large: 16
+| Token | Values |
+| --- | --- |
+| `Colours` | `primary`, `secondary`, `accent`, `backgroundSoft`, `textPrimary`, `textMuted`, `textLight`, `white`, `black`, `gray`, `success`, `error`, `warning` |
+| `Spacing` | `extraSmall: 4`, `small: 8`, `medium: 16`, `large: 24`, `extraLarge: 32` |
+| `Radius` | `extraSmall: 3`, `small: 6`, `medium: 10`, `large: 16`, `card: 20` |
+| `Border` | `extraSmall: 3`, `small: 6`, `medium: 10`, `large: 16` |
+| `Typography` | `title`, `subtitle`, `tagline`, `body`, `caption` |
 
-4. Typography
-    - title:
-      fontSize: 28
-      fontWeight: 700
-      lineHeight: 34
+## Theme
 
-    - subtitle:
-      fontSize: 20
-      fontWeight: 600
-      lineHeight: 26
-    
-    - body:
-      fontSize: 16
-      fontWeight: 400
-      lineHeight: 22
-    
-    - caption:
-      fontSize: 13
-      fontWeight: 400
-      lineHeight: 18
+`Theme` groups tokens and shared styles for `container`, `background`, `button`, and `dimOverlay`.
 
-## These are the themes that you can use: (TO BE UPDATED)
+## Layout
 
-1. Button
-    - primary:
-      backgroundColor: Colours.primary
-      padding: Spacing.medium
-      borderRadius: BorderRadius.small
+`getResponsiveLayoutMetrics(width, height)` returns breakpoint flags and reusable dimensions for compact, phone, tablet, and desktop layouts.
 
-    - secondary:
-      backgroundColor: Colours.secondary
-      padding: Spacing.medium
-      borderRadius: BorderRadius.small
+Breakpoints:
 
-    - text:
-      color: Colours.white
-      fontWeight: 'bold'
-
-2. container:
-    flex: 1,
-    backgroundColor: Colours.background,
-    padding: Spacing.medium,
-
-3. Dim Overlay:
-    position: 'absolute'
-    top: 0
-    left: 0
-    right: 0
-    bottom: 0
-    backgroundColor: 'rgba(255,255,255,0.5)'
-    zIndex: 50
+- `compact`: `< 380`
+- `phone`: `< 680`
+- `tablet`: `680..899`
+- `desktop`: `>= 900`

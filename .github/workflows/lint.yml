@@ -9,9 +9,6 @@ on:
   pull_request:
 
 jobs:
-  # -----------------------------
-  # JavaScript / React Native / Expo
-  # -----------------------------
   lint-js:
     name: JS / React Native / Expo Lint
     runs-on: ubuntu-latest
@@ -41,9 +38,6 @@ jobs:
       - name: Expo doctor (optional)
         run: npx expo-doctor || true
 
-  # -----------------------------
-  # SQL Lint
-  # -----------------------------
   lint-sql:
     name: SQL Lint
     runs-on: ubuntu-latest
@@ -60,9 +54,6 @@ jobs:
       - name: Run SQLFluff
         run: sqlfluff lint . --dialect mysql
 
-  # -----------------------------
-  # PHP Lint
-  # -----------------------------
   lint-php:
     name: PHP Lint
     runs-on: ubuntu-latest

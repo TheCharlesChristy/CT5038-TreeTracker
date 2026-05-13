@@ -10,7 +10,7 @@ export type LocalActivityItem = {
   sortKey: number;
 };
 
-/** @deprecated Use LocalActivityItem */
+/** @deprecated Use `LocalActivityItem`. */
 export type LocalTreeActivityItem = LocalActivityItem;
 
 type RecentComment = {

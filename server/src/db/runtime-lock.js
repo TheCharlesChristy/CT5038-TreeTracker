@@ -6,7 +6,7 @@ const mysqlPromise = require("mysql2/promise");
 const DB_ROOT = path.resolve(__dirname).replace(/\\/g, "/");
 let installed = false;
 
-// Cheap per-call context flag — set by runWithDbAccess() at middleware entrypoints.
+// Marks call stacks that are allowed to execute SQL.
 const dbAccessStore = new AsyncLocalStorage();
 
 function isDbAccessAllowed() {
@@ -142,7 +142,7 @@ function wrapClient(client) {
     writable: false
   });
 
-  // Second-layer lock: block raw SQL execution even if a client leaks outside middleware.
+  // Guard leaked clients as well as client factories.
   wrapClientMethod(client, "query");
   wrapClientMethod(client, "execute");
   wrapGetConnection(client);
@@ -156,7 +156,7 @@ function installDbClientLock() {
     return;
   }
 
-  // Lock both callback and promise APIs to block direct pool/connection creation.
+  // Cover callback and promise mysql2 APIs.
   lockFactory(mysql, "createConnection");
   lockFactory(mysql, "createPool");
   lockFactory(mysql, "createPoolCluster");

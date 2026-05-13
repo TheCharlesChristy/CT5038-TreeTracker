@@ -94,7 +94,6 @@ export async function validateSession(): Promise<AuthState> {
   }
 }
 
-// Load authentication state
 export async function getAuthState(): Promise<AuthState> {
   try {
     const token = await getItem("accessToken");
@@ -115,7 +114,6 @@ export async function getAuthState(): Promise<AuthState> {
   }
 }
 
-// Return current logged-in user
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const token = await getItem("accessToken");
@@ -162,7 +160,6 @@ export function normalizeUserRole(role: UserRole | null | undefined): AppUserRol
   return "user";
 }
 
-// Return stored access token
 export async function getAccessToken(): Promise<string | null> {
   try {
     return await getItem("accessToken");
@@ -172,7 +169,6 @@ export async function getAccessToken(): Promise<string | null> {
   }
 }
 
-// Logout user
 export async function logoutUser(): Promise<boolean> {
   try {
     const refreshToken = await getItem("refreshToken");
@@ -370,7 +366,6 @@ export async function deleteAccount(payload: {
     await parseErrorResponse(response, "Failed to delete account.");
   }
 
-  // Server returns JSON; we don't depend on the shape.
   await response.json().catch(() => null as MessageResponse | null);
 }
 

@@ -26,7 +26,7 @@ function ensureRequiredString(name, value, max) {
   assert(value.length <= max, `${name} must be <= ${max} chars`);
 }
 
-/** String that may be empty (e.g. image-only comment body stored as ''). */
+/** Allows empty strings for image-only comment bodies. */
 function ensureStringAllowEmptyMax(name, value, max) {
   assert(typeof value === "string", `${name} must be a string`);
   assert(value.length <= max, `${name} must be <= ${max} chars`);

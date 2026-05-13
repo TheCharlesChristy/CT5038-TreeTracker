@@ -359,7 +359,6 @@ export default function ManageUsersPage() {
 										<View style={styles.expandedContent}>
 										<View style={styles.divider} />
 
-										{/* Role */}
 										<AppText style={styles.sectionLabel}>Role</AppText>
 										<TouchableOpacity
 											onPress={() => setExpand(managedUser.id, { rolePickerOpen: !expand.rolePickerOpen, treePickerOpen: false })}
@@ -398,7 +397,6 @@ export default function ManageUsersPage() {
 
 										<View style={styles.divider} />
 
-										{/* Guardian Trees */}
 										<AppText style={styles.sectionLabel}>
 											Guardian Trees ({managedUser.guardianTreeIds.length})
 										</AppText>
@@ -424,7 +422,6 @@ export default function ManageUsersPage() {
 											</View>
 										)}
 
-										{/* Assign Tree */}
 										<AppText style={styles.assignLabel}>Assign a tree</AppText>
 										<TouchableOpacity
 											onPress={() => setExpand(managedUser.id, { treePickerOpen: !expand.treePickerOpen, rolePickerOpen: false })}
@@ -480,7 +477,6 @@ export default function ManageUsersPage() {
 
 										<View style={styles.divider} />
 
-										{/* Activity */}
 										<AppText style={styles.sectionLabel}>Recent Activity</AppText>
 
 										{expand.activityLoading ? (
@@ -515,7 +511,6 @@ export default function ManageUsersPage() {
 
 										<View style={styles.divider} />
 
-										{/* Delete */}
 										<TouchableOpacity
 											onPress={() => handleDeleteUser(managedUser)}
 											style={[

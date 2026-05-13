@@ -66,7 +66,6 @@ export default function VerifyEmailScreen() {
         <View style={[styles.formColumn, !isMobileLayout && styles.formColumnCentered]}>
           <View style={[styles.formCard, isMobileLayout && styles.formCardMobile]}>
 
-            {/* Back link */}
             <View style={styles.topRow}>
               <Pressable onPress={() => router.push('/login')} style={styles.backLink}>
                 <AppText variant="caption" style={styles.backLinkText}>
@@ -75,17 +74,14 @@ export default function VerifyEmailScreen() {
               </Pressable>
             </View>
 
-            {/* Title */}
             <AppText variant="title" style={[styles.title, isMobileLayout && styles.titleMobile]}>
               Email Verification
             </AppText>
 
-            {/* Subtitle */}
             <AppText variant="body" style={styles.subtitle}>
               {loading ? 'Please wait while we verify your email.' : 'Verification result:'}
             </AppText>
 
-            {/* Inline status */}
             <View style={styles.messageBox}>
               <AppText
                 variant="body"
@@ -98,7 +94,6 @@ export default function VerifyEmailScreen() {
               </AppText>
             </View>
 
-            {/* Button instead of auto redirect */}
             {!loading && (
               <AppButton
                 title="Back to Login"

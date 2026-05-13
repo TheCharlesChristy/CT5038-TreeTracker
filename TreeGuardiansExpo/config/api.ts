@@ -79,6 +79,7 @@ function rewriteLocalhostForNative(value: string): string {
   });
 }
 
+/** Returns the absolute API base URL, always ending in `/api`. */
 export function resolveApiBaseUrl(): string {
   const windowOrigin = getWindowOrigin();
   if (windowOrigin) {
@@ -120,10 +121,12 @@ export function resolveApiBaseUrl(): string {
   return `${rewriteLocalhostForNative(DEFAULT_NATIVE_API_ORIGIN)}/api`;
 }
 
+/** Returns the backend origin without the `/api` suffix. */
 export function resolveApiOrigin(): string {
   return normalizeOrigin(resolveApiBaseUrl());
 }
 
+/** Builds an absolute API URL from an endpoint path. */
 export function buildApiUrl(path: string): string {
   const cleanPath = String(path || "").replace(/^\/+/, "");
   const base = resolveApiBaseUrl();

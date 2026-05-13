@@ -298,7 +298,6 @@ export function DashboardPanel({
                       <AppText style={styles.weatherErrorText}>{weatherError}</AppText>
                     ) : weatherData ? (
                       <>
-                        {/* Current conditions hero */}
                         <View style={styles.weatherHero}>
                           <AppText style={styles.weatherEmoji}>{wmoEmoji(weatherData.weatherCode)}</AppText>
                           <AppText style={styles.weatherTempBig}>{weatherData.temperature}°C</AppText>
@@ -316,7 +315,6 @@ export function DashboardPanel({
                           </View>
                         </View>
 
-                        {/* Multi-day forecast */}
                         {weatherData.forecast.length > 0 ? (
                           <>
                             <AppText style={styles.forecastHeading}>4-Day Forecast</AppText>
@@ -423,7 +421,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  /* Weather */
   weatherLoader: {
     marginVertical: 32,
   },
@@ -565,7 +562,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  /* Activity */
   activityCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -618,7 +614,6 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
 
-  /* Dashboard layout */
   dashboardWrap: {
     position: 'absolute',
     left: 0,

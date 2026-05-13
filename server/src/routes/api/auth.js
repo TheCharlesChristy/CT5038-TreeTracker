@@ -213,7 +213,6 @@ function createAuthRoute({ db, frontendUrl }) {
       }
 
       if (user.verified_at) {
-        // Still clean up the token if somehow it wasn't deleted before
         await db.emailVerificationTokens.deleteByToken(token);
         routeLog.info("verify.already_verified", { userId: user.id });
         return res.json({ message: "Email already verified" });
@@ -248,7 +247,6 @@ function createAuthRoute({ db, frontendUrl }) {
         return res.status(400).json({ error: "Email is already verified." });
       }
 
-      // Delete any existing tokens for this user and issue a fresh one
       await db.emailVerificationTokens.deleteByUserId(user.id);
       const verificationToken = await db.emailVerificationTokens.create(user.id);
 

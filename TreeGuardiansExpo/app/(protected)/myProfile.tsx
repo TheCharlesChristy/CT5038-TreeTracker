@@ -325,7 +325,6 @@ export default function MyProfilePage() {
 			>
 				<View style={styles.inner}>
 
-					{/* Hero overview card */}
 					<View style={styles.heroCard}>
 						<View style={styles.avatarCircle}>
 							<AppText style={styles.avatarLetter}>{avatarLetter}</AppText>
@@ -384,7 +383,6 @@ export default function MyProfilePage() {
 						<AppText style={styles.userId}>ID #{currentUser.id}</AppText>
 					</View>
 
-					{/* Username card */}
 					<View style={styles.card}>
 						<AppText style={styles.cardTitle}>Username</AppText>
 						{!isEditingUsername ? (
@@ -437,7 +435,6 @@ export default function MyProfilePage() {
 						)}
 					</View>
 
-					{/* Email card */}
 					<View style={styles.card}>
 						<AppText style={styles.cardTitle}>Email</AppText>
 						{!isEditingEmail ? (
@@ -491,7 +488,6 @@ export default function MyProfilePage() {
 						)}
 					</View>
 
-					{/* Password card */}
 					<View style={styles.card}>
 						<AppText style={styles.cardTitle}>Password</AppText>
 						{!isChangingPassword ? (
@@ -567,7 +563,6 @@ export default function MyProfilePage() {
 						)}
 					</View>
 
-					{/* Account deletion card */}
 					<View style={styles.card}>
 						<AppText style={styles.cardTitle}>Account Deletion</AppText>
 						<AppText style={styles.deleteDescription}>
@@ -781,7 +776,6 @@ const styles = StyleSheet.create({
 		opacity: 0.55,
 	},
 
-	/* Action cards */
 	card: {
 		...GLASS_CARD,
 		padding: 18,
@@ -864,7 +858,6 @@ const styles = StyleSheet.create({
 		resendButton: {
 		marginTop: Theme.Spacing.small,
 	},
-	/* Account deletion */
 	deleteDescription: {
 		fontSize: 13,
 		color: Theme.Colours.textMuted,
@@ -882,7 +875,6 @@ const styles = StyleSheet.create({
 		color: '#B42318',
 	},
 
-	/* Modal */
 	modalOverlay: {
 		flex: 1,
 		backgroundColor: 'rgba(0, 0, 0, 0.55)',

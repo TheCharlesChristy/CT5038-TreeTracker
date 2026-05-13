@@ -1,286 +1,78 @@
-# PLESK
+# Plesk Deployment
 
-## Overview
+Plesk runs the root `app.js`, which loads `server/.env`, starts the Node backend, and serves the Expo web export when static serving is enabled.
 
-This project consists of two parts:
+## Runtime Shape
 
-* **Backend (Node.js)** → `/server`
-* **Frontend (Expo Web build)** → `/TreeGuardiansExpo/dist`
-
-Plesk is configured to:
-
-* Run the Node.js backend
-* Serve the built Expo app as static files
-
----
-
-## Directory Layout (Production)
-
-```
+```text
 /tree_guardians
-├── app.js                  # Plesk entry point
-├── server/                 # Backend
+├── app.js
+├── server/
 └── TreeGuardiansExpo/
-    └── dist/               # Built frontend (served publicly)
+    └── dist/
 ```
 
----
+`server/src/config.js` defaults to production-safe web serving when `NODE_ENV=production` and `START_EXPO=false`: Expo is not spawned, `EXPO_STATIC_ENABLED` defaults to `true`, and `EXPO_AUTO_PREPARE` defaults to `true`.
 
-## Plesk Configuration
+## Plesk Node App
 
-### Node.js Settings
+| Setting | Value |
+| --- | --- |
+| Application root | repository root |
+| Startup file | `app.js` |
+| Document root | `TreeGuardiansExpo/dist` if Plesk serves static files directly; otherwise repository root is enough for Node static serving |
 
-| Setting                  | Value                                    |
-| ------------------------ | ---------------------------------------- |
-| Application Root         | `/tree_guardians`                        |
-| Application Startup File | `app.js`                                 |
-| Document Root            | `/tree_guardians/TreeGuardiansExpo/dist` |
+The package manifests declare Node `20.20.1`. The current `plesk_deploy.sh` writes `.node-version` as `16` before installing backend dependencies, so the Plesk Node version must be checked after deployment.
 
-### Notes
+## Environment
 
-* **Application Root must contain Document Root** (Plesk requirement)
-* `app.js` should only start the backend (e.g. require `./server/server.js`)
-* Static files are served directly from `/dist`
+Create `server/.env` on the server from `server/.env.example`.
 
----
+Minimum production values:
 
-## Node Version (nodenv)
+- `NODE_ENV=production`
+- `PORT=<plesk-assigned-port-or-4000>`
+- `JWT_SECRET=<strong-secret>`
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`
+- `FRONTEND_URL=<public-site-origin>`
+- `START_EXPO=false`
+- `EXPO_STATIC_ENABLED=true`
+- `EXPO_WEB_DIST_PATH=<absolute-path-to-TreeGuardiansExpo/dist>`
 
-Plesk uses `nodenv`, so a local Node version must be defined.
+Email verification and password reset require `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM`.
 
-### Set Node version
+## Deploy Script
 
-SSH into the server:
-
-```bash
-cd /tree_guardians
-nodenv local 20.0.0
-```
-
-This creates:
-
-```
-.node-version
-```
-
-### Verify
-
-```bash
-nodenv version
-node -v
-```
-
----
-
-## Git Deployment Setup
-
-In Plesk:
-
-* Enable **Git integration**
-* Set deployment action to:
+Plesk Git deployment can run:
 
 ```bash
 bash plesk_deploy.sh
 ```
 
----
+Current script behavior:
 
-## Deployment Script
+1. Writes `.node-version`.
+2. Initializes `nodenv`.
+3. Runs `npm install --omit=dev` in `server/`.
+4. Creates `server/uploads`.
+5. Touches `tmp/restart.txt`.
 
-Create `plesk_deploy.sh` in repo root:
+The script does not build Expo. With `EXPO_AUTO_PREPARE=true`, backend startup installs Expo dependencies if needed and runs `npm run export:web`.
 
-```bash
-#!/bin/bash
-set -e
+## Checks
 
-ROOT="$(pwd)"
-SERVER_DIR="$ROOT/server"
-EXPO_DIR="$ROOT/TreeGuardiansExpo"
+- `server/.env` exists and contains production DB and JWT values.
+- `TreeGuardiansExpo/dist/index.html` exists after startup or deploy.
+- `/health` returns `{ "status": "ok" }`.
+- `/db/health` returns HTTP `200` with `ready: true`.
+- Uploaded files can be written under `server/uploads`.
 
-# Initialise nodenv (required in Plesk)
-export NODENV_ROOT="$HOME/.nodenv"
-export PATH="$NODENV_ROOT/bin:$PATH"
-eval "$(nodenv init -)"
+## Common Failures
 
-echo "Node: $(node -v)"
-echo "NPM: $(npm -v)"
+`npm: command not found`: Plesk did not initialize `nodenv`; check the deploy script output.
 
-echo "=== Installing backend ==="
-cd "$SERVER_DIR"
-npm install --omit=dev
+Frontend 404: the Expo export is missing, `EXPO_WEB_DIST_PATH` is wrong, or Plesk document root points outside the app root.
 
-echo "=== Installing frontend ==="
-cd "$EXPO_DIR"
-npm install
+Email links fail: `FRONTEND_URL` is missing or does not match the public site origin.
 
-echo "=== Building Expo ==="
-npx expo export --platform web
-
-echo "=== Restarting app ==="
-mkdir -p "$ROOT/tmp"
-touch "$ROOT/tmp/restart.txt"
-
-echo "=== Deployment complete ==="
-```
-
-Make executable:
-
-```bash
-chmod +x plesk_deploy.sh
-```
-
----
-
-## Environment Variables
-
-* Configure environment variables via:
-
-  * Plesk UI (preferred), or
-  * `.env` files (if supported by your server code)
-
-Ensure:
-
-* Backend uses correct production values
-* Frontend API URLs point to deployed backend
-
----
-
-## Common Issues
-
-### 1. `npm: command not found`
-
-Cause:
-
-* nodenv not initialized
-
-Fix:
-
-* Ensure script includes:
-
-```bash
-eval "$(nodenv init -)"
-```
-
----
-
-### 2. `nodenv: no local version configured`
-
-Cause:
-
-* Missing `.node-version`
-
-Fix:
-
-```bash
-nodenv local 16.20.2
-```
-
----
-
-### 3. Expo build fails
-
-Possible causes:
-
-* Node version mismatch
-* Missing dependencies
-
-Fix:
-
-* Ensure Node 16.20.x is used
-* Run `npm install` locally and commit lockfiles if needed
-
----
-
-### 4. 404 on frontend
-
-Common causes:
-
-* `dist/` not built
-* wrong Document Root
-* SPA routing not handled
-
-Check:
-
-* `/TreeGuardiansExpo/dist/index.html` exists
-* correct Plesk Document Root
-
----
-
-## Deployment Flow
-
-1. Push to Git repository
-2. Plesk pulls changes
-3. `plesk_deploy.sh` runs:
-
-   * installs dependencies
-   * builds frontend
-   * restarts backend
-4. Site updates live
-
----
-
-## Notes
-
-* Avoid using `npm ci` unless lockfiles are committed
-* Node version must match server capabilities (glibc constraints)
-* Frontend is static; backend handles API only
-
----
-
-## Local Stack (Redesigned)
-
-The local Docker stack has been reorganized to keep Docker assets centralized and make running the full environment one command.
-
-### Docker Layout
-
-```
-docker/
-├── compose.local.yml
-├── images/
-│   ├── server.Dockerfile
-│   ├── expo.Dockerfile
-│   └── android-emulator.Dockerfile
-└── scripts/
-  ├── watch-expo-web.sh
-  └── android-emulator-entrypoint.sh
-```
-
-### One Command To Run
-
-```bash
-./scripts/local_plesk_stack.sh
-```
-
-Quiet mode (mostly Expo output in terminal):
-
-```bash
-./scripts/local_plesk_stack.sh -q
-```
-
-Stop with `Ctrl+C`.
-
-### What You See In Terminal
-
-The launcher always prints stable local URLs at startup:
-
-* `http://localhost:4000/` (backend + static web)
-* `http://localhost:8081/` (Expo dev server)
-* `http://localhost:6080/vnc.html` (Android emulator noVNC)
-
-`expo` is always attached in quiet mode so Expo QR/tunnel lines remain visible in terminal.
-
-### Logging
-
-Full logs are always streamed into per-service files in `logs/`:
-
-* `logs/mysql.log`
-* `logs/server.log`
-* `logs/expo-web-build.log`
-* `logs/expo.log`
-* `logs/android-emulator.log`
-
-### Expo/Emulator Notes
-
-* Expo tunnel mode is preconfigured with `@expo/ngrok` installed in the Expo image.
-* Android emulator image resolves Expo Go APK for SDK `54`.
-* If a container fails to boot, stack exits (no restart loop).
+Database boot fails: required `DB_*` values are missing, the database user lacks access, or `DB_ALLOW_CREATE_DATABASE=false` while the database does not exist.

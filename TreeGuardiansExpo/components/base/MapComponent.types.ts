@@ -124,7 +124,7 @@ export const CHARLTON_CENTER = {
   longitude: -2.0475,
 };
 
-/** Outer ring as GeoJSON order: [lng, lat] — same geometry as the highlighted map boundary */
+/** Charlton Kings boundary ring in GeoJSON [lng, lat] order. */
 const CHARLTON_KINGS_RING_LNG_LAT: [number, number][] = regionOuterRing
   .filter((coordinate) => Array.isArray(coordinate) && coordinate.length >= 2)
   .map(([lng, lat]) => [lng, lat] as [number, number]);
@@ -150,7 +150,7 @@ const isPointInPolygonLngLat = (lng: number, lat: number, ring: [number, number]
   return inside;
 };
 
-/** True only inside the Charlton Kings boundary polygon (matches the highlighted outline), not the padded map box */
+/** Returns true only inside the Charlton Kings boundary, not the padded map box. */
 export const isCoordinateWithinCharltonKingsBoundary = (coordinate: MapCoordinate): boolean => {
   return isPointInPolygonLngLat(coordinate.longitude, coordinate.latitude, CHARLTON_KINGS_RING_LNG_LAT);
 };

@@ -417,11 +417,11 @@ export async function deleteTreePhoto(
 
 export type TreeFeedItem = {
   item_type: 'tree_comment' | 'wildlife' | 'disease' | 'seen' | 'reply';
-  /** Server may send bigint as string */
+  /** Comment ID can arrive as a number or string. */
   comment_id: number | string;
   created_at: string;
   content: string | null;
-  /** Pipe-separated image URLs from server (comments / replies only) */
+  /** Comment and reply image URLs joined by the server with |||. */
   photo_urls?: string | null;
   extra: string | null;
   user_id?: number | null;
