@@ -805,7 +805,7 @@ function TreeFooter({
         <AppText style={styles.footerBackText}>Back</AppText>
       </Pressable>
 
-      <View style={[styles.footerRightCluster, isCompact && styles.footerRightClusterCompact]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.footerRightCluster} >
         <AppButton
           title={shortcutLabel}
           variant="outline"
@@ -846,7 +846,7 @@ function TreeFooter({
           buttonStyle={styles.footerPrimaryButton}
           textStyle={styles.footerPrimaryText}
         />
-      </View>
+      </ScrollView>
     </View>
   );
 }
